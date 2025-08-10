@@ -1,0 +1,82 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  full_name   String
+  username    String   @unique
+  password    String
+  role        Role
+  branch      Branch?  @relation(fields: [branch_id], references: [id])
+  branch_id   String?  @db.ObjectId
+  orders      Order[]
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+}
+
+model Branch {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  name       String   @unique
+  address    String
+  users      User[]
+  orders     Order[]
+  created_at DateTime @default(now())
+}
+
+model Product {
+  id             String          @id @default(auto()) @map("_id") @db.ObjectId
+  type           String
+  name           String
+  sides          String[] // Using String array for multiple values like ["oldi", "orqa"]
+  price          Float
+  order_products Order_Product[]
+  created_at     DateTime        @default(now())
+}
+
+model Order {
+  id              String          @id @default(auto()) @map("_id") @db.ObjectId
+  order_number    String          @unique
+  client_name     String
+  client_phone    String
+  client_birthday DateTime
+  branch          Branch          @relation(fields: [branch_id], references: [id])
+  branch_id       String          @db.ObjectId
+  cashier         User            @relation(fields: [cashier_id], references: [id])
+  cashier_id      String          @db.ObjectId
+  payment_type    PaymentType
+  total_amount    Float
+  order_products  Order_Product[]
+  created_at      DateTime        @default(now())
+}
+
+model Order_Product {
+  id         String  @id @default(auto()) @map("_id") @db.ObjectId
+  order      Order   @relation(fields: [order_id], references: [id])
+  order_id   String  @db.ObjectId
+  product    Product @relation(fields: [product_id], references: [id])
+  product_id String  @db.ObjectId
+  side       String // "oldi" or "orqa"
+  quantity   Int
+  price      Float
+}
+
+enum Role {
+  super_admin
+  admin
+  kassir
+}
+
+enum PaymentType {
+  cash
+  card
+  credit
+}
