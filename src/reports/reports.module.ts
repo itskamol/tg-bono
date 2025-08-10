@@ -1,4 +1,7 @@
 import { Module } from '@nestjs/common';
+import { ReportsUpdate } from './reports.update';
 
-@Module({})
+@Module({
+  providers: [ReportsUpdate],
+})
 export class ReportsModule {}
