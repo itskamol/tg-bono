@@ -1,14 +1,16 @@
 import { Module } from '@nestjs/common';
 import { ReportsUpdate } from './reports.update';
-import { 
+import {
   GeneralReportsScene,
   PaymentReportsScene,
   ProductReportsScene,
   RevenueReportsScene,
   BranchReportsScene,
-  UserReportsScene
+  UserReportsScene,
 } from './scenes';
 import { PrismaModule } from '../prisma/prisma.module';
+import { ReportsService } from './reports.service';
+import { EncryptionService } from 'src/settings/encryption.service';
 
 @Module({
   imports: [PrismaModule],
@@ -20,6 +22,8 @@ import { PrismaModule } from '../prisma/prisma.module';
     RevenueReportsScene,
     BranchReportsScene,
     UserReportsScene,
+    ReportsService,
+    EncryptionService
   ],
 })
 export class ReportsModule {}

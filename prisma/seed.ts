@@ -1,5 +1,6 @@
 import { PrismaClient, Role } from '@prisma/client';
 import * as bcrypt from 'bcrypt';
+import 'dotenv/config';
 
 const prisma = new PrismaClient();
 
@@ -24,6 +25,7 @@ async function safeCreateBranch(name: string, address: string) {
     console.log(`✨ Created branch: ${name}`);
     return newBranch;
   } catch (error) {
+    console.log(error);
     console.log(`❌ Error with branch '${name}':`, error.message);
     return null;
   }
@@ -32,8 +34,6 @@ async function safeCreateBranch(name: string, address: string) {
 async function safeCreateUser(userData: {
   telegram_id: number;
   full_name: string;
-  username: string;
-  password: string;
   role: Role;
   branch_id?: string;
 }) {
@@ -44,7 +44,7 @@ async function safeCreateUser(userData: {
     });
 
     if (existingUser) {
-      console.log(`✅ User '${userData.username}' already exists`);
+      console.log(`✅ User '${userData.full_name}' already exists`);
       return existingUser;
     }
 
@@ -53,10 +53,13 @@ async function safeCreateUser(userData: {
       data: userData,
     });
 
-    console.log(`✨ Created user: ${userData.username} (${userData.role})`);
+    console.log(`✨ Created user: ${userData.full_name} (${userData.role})`);
     return newUser;
   } catch (error) {
-    console.log(`❌ Error creating user '${userData.username}':`, error.message);
+    console.log(
+      `❌ Error creating user '${userData.telegram_id}':`,
+      error.message,
+    );
     return null;
   }
 }
@@ -83,10 +86,15 @@ async function safeCreateProduct(productData: {
       data: productData,
     });
 
-    console.log(`✨ Created product: ${productData.name} (${productData.price} so'm)`);
+    console.log(
+      `✨ Created product: ${productData.name} (${productData.price} so'm)`,
+    );
     return newProduct;
   } catch (error) {
-    console.log(`❌ Error creating product '${productData.name}':`, error.message);
+    console.log(
+      `❌ Error creating product '${productData.name}':`,
+      error.message,
+    );
     return null;
   }
 }
@@ -99,17 +107,17 @@ async function main() {
     console.log('📍 Creating branches...');
     const branch1 = await safeCreateBranch(
       'Markaziy filial',
-      "Toshkent shahar, Amir Temur ko'chasi 1"
+      "Toshkent shahar, Amir Temur ko'chasi 1",
     );
 
     const branch2 = await safeCreateBranch(
       'Yunusobod filiali',
-      'Toshkent shahar, Yunusobod tumani, Abdulla Qodiriy 42'
+      'Toshkent shahar, Yunusobod tumani, Abdulla Qodiriy 42',
     );
 
     const branch3 = await safeCreateBranch(
       'Chilonzor filiali',
-      'Toshkent shahar, Chilonzor tumani, Bunyodkor 15'
+      'Toshkent shahar, Chilonzor tumani, Bunyodkor 15',
     );
 
     // 2. Hash password
@@ -121,10 +129,8 @@ async function main() {
 
     // Super Admin
     await safeCreateUser({
-      telegram_id: 1165097041,
+      telegram_id: process.env.SUPER_ADMIN_ID ? parseInt(process.env.SUPER_ADMIN_ID) : 1165097041,
       full_name: 'Super Administrator',
-      username: 'superadmin',
-      password: hashedPassword,
       role: Role.super_admin,
     });
 
@@ -133,8 +139,6 @@ async function main() {
       await safeCreateUser({
         telegram_id: 987654321,
         full_name: 'Admin Adminov',
-        username: 'admin1',
-        password: hashedPassword,
         role: Role.admin,
         branch_id: branch1.id,
       });
@@ -144,8 +148,6 @@ async function main() {
       await safeCreateUser({
         telegram_id: 987654322,
         full_name: 'Admin Yunusobod',
-        username: 'admin2',
-        password: hashedPassword,
         role: Role.admin,
         branch_id: branch2.id,
       });
@@ -156,8 +158,6 @@ async function main() {
       await safeCreateUser({
         telegram_id: 555666777,
         full_name: 'Kassir Kassirov',
-        username: 'kassir1',
-        password: hashedPassword,
         role: Role.kassir,
         branch_id: branch1.id,
       });
@@ -167,8 +167,6 @@ async function main() {
       await safeCreateUser({
         telegram_id: 555666778,
         full_name: 'Kassir Yunusobod',
-        username: 'kassir2',
-        password: hashedPassword,
         role: Role.kassir,
         branch_id: branch2.id,
       });
@@ -178,8 +176,6 @@ async function main() {
       await safeCreateUser({
         telegram_id: 555666779,
         full_name: 'Kassir Chilonzor',
-        username: 'kassir3',
-        password: hashedPassword,
         role: Role.kassir,
         branch_id: branch3.id,
       });
@@ -261,140 +257,13 @@ async function main() {
 
     console.log('\n🔐 Default login credentials:');
     console.log('Password for all users: 123456');
-    console.log('Usernames: superadmin, admin1, admin2, kassir1, kassir2, kassir3');
-
+    console.log(
+      'Usernames: superadmin, admin1, admin2, kassir1, kassir2, kassir3',
+    );
   } catch (error) {
     console.error('❌ Seeding failed:', error);
     throw error;
   }
-} {
-  //       where: { telegram_id: 987654321 },
-  //     });
-  //     if (!admin1) {
-  //       admin1 = await prisma.user.create({
-  //         data: {
-  //           telegram_id: 987654321,
-  //           full_name: 'Admin Adminov',
-  //           username: 'admin1',
-  //           password: hashedPassword,
-  //           role: Role.admin,
-  //           branch_id: branch1.id,
-  //         },
-  //       });
-  //     }
-  //   } catch (error) {
-  //     console.log('Admin1 already exists or error:', error.message);
-  //   }
-
-  //   let kassir1;
-  //   try {
-  //     kassir1 = await prisma.user.findUnique({
-  //       where: { telegram_id: 555666777 },
-  //     });
-  //     if (!kassir1) {
-  //       kassir1 = await prisma.user.create({
-  //         data: {
-  //           telegram_id: 555666777,
-  //           full_name: 'Kassir Kassirov',
-  //           username: 'kassir1',
-  //           password: hashedPassword,
-  //           role: Role.kassir,
-  //           branch_id: branch1.id,
-  //         },
-  //       });
-  //     }
-  //   } catch (error) {
-  //     console.log('Kassir1 already exists or error:', error.message);
-  //   }
-
-  //   let kassir2;
-  //   try {
-  //     kassir2 = await prisma.user.findUnique({
-  //       where: { telegram_id: 444555666 },
-  //     });
-  //     if (!kassir2) {
-  //       kassir2 = await prisma.user.create({
-  //         data: {
-  //           telegram_id: 444555666,
-  //           full_name: 'Kassir Kassirov 2',
-  //           username: 'kassir2',
-  //           password: hashedPassword,
-  //           role: Role.kassir,
-  //           branch_id: branch2.id,
-  //         },
-  //       });
-  //     }
-  //   } catch (error) {
-  //     console.log('Kassir2 already exists or error:', error.message);
-  //   }
-
-  //   // Create some sample products
-  //   try {
-  //     const existingProduct1 = await prisma.product.findFirst({
-  //       where: { name: 'Margarita' },
-  //     });
-  //     if (!existingProduct1) {
-  //       await prisma.product.create({
-  //         data: {
-  //           type: 'pizza',
-  //           name: 'Margarita',
-  //           sides: ['oldi', 'orqa'],
-  //           price: 45000,
-  //         },
-  //       });
-  //     }
-  //   } catch (error) {
-  //     console.log('Product Margarita already exists or error:', error.message);
-  //   }
-
-  //   try {
-  //     const existingProduct2 = await prisma.product.findFirst({
-  //       where: { name: 'Cheeseburger' },
-  //     });
-  //     if (!existingProduct2) {
-  //       await prisma.product.create({
-  //         data: {
-  //           type: 'burger',
-  //           name: 'Cheeseburger',
-  //           sides: ['oldi'],
-  //           price: 25000,
-  //         },
-  //       });
-  //     }
-  //   } catch (error) {
-  //     console.log('Product Cheeseburger already exists or error:', error.message);
-  //   }
-
-  //   try {
-  //     const existingProduct3 = await prisma.product.findFirst({
-  //       where: { name: 'Cola' },
-  //     });
-  //     if (!existingProduct3) {
-  //       await prisma.product.create({
-  //         data: {
-  //           type: 'drink',
-  //           name: 'Cola',
-  //           sides: ['oldi'],
-  //           price: 8000,
-  //         },
-  //       });
-  //     }
-  //   } catch (error) {
-  //     console.log('Product Cola already exists or error:', error.message);
-  //   }
-
-  //   console.log('✅ Database seeded successfully!');
-  //   console.log('📊 Created:');
-  //   console.log(`- Super Admin`);
-  //   console.log(`- Admin - ${branch[0].name}`);
-  //   console.log(`- Kassir 1 - ${branch1.name}`);
-  //   console.log(`- Kassir 2 - ${branch2.name}`);
-  console.log('- 3 sample products');
-  console.log('- 2 branches');
-
-  console.log('\n📝 Login credentials:');
-  console.log('Username: superadmin, admin1, kassir1, kassir2');
-  console.log('Password: 123456');
 }
 
 main()

@@ -9,6 +9,8 @@ import { PrismaModule } from '../prisma/prisma.module';
 import { EncryptionService } from './encryption.service';
 import { ConfigModule } from '@nestjs/config';
 import { SchedulerModule } from '../scheduler/scheduler.module';
+import { SchedulerService } from 'src/scheduler/scheduler.service';
+import { ReportsService } from 'src/reports/reports.service';
 
 @Module({
   imports: [PrismaModule, ConfigModule, SchedulerModule],
@@ -18,6 +20,8 @@ import { SchedulerModule } from '../scheduler/scheduler.module';
     GoogleSheetsSettingsScene,
     ScheduleSettingsScene,
     EncryptionService,
+    SchedulerService,
+    ReportsService
   ],
 })
 export class SettingsModule {}

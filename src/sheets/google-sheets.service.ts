@@ -19,7 +19,7 @@ export class GoogleSheetsService {
   private async getSheetsClient(credentials: string) {
     const auth = this.getAuth(credentials);
     const authClient = await auth.getClient();
-    return google.sheets({ version: 'v4', auth: authClient });
+    return google.sheets({ auth: authClient as any, version: 'v4' });
   }
 
   async appendData(
