@@ -11,6 +11,8 @@ import { ReportsModule } from './reports/reports.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { TelegramModule } from './telegram/telegram.module';
 import { AuthModule } from './auth/auth.module';
+import { SettingsModule } from './settings/settings.module';
+import { SchedulerModule } from './scheduler/scheduler.module';
 import { session } from 'telegraf';
 
 @Module({
@@ -34,6 +36,8 @@ import { session } from 'telegraf';
     PrismaModule,
     TelegramModule,
     AuthModule,
+    SettingsModule,
+    SchedulerModule,
   ],
   controllers: [AppController],
   providers: [AppService],

@@ -7,11 +7,20 @@ import { PrismaService } from '../prisma/prisma.service';
 import { Context } from '../interfaces/context.interface';
 import { Markup } from 'telegraf';
 import { Prisma } from '@prisma/client';
+import { EncryptionService } from '../settings/encryption.service';
+import * as nodemailer from 'nodemailer';
+import { ReportsService } from './reports.service';
+import { GoogleSheetsService } from 'src/sheets/google-sheets.service';
 
 @Update()
 @UseGuards(AuthGuard)
 export class ReportsUpdate {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly encryptionService: EncryptionService,
+    private readonly reportsService: ReportsService,
+    private readonly googleSheetsService: GoogleSheetsService,
+  ) {}
 
   @Command('report')
   @Roles(Role.SUPER_ADMIN, Role.ADMIN, Role.KASSIR)
@@ -33,34 +42,28 @@ export class ReportsUpdate {
     const user = ctx.user;
 
     const gte = this.getDateFilter(timeRange);
-    const where: Prisma.OrderWhereInput = {
-      created_at: { gte },
-    };
+    const where: Prisma.OrderWhereInput = { created_at: { gte } };
 
     let reportTitle = `Report for: ${timeRange}`;
     let reportText = '';
 
-    // Role-based data scoping
     if (user.role === Role.SUPER_ADMIN) {
       reportTitle += ' (All Branches)';
       const branches = await this.prisma.branch.findMany({
-        include: {
-          orders: { where },
-        },
+        include: { orders: { where } },
       });
-      reportText = branches.map(branch => this.formatReport(branch.name, branch.orders)).join('\n\n');
+      reportText = branches
+        .map((branch) => this.formatReport(branch.name, branch.orders))
+        .join('\n\n');
     } else if (user.role === Role.ADMIN) {
-      if (!user.branch_id) {
-        return ctx.editMessageText('You are not assigned to a branch.');
-      }
+      if (!user.branch_id) return ctx.editMessageText('You are not assigned to a branch.');
       where.branch_id = user.branch_id;
       reportTitle += ` (Branch: ${user.branch.name})`;
       const cashiers = await this.prisma.user.findMany({
-          where: {branch_id: user.branch_id, role: Role.KASSIR},
-          include: { orders: { where } }
-      })
-      reportText = cashiers.map(c => this.formatReport(c.full_name, c.orders)).join('\n\n');
-
+        where: { branch_id: user.branch_id, role: Role.KASSIR },
+        include: { orders: { where } },
+      });
+      reportText = cashiers.map((c) => this.formatReport(c.full_name, c.orders)).join('\n\n');
     } else if (user.role === Role.KASSIR) {
       where.cashier_id = user.id;
       reportTitle += ` (My Orders)`;
@@ -70,37 +73,107 @@ export class ReportsUpdate {
 
     await ctx.editMessageText(
       `${reportTitle}\n\n${reportText || 'No data for this period.'}`,
-      Markup.inlineKeyboard([
-        Markup.button.callback('Export as CSV', `EXPORT_${timeRange}`),
-      ]),
+      Markup.inlineKeyboard([Markup.button.callback('Export', `EXPORT_OPTIONS_${timeRange}`)]),
     );
+  }
+
+  @Action(/EXPORT_OPTIONS_(.+)/)
+  async onExportOptions(@Ctx() ctx: Context) {
+    const timeRange = (ctx.callbackQuery as any).data.split('_')[2];
+    const emailConfig = await this.prisma.setting.findUnique({ where: { key: 'email_config' } });
+    const gSheetsConfig = await this.prisma.setting.findUnique({ where: { key: 'g_sheets_config' } });
+
+    const buttons = [Markup.button.callback('Download as CSV', `EXPORT_CSV_${timeRange}`)];
+    if (emailConfig) buttons.push(Markup.button.callback('Send to Email', `EXPORT_EMAIL_${timeRange}`));
+    if (gSheetsConfig) buttons.push(Markup.button.callback('Send to Google Sheets', `EXPORT_G_SHEETS_${timeRange}`));
+
+    if (buttons.length === 1) {
+        await ctx.answerCbQuery();
+        return this.onExportCsv(ctx); // Directly download if no other options
+    }
+
+    await ctx.editMessageText('Select an export method:', Markup.inlineKeyboard(buttons));
+  }
+
+  @Action(/EXPORT_CSV_(.+)/)
+  async onExportCsv(@Ctx() ctx: Context) {
+    await ctx.answerCbQuery('Generating CSV export...');
+    const timeRange = (ctx.callbackQuery as any).data.split('_')[2];
+    const orders = await this.reportsService.getOrdersForReport(ctx.user, timeRange);
+    if (orders.length === 0) return ctx.reply('No data to export for this period.');
+
+    const csvData = this.reportsService.convertToCsv(orders);
+    const fileName = `report_${timeRange.toLowerCase()}_${new Date().toISOString().split('T')[0]}.csv`;
+    await ctx.replyWithDocument({ source: Buffer.from(csvData, 'utf-8'), filename: fileName });
+  }
+
+  @Action(/EXPORT_EMAIL_(.+)/)
+  async onExportEmail(@Ctx() ctx: Context) {
+    await ctx.answerCbQuery('Sending email...');
+    const timeRange = (ctx.callbackQuery as any).data.split('_')[2];
+    const success = await this.reportsService.sendScheduledReportByEmail(ctx.user, timeRange);
+    if (success) {
+      await ctx.editMessageText(`Report successfully sent via email.`);
+    } else {
+      await ctx.editMessageText('Failed to send report via email. Check settings or logs.');
+    }
+  }
+
+  @Action(/EXPORT_G_SHEETS_(.+)/)
+  async onExportGoogleSheets(@Ctx() ctx: Context) {
+    await ctx.answerCbQuery('Sending to Google Sheets...');
+    const timeRange = (ctx.callbackQuery as any).data.split('_')[2];
+    const gSheetsConfigSetting = await this.prisma.setting.findUnique({ where: { key: 'g_sheets_config' } });
+    if (!gSheetsConfigSetting) return ctx.editMessageText('Google Sheets settings are not configured.');
+
+    const configStr = this.encryptionService.decrypt(gSheetsConfigSetting.value);
+    const config = JSON.parse(configStr);
+
+    const orders = await this.reportsService.getOrdersForReport(ctx.user, timeRange);
+    if (orders.length === 0) return ctx.editMessageText('No data to export for this period.');
+
+    const worksheetName = `Report-${timeRange}-${new Date().toISOString().split('T')[0]}`;
+
+    const preparedData = orders.map(o => ({
+        'Order Number': o.order_number,
+        'Date': o.created_at.toISOString(),
+        'Client Name': o.client_name,
+        'Client Phone': o.client_phone,
+        'Branch': o.branch.name,
+        'Cashier': o.cashier.full_name,
+        'Payment Type': o.payment_type,
+        'Total Amount': o.total_amount,
+    }));
+
+    const success = await this.googleSheetsService.appendData(
+        config.sheetId,
+        config.credentials,
+        preparedData,
+        worksheetName,
+    );
+
+    if (success) {
+        await ctx.editMessageText(`Report successfully sent to Google Sheets. Worksheet: "${worksheetName}"`);
+    } else {
+        await ctx.editMessageText('Failed to send the report to Google Sheets. Please check the logs.');
+    }
   }
 
   private getDateFilter(timeRange: string): Date | undefined {
     const now = new Date();
-    if (timeRange === 'DAILY') {
-      return new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    }
+    if (timeRange === 'DAILY') return new Date(now.getFullYear(), now.getMonth(), now.getDate());
     if (timeRange === 'WEEKLY') {
-      const weeklyDate = new Date();
-      const day = weeklyDate.getDay();
-      // Adjust to Monday (day 0 is Sunday, 1 is Monday)
-      const diff = weeklyDate.getDate() - day + (day === 0 ? -6 : 1);
-      weeklyDate.setDate(diff);
-      weeklyDate.setHours(0, 0, 0, 0);
-      return weeklyDate;
+      const d = new Date();
+      d.setDate(d.getDate() - (d.getDay() === 0 ? 6 : d.getDay() - 1));
+      d.setHours(0, 0, 0, 0);
+      return d;
     }
-    if (timeRange === 'MONTHLY') {
-      return new Date(now.getFullYear(), now.getMonth(), 1);
-    }
-    return undefined; // ALL
+    if (timeRange === 'MONTHLY') return new Date(now.getFullYear(), now.getMonth(), 1);
+    return undefined;
   }
 
   private formatReport(groupName: string, orders: any[]): string {
-    if (orders.length === 0) {
-      return `**${groupName}**\nNo orders.`;
-    }
-
+    if (orders.length === 0) return `**${groupName}**\nNo orders.`;
     const totalOrders = orders.length;
     const totalAmount = orders.reduce((sum, o) => sum + o.total_amount, 0);
     const byPaymentType = orders.reduce((acc, o) => {
@@ -117,73 +190,5 @@ export class ReportsUpdate {
   - Card: ${byPaymentType.card?.toFixed(2) || 0}
   - Credit: ${byPaymentType.credit?.toFixed(2) || 0}
     `.trim();
-  }
-
-  @Action(/EXPORT_(.+)/)
-  async onExport(@Ctx() ctx: Context) {
-    await ctx.answerCbQuery('Generating CSV export...');
-    const timeRange = (ctx.callbackQuery as any).data.split('_')[1];
-
-    const orders = await this._getOrdersForReport(ctx.user, timeRange);
-
-    if (orders.length === 0) {
-      await ctx.reply('No data to export for this period.');
-      return;
-    }
-
-    const csvData = this._convertToCsv(orders);
-    const fileName = `report_${timeRange.toLowerCase()}_${
-      new Date().toISOString().split('T')[0]
-    }.csv`;
-
-    await ctx.replyWithDocument({
-      source: Buffer.from(csvData, 'utf-8'),
-      filename: fileName,
-    });
-  }
-
-  private async _getOrdersForReport(
-    user: any,
-    timeRange: string,
-  ): Promise<any[]> {
-    const gte = this.getDateFilter(timeRange);
-    const where: Prisma.OrderWhereInput = {
-      created_at: { gte },
-    };
-
-    if (user.role === Role.ADMIN) {
-      if (!user.branch_id) {
-        return [];
-      }
-      where.branch_id = user.branch_id;
-    } else if (user.role === Role.KASSIR) {
-      where.cashier_id = user.id;
-    }
-
-    // For SUPER_ADMIN, no additional where clause is needed.
-
-    return this.prisma.order.findMany({
-      where,
-      include: { branch: true, cashier: true },
-      orderBy: { created_at: 'desc' },
-    });
-  }
-
-  private _convertToCsv(orders: any[]): string {
-    const header =
-      'Order Number,Date,Client Name,Client Phone,Branch,Cashier,Payment Type,Total Amount\n';
-    const rows = orders
-      .map((o) => {
-        const clientName = o.client_name.includes(',')
-          ? `"${o.client_name}"`
-          : o.client_name;
-        return `${o.order_number},${o.created_at.toISOString()},${clientName},"${
-          o.client_phone
-        }",${o.branch.name},${o.cashier.full_name},${o.payment_type},${
-          o.total_amount
-        }`;
-      })
-      .join('\n');
-    return header + rows;
   }
 }
