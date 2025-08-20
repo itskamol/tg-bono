@@ -11,7 +11,7 @@ import { ReportsModule } from './reports/reports.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { TelegramModule } from './telegram/telegram.module';
 import { AuthModule } from './auth/auth.module';
-import { session } from 'telegraf';
+import { session, Scenes } from 'telegraf';
 
 @Module({
   imports: [

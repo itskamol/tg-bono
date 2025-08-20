@@ -1,13 +1,6 @@
 import { UseGuards } from '@nestjs/common';
-import {
-  Update,
-  Command,
-  Ctx,
-  Scene,
-  SceneEnter,
-  On,
-  Message,
-} from 'nestjs-telegraf';
+import { Update, Command, Ctx, Action, SceneEnter } from 'nestjs-telegraf';
+import { Markup } from 'telegraf';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '../auth/enums/role.enum';
@@ -22,19 +15,31 @@ export class ProductsUpdate {
   @Command('list_products')
   @Roles(Role.SUPER_ADMIN, Role.ADMIN)
   async listProducts(@Ctx() ctx: Context) {
-    const products = await this.prisma.product.findMany();
+    const products = await this.prisma.product.findMany({
+      orderBy: [{ type: 'asc' }, { name: 'asc' }]
+    });
+    
     if (products.length === 0) {
-      return 'No products found.';
+      return '❌ Mahsulotlar topilmadi.';
     }
-    const productList = products
-      .map(
-        (p) =>
-          `- ${p.type} ${p.name} (Sides: ${p.sides.join(', ')}) - Price: ${
-            p.price
-          }`,
-      )
-      .join('\n');
-    return `Here are the existing products:\n${productList}`;
+    
+    const productsByType = products.reduce((acc, product) => {
+      if (!acc[product.type]) {
+        acc[product.type] = [];
+      }
+      acc[product.type].push(product);
+      return acc;
+    }, {} as Record<string, typeof products>);
+
+    let productList = '';
+    Object.entries(productsByType).forEach(([type, typeProducts]) => {
+      productList += `\n${this.getTypeEmoji(type)} ${this.capitalizeFirst(type)}:\n`;
+      typeProducts.forEach(p => {
+        productList += `  • ${p.name} - ${p.price} so'm\n    Tomonlar: ${p.sides.join(', ')}\n`;
+      });
+    });
+
+    return `📦 Mahsulotlar ro'yxati:${productList}`;
   }
 
   @Command('add_product')
@@ -42,63 +47,120 @@ export class ProductsUpdate {
   async onAddProduct(@Ctx() ctx: Context) {
     await ctx.scene.enter('add-product-scene');
   }
-}
 
-@Scene('add-product-scene')
-export class AddProductScene {
-  constructor(private readonly prisma: PrismaService) {}
+  @Command('edit_product')
+  @Roles(Role.SUPER_ADMIN, Role.ADMIN)
+  async onEditProduct(@Ctx() ctx: Context) {
+    const products = await this.prisma.product.findMany({
+      orderBy: [{ type: 'asc' }, { name: 'asc' }]
+    });
 
-  @SceneEnter()
-  async onSceneEnter(@Ctx() ctx: Context) {
-    await ctx.reply('Please enter the product type (e.g., "Telefon").');
+    if (products.length === 0) {
+      await ctx.reply('❌ Tahrirlanadigan mahsulotlar topilmadi.');
+      return;
+    }
+
+    const productButtons = products.map(product => 
+      Markup.button.callback(
+        `${this.getTypeEmoji(product.type)} ${product.name} - ${product.price} so'm`, 
+        `EDIT_PRODUCT_${product.id}`
+      )
+    );
+
+    await ctx.reply(
+      '✏️ Qaysi mahsulotni tahrirlashni xohlaysiz?',
+      Markup.inlineKeyboard(productButtons)
+    );
   }
 
-  @On('text')
-  async onText(@Ctx() ctx: Context, @Message('text') text: string) {
-    const sceneState = ctx.scene.state as any;
+  @Command('delete_product')
+  @Roles(Role.SUPER_ADMIN, Role.ADMIN)
+  async onDeleteProduct(@Ctx() ctx: Context) {
+    await ctx.scene.enter('delete-product-scene');
+  }
 
-    // Step 1: Set Type
-    if (!sceneState.type) {
-      sceneState.type = text;
-      await ctx.reply(`Type set to "${text}". Now, please enter the product name (model).`);
+  @Action(/^EDIT_PRODUCT_(.+)$/)
+  async onEditProductSelect(@Ctx() ctx: Context) {
+    const productData = (ctx.callbackQuery as any).data;
+    const productId = productData.replace('EDIT_PRODUCT_', '');
+    
+    const product = await this.prisma.product.findUnique({
+      where: { id: productId }
+    });
+    
+    if (!product) {
+      await ctx.editMessageText('❌ Mahsulot topilmadi.');
       return;
     }
+    
+    await ctx.editMessageText(
+      `✏️ "${product.name}" mahsulotini tahrirlash:\n\n` +
+      `📦 Turi: ${product.type}\n` +
+      `📝 Nomi: ${product.name}\n` +
+      `🍕 Tomonlar: ${product.sides.join(', ')}\n` +
+      `💰 Narxi: ${product.price} so'm\n\n` +
+      `Nimani o'zgartirmoqchisiz?`,
+      Markup.inlineKeyboard([
+        Markup.button.callback('📦 Turi', `EDIT_PRODUCT_TYPE_${productId}`),
+        Markup.button.callback('📝 Nomi', `EDIT_PRODUCT_NAME_${productId}`),
+        Markup.button.callback('🍕 Tomonlar', `EDIT_PRODUCT_SIDES_${productId}`),
+        Markup.button.callback('💰 Narxi', `EDIT_PRODUCT_PRICE_${productId}`),
+        Markup.button.callback('❌ Bekor', 'CANCEL_PRODUCT_EDIT'),
+      ])
+    );
+  }
 
-    // Step 2: Set Name
-    if (!sceneState.name) {
-      sceneState.name = text;
-      await ctx.reply(`Name set to "${text}". Now, please enter the available sides, separated by commas (e.g., oldi, orqa).`);
-      return;
-    }
+  @Action('CANCEL_PRODUCT_EDIT')
+  async onCancelProductEdit(@Ctx() ctx: Context) {
+    await ctx.editMessageText('❌ Tahrirlash bekor qilindi.');
+  }
 
-    // Step 3: Set Sides
-    if (!sceneState.sides) {
-      const sides = text.split(',').map(s => s.trim());
-      sceneState.sides = sides;
-      await ctx.reply(`Sides set to "${sides.join(', ')}". Now, please enter the price.`);
-      return;
-    }
+  @Action(/^EDIT_PRODUCT_TYPE_(.+)$/)
+  async onEditProductType(@Ctx() ctx: Context) {
+    const productData = (ctx.callbackQuery as any).data;
+    const productId = productData.replace('EDIT_PRODUCT_TYPE_', '');
+    
+    await ctx.scene.enter('edit-product-type-scene', { productId });
+  }
 
-    // Step 4: Set Price and Save
-    if (!sceneState.price) {
-      const price = parseFloat(text);
-      if (isNaN(price)) {
-        await ctx.reply('Invalid price. Please enter a number.');
-        return;
-      }
-      sceneState.price = price;
+  @Action(/^EDIT_PRODUCT_NAME_(.+)$/)
+  async onEditProductName(@Ctx() ctx: Context) {
+    const productData = (ctx.callbackQuery as any).data;
+    const productId = productData.replace('EDIT_PRODUCT_NAME_', '');
+    
+    await ctx.scene.enter('edit-product-name-scene', { productId });
+  }
 
-      await this.prisma.product.create({
-        data: {
-          type: sceneState.type,
-          name: sceneState.name,
-          sides: sceneState.sides,
-          price: sceneState.price,
-        },
-      });
+  @Action(/^EDIT_PRODUCT_SIDES_(.+)$/)
+  async onEditProductSides(@Ctx() ctx: Context) {
+    const productData = (ctx.callbackQuery as any).data;
+    const productId = productData.replace('EDIT_PRODUCT_SIDES_', '');
+    
+    await ctx.scene.enter('edit-product-sides-scene', { productId });
+  }
 
-      await ctx.reply(`Successfully created product "${sceneState.type} ${sceneState.name}".`);
-      await ctx.scene.leave();
-    }
+  @Action(/^EDIT_PRODUCT_PRICE_(.+)$/)
+  async onEditProductPrice(@Ctx() ctx: Context) {
+    const productData = (ctx.callbackQuery as any).data;
+    const productId = productData.replace('EDIT_PRODUCT_PRICE_', '');
+    
+    await ctx.scene.enter('edit-product-price-scene', { productId });
+  }
+
+  private getTypeEmoji(type: string): string {
+    const emojis = {
+      'pizza': '🍕',
+      'burger': '🍔',
+      'drink': '🥤',
+      'dessert': '🍰',
+      'salad': '🥗'
+    };
+    return emojis[type.toLowerCase()] || '📦';
+  }
+
+  private capitalizeFirst(str: string): string {
+    return str.charAt(0).toUpperCase() + str.slice(1);
   }
 }
+
+

@@ -1,7 +1,25 @@
 import { Module } from '@nestjs/common';
-import { ProductsUpdate, AddProductScene } from './products.update';
+import { ProductsUpdate } from './products.update';
+import { 
+  AddProductScene,
+  DeleteProductScene,
+  EditProductNameScene,
+  EditProductTypeScene,
+  EditProductSidesScene,
+  EditProductPriceScene
+} from './scenes';
+import { PrismaModule } from '../prisma/prisma.module';
 
 @Module({
-  providers: [ProductsUpdate, AddProductScene],
+  imports: [PrismaModule],
+  providers: [
+    ProductsUpdate,
+    AddProductScene,
+    DeleteProductScene,
+    EditProductNameScene,
+    EditProductTypeScene,
+    EditProductSidesScene,
+    EditProductPriceScene,
+  ],
 })
 export class ProductsModule {}

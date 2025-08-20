@@ -1,14 +1,6 @@
 import { UseGuards } from '@nestjs/common';
-import {
-  Update,
-  Command,
-  Ctx,
-  Scene,
-  SceneEnter,
-  On,
-  Message,
-} from 'nestjs-telegraf';
-import * as bcrypt from 'bcrypt';
+import { Update, Command, Ctx, Action } from 'nestjs-telegraf';
+import { Markup } from 'telegraf';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '../auth/enums/role.enum';
@@ -45,7 +37,7 @@ export class UsersUpdate {
     const userList = users
       .map(
         (u) =>
-          `- ${u.full_name} (@${u.username}) - Role: ${u.role} - Branch: ${
+          `- ${u.full_name} - Role: ${u.role} - Branch: ${
             u.branch?.name || 'N/A'
           }`,
       )
@@ -59,123 +51,148 @@ export class UsersUpdate {
   async onAddUser(@Ctx() ctx: Context) {
     await ctx.scene.enter('add-user-scene');
   }
-}
 
-@Scene('add-user-scene')
-export class AddUserScene {
-  constructor(private readonly prisma: PrismaService) {}
-
-  @SceneEnter()
-  async onSceneEnter(@Ctx() ctx: Context) {
-    const user = ctx.user;
-    const sceneState = ctx.scene.state as any;
-
-    if (user.role === Role.SUPER_ADMIN) {
-      // Super Admin can choose role
-      await ctx.reply(
-        'What role should the new user have? (admin / kassir)',
-      );
-    } else if (user.role === Role.ADMIN) {
-      // Admin can only create Kassir
-      sceneState.role = Role.KASSIR;
-      await ctx.reply(
-        'You are creating a new Kassir. Please enter the new user\'s Telegram ID (this must be a number).',
-      );
-    }
+  @Command('delete_user')
+  @Roles(Role.SUPER_ADMIN, Role.ADMIN)
+  async onDeleteUser(@Ctx() ctx: Context) {
+    await ctx.scene.enter('delete-user-scene');
   }
 
-  @On('text')
-  async onText(@Ctx() ctx: Context, @Message('text') text: string) {
-    const sceneState = ctx.scene.state as any;
+  @Command('edit_user')
+  @Roles(Role.SUPER_ADMIN, Role.ADMIN)
+  async onEditUser(@Ctx() ctx: Context) {
     const user = ctx.user;
+    let users;
 
-    // Step 1: Set Role (for Super Admin)
-    if (user.role === Role.SUPER_ADMIN && !sceneState.role) {
-      const roleInput = text.toLowerCase();
-      if (roleInput !== 'admin' && roleInput !== 'kassir') {
-        await ctx.reply('Invalid role. Please enter "admin" or "kassir".');
+    if (user.role === Role.SUPER_ADMIN) {
+      users = await this.prisma.user.findMany({ 
+        where: { role: { not: Role.SUPER_ADMIN } }, // Don't show super admins
+        include: { branch: true } 
+      });
+    } else if (user.role === Role.ADMIN) {
+      if (!user.branch_id) {
+        await ctx.reply('❌ Siz hech qanday filialga tayinlanmagansiz.');
         return;
       }
-      sceneState.role = roleInput === 'admin' ? Role.ADMIN : Role.KASSIR;
-      await ctx.reply(
-        `Role set to ${sceneState.role}. Now, please enter the new user's Telegram ID.`,
-      );
+      users = await this.prisma.user.findMany({
+        where: { 
+          branch_id: user.branch_id,
+          role: Role.KASSIR // Admin can only edit kassirs
+        },
+        include: { branch: true },
+      });
+    }
+
+    if (!users || users.length === 0) {
+      await ctx.reply('❌ Tahrirlanadigan foydalanuvchilar topilmadi.');
       return;
     }
 
-    // Step 2: Set Telegram ID
-    if (!sceneState.telegramId) {
-      const telegramId = parseInt(text, 10);
-      if (isNaN(telegramId)) {
-        await ctx.reply('Invalid Telegram ID. Please enter a number.');
+    const userButtons = users.map(u => 
+      Markup.button.callback(
+        `${u.full_name} (${u.role})`, 
+        `EDIT_USER_${u.id}`
+      )
+    );
+
+    await ctx.reply(
+      '✏️ Qaysi foydalanuvchini tahrirlashni xohlaysiz?',
+      Markup.inlineKeyboard(userButtons)
+    );
+  }
+
+
+
+  @Action(/EDIT_USER_(.+)/)
+  async onEditUserSelect(@Ctx() ctx: Context) {
+    const userData = (ctx.callbackQuery as any).data;
+    const userId = userData.split('_')[2];
+    
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: { branch: true }
+    });
+    
+    if (!user) {
+      await ctx.editMessageText('❌ Foydalanuvchi topilmadi.');
+      return;
+    }
+    
+    await ctx.editMessageText(
+      `✏️ "${user.full_name}" foydalanuvchisini tahrirlash:\n\n` +
+      `👤 To'liq ism: ${user.full_name}\n` +
+      `🎭 Rol: ${user.role}\n` +
+      `🏪 Filial: ${user.branch?.name || 'N/A'}\n\n` +
+      `Nimani o'zgartirmoqchisiz?`,
+      Markup.inlineKeyboard([
+        Markup.button.callback('👤 Ism', `EDIT_NAME_${userId}`),
+        Markup.button.callback('🏪 Filial', `EDIT_BRANCH_${userId}`),
+        Markup.button.callback('❌ Bekor', 'CANCEL_EDIT'),
+      ])
+    );
+  }
+
+  @Action('CANCEL_EDIT')
+  async onCancelEdit(@Ctx() ctx: Context) {
+    await ctx.editMessageText('❌ Tahrirlash bekor qilindi.');
+  }
+
+  @Action(/EDIT_NAME_(.+)/)
+  async onEditName(@Ctx() ctx: Context) {
+    const userData = (ctx.callbackQuery as any).data;
+    const userId = userData.split('_')[2];
+    
+    await ctx.scene.enter('edit-name-scene', { userId });
+  }
+
+
+
+  @Action(/EDIT_BRANCH_(.+)/)
+  async onEditBranch(@Ctx() ctx: Context) {
+    const userData = (ctx.callbackQuery as any).data;
+    const userId = userData.split('_')[2];
+    
+    const branches = await this.prisma.branch.findMany();
+    if (branches.length === 0) {
+      await ctx.editMessageText('❌ Hech qanday filial topilmadi.');
+      return;
+    }
+    
+    const branchButtons = branches.map(branch => 
+      Markup.button.callback(branch.name, `SET_BRANCH_${userId}_${branch.id}`)
+    );
+    
+    await ctx.editMessageText(
+      '🏪 Yangi filialni tanlang:',
+      Markup.inlineKeyboard(branchButtons)
+    );
+  }
+
+  @Action(/SET_BRANCH_(.+)_(.+)/)
+  async onSetBranch(@Ctx() ctx: Context) {
+    const actionData = (ctx.callbackQuery as any).data;
+    const parts = actionData.split('_');
+    const userId = parts[2];
+    const branchId = parts[3];
+    
+    try {
+      const branch = await this.prisma.branch.findUnique({
+        where: { id: branchId }
+      });
+      
+      if (!branch) {
+        await ctx.editMessageText('❌ Filial topilmadi.');
         return;
       }
-      sceneState.telegramId = telegramId;
-      await ctx.reply(
-        `Telegram ID set. Now, please enter the user's Full Name.`,
-      );
-      return;
-    }
-
-    // Step 3: Set Full Name
-    if (!sceneState.fullName) {
-      sceneState.fullName = text;
-      await ctx.reply(`Full Name set. Now, please enter a username (for login).`);
-      return;
-    }
-
-    // Step 4: Set Username
-    if (!sceneState.username) {
-      sceneState.username = text;
-      await ctx.reply(`Username set. Now, please enter a temporary password.`);
-      return;
-    }
-
-    // Step 5: Set Password and maybe Branch
-    if (!sceneState.password) {
-        sceneState.password = text;
-        if (user.role === Role.SUPER_ADMIN) {
-            await ctx.reply(`Password set. Please enter the Branch Name to assign the user to.`);
-            return;
-        } else { // Admin creating a Kassir
-            const hashedPassword = await bcrypt.hash(text, 10);
-            await this.prisma.user.create({
-                data: {
-                    telegram_id: sceneState.telegramId,
-                    full_name: sceneState.fullName,
-                    username: sceneState.username,
-                    password: hashedPassword,
-                    role: sceneState.role,
-                    branch_id: user.branch_id,
-                },
-            });
-            await ctx.reply(`Successfully created Kassir "${sceneState.fullName}".`);
-            await ctx.scene.leave();
-        }
-        return;
-    }
-
-    // Step 6: Set Branch (for Super Admin)
-    if (user.role === Role.SUPER_ADMIN && !sceneState.branchId) {
-        const branch = await this.prisma.branch.findUnique({ where: { name: text } });
-        if (!branch) {
-            await ctx.reply('Branch not found. Please enter a valid branch name.');
-            return;
-        }
-
-        const hashedPassword = await bcrypt.hash(sceneState.password, 10);
-        await this.prisma.user.create({
-            data: {
-                telegram_id: sceneState.telegramId,
-                full_name: sceneState.fullName,
-                username: sceneState.username,
-                password: hashedPassword,
-                role: sceneState.role,
-                branch_id: branch.id,
-            },
-        });
-        await ctx.reply(`Successfully created user "${sceneState.fullName}" in branch "${branch.name}".`);
-        await ctx.scene.leave();
+      
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: { branch_id: branchId }
+      });
+      
+      await ctx.editMessageText(`✅ Filial "${branch.name}" ga o'zgartirildi.`);
+    } catch (error) {
+      await ctx.editMessageText('❌ Filialni o\'zgartirishda xatolik yuz berdi.');
     }
   }
 }
