@@ -1,111 +1,73 @@
 import { UseGuards } from '@nestjs/common';
 import { Update, Command, Ctx, Action } from 'nestjs-telegraf';
+import { Markup } from 'telegraf';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Role } from '../auth/enums/role.enum';
-import { PrismaService } from '../prisma/prisma.service';
 import { Context } from '../interfaces/context.interface';
-import { Markup } from 'telegraf';
-import { Prisma } from '@prisma/client';
 
 @Update()
 @UseGuards(AuthGuard)
 export class ReportsUpdate {
-  constructor(private readonly prisma: PrismaService) {}
+  @Command('reports')
+  @Roles(Role.SUPER_ADMIN, Role.ADMIN)
+  async showReports(@Ctx() ctx: Context) {
+    const user = ctx.user;
+    
+    const reportButtons = [
+      Markup.button.callback('📊 Umumiy', 'GENERAL_REPORTS'),
+      Markup.button.callback('💳 To\'lovlar', 'PAYMENT_REPORTS'),
+      Markup.button.callback('📦 Mahsulotlar', 'PRODUCT_REPORTS'),
+      Markup.button.callback('💰 Daromad', 'REVENUE_REPORTS'),
+    ];
 
-  @Command('report')
-  @Roles(Role.SUPER_ADMIN, Role.ADMIN, Role.KASSIR)
-  async onReport(@Ctx() ctx: Context) {
+    if (user.role === Role.SUPER_ADMIN) {
+      reportButtons.push(
+        Markup.button.callback('🏪 Filiallar', 'BRANCH_REPORTS'),
+        Markup.button.callback('👥 Xodimlar', 'USER_REPORTS')
+      );
+    }
+
     await ctx.reply(
-      'Please select a time range for the report:',
-      Markup.inlineKeyboard([
-        Markup.button.callback('Daily', 'REPORT_DAILY'),
-        Markup.button.callback('Weekly', 'REPORT_WEEKLY'),
-        Markup.button.callback('Monthly', 'REPORT_MONTHLY'),
-        Markup.button.callback('All Time', 'REPORT_ALL'),
-      ]),
+      '📊 Hisobotlar bo\'limi\n\nQaysi turdagi hisobotni ko\'rmoqchisiz?',
+      Markup.inlineKeyboard(reportButtons)
     );
   }
 
-  @Action(/REPORT_(.+)/)
-  async onReportTimeRange(@Ctx() ctx: Context) {
-    const timeRange = (ctx.callbackQuery as any).data.split('_')[1];
-    const user = ctx.user;
-
-    const gte = this.getDateFilter(timeRange);
-    const where: Prisma.OrderWhereInput = {
-      created_at: { gte },
-    };
-
-    let reportTitle = `Report for: ${timeRange}`;
-    let reportText = '';
-
-    // Role-based data scoping
-    if (user.role === Role.SUPER_ADMIN) {
-      reportTitle += ' (All Branches)';
-      const branches = await this.prisma.branch.findMany({
-        include: {
-          orders: { where },
-        },
-      });
-      reportText = branches.map(branch => this.formatReport(branch.name, branch.orders)).join('\n\n');
-    } else if (user.role === Role.ADMIN) {
-      if (!user.branch_id) {
-        return ctx.editMessageText('You are not assigned to a branch.');
-      }
-      where.branch_id = user.branch_id;
-      reportTitle += ` (Branch: ${user.branch.name})`;
-      const cashiers = await this.prisma.user.findMany({
-          where: {branch_id: user.branch_id, role: Role.KASSIR},
-          include: { orders: { where } }
-      })
-      reportText = cashiers.map(c => this.formatReport(c.full_name, c.orders)).join('\n\n');
-
-    } else if (user.role === Role.KASSIR) {
-      where.cashier_id = user.id;
-      reportTitle += ` (My Orders)`;
-      const myOrders = await this.prisma.order.findMany({ where });
-      reportText = this.formatReport(user.full_name, myOrders);
-    }
-
-    await ctx.editMessageText(`${reportTitle}\n\n${reportText || 'No data for this period.'}`);
+  @Action('GENERAL_REPORTS')
+  async showGeneralReports(@Ctx() ctx: Context) {
+    await ctx.scene.enter('general-reports-scene');
   }
 
-  private getDateFilter(timeRange: string): Date | undefined {
-    const now = new Date();
-    if (timeRange === 'DAILY') {
-      return new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    }
-    if (timeRange === 'WEEKLY') {
-      const firstDayOfWeek = now.getDate() - now.getDay();
-      return new Date(now.setDate(firstDayOfWeek));
-    }
-    if (timeRange === 'MONTHLY') {
-      return new Date(now.getFullYear(), now.getMonth(), 1);
-    }
-    return undefined; // ALL
+  @Action('PAYMENT_REPORTS')
+  async showPaymentReports(@Ctx() ctx: Context) {
+    await ctx.scene.enter('payment-reports-scene');
   }
 
-  private formatReport(groupName: string, orders: any[]): string {
-    if (orders.length === 0) {
-      return `**${groupName}**\nNo orders.`;
-    }
+  @Action('PRODUCT_REPORTS')
+  async showProductReports(@Ctx() ctx: Context) {
+    await ctx.scene.enter('product-reports-scene');
+  }
 
-    const totalOrders = orders.length;
-    const totalAmount = orders.reduce((sum, o) => sum + o.total_amount, 0);
-    const byPaymentType = orders.reduce((acc, o) => {
-      acc[o.payment_type] = (acc[o.payment_type] || 0) + o.total_amount;
-      return acc;
-    }, {});
+  @Action('REVENUE_REPORTS')
+  async showRevenueReports(@Ctx() ctx: Context) {
+    await ctx.scene.enter('revenue-reports-scene');
+  }
 
-    return `
-**${groupName}**
-- Total Orders: ${totalOrders}
-- Total Revenue: ${totalAmount.toFixed(2)}
-- Breakdown:
-  - Cash: ${byPaymentType.cash?.toFixed(2) || 0}
-  - Card: ${byPaymentType.card?.toFixed(2) || 0}
-  - Credit: ${byPaymentType.credit?.toFixed(2) || 0}
-    `.trim();
+  @Action('BRANCH_REPORTS')
+  @Roles(Role.SUPER_ADMIN)
+  async showBranchReports(@Ctx() ctx: Context) {
+    await ctx.scene.enter('branch-reports-scene');
+  }
+
+  @Action('USER_REPORTS')
+  @Roles(Role.SUPER_ADMIN)
+  async showUserReports(@Ctx() ctx: Context) {
+    await ctx.scene.enter('user-reports-scene');
+  }
+
+  @Action('BACK_TO_REPORTS')
+  async backToReports(@Ctx() ctx: Context) {
+    return this.showReports(ctx);
   }
 }

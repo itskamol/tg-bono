@@ -1,7 +1,13 @@
 import { Module } from '@nestjs/common';
-import { OrdersUpdate, NewOrderScene } from './orders.update';
+import { OrdersUpdate } from './orders.update';
+import { NewOrderScene } from './scenes';
+import { PrismaModule } from '../prisma/prisma.module';
 
 @Module({
-  providers: [OrdersUpdate, NewOrderScene],
+  imports: [PrismaModule],
+  providers: [
+    OrdersUpdate,
+    NewOrderScene,
+  ],
 })
 export class OrdersModule {}

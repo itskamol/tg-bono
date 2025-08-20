@@ -1,7 +1,19 @@
 import { Module } from '@nestjs/common';
-import { UsersUpdate, AddUserScene } from './users.update';
+import { UsersUpdate } from './users.update';
+import {
+    AddUserScene,
+    DeleteUserScene,
+    EditNameScene,
+} from './scenes';
+import { PrismaModule } from '../prisma/prisma.module';
 
 @Module({
-  providers: [UsersUpdate, AddUserScene],
+    imports: [PrismaModule],
+    providers: [
+        UsersUpdate,
+        AddUserScene,
+        DeleteUserScene,
+        EditNameScene,
+    ],
 })
-export class UsersModule {}
+export class UsersModule { }
