@@ -68,7 +68,12 @@ export class ReportsUpdate {
       reportText = this.formatReport(user.full_name, myOrders);
     }
 
-    await ctx.editMessageText(`${reportTitle}\n\n${reportText || 'No data for this period.'}`);
+    await ctx.editMessageText(
+      `${reportTitle}\n\n${reportText || 'No data for this period.'}`,
+      Markup.inlineKeyboard([
+        Markup.button.callback('Export as CSV', `EXPORT_${timeRange}`),
+      ]),
+    );
   }
 
   private getDateFilter(timeRange: string): Date | undefined {
@@ -77,8 +82,13 @@ export class ReportsUpdate {
       return new Date(now.getFullYear(), now.getMonth(), now.getDate());
     }
     if (timeRange === 'WEEKLY') {
-      const firstDayOfWeek = now.getDate() - now.getDay();
-      return new Date(now.setDate(firstDayOfWeek));
+      const weeklyDate = new Date();
+      const day = weeklyDate.getDay();
+      // Adjust to Monday (day 0 is Sunday, 1 is Monday)
+      const diff = weeklyDate.getDate() - day + (day === 0 ? -6 : 1);
+      weeklyDate.setDate(diff);
+      weeklyDate.setHours(0, 0, 0, 0);
+      return weeklyDate;
     }
     if (timeRange === 'MONTHLY') {
       return new Date(now.getFullYear(), now.getMonth(), 1);
@@ -107,5 +117,73 @@ export class ReportsUpdate {
   - Card: ${byPaymentType.card?.toFixed(2) || 0}
   - Credit: ${byPaymentType.credit?.toFixed(2) || 0}
     `.trim();
+  }
+
+  @Action(/EXPORT_(.+)/)
+  async onExport(@Ctx() ctx: Context) {
+    await ctx.answerCbQuery('Generating CSV export...');
+    const timeRange = (ctx.callbackQuery as any).data.split('_')[1];
+
+    const orders = await this._getOrdersForReport(ctx.user, timeRange);
+
+    if (orders.length === 0) {
+      await ctx.reply('No data to export for this period.');
+      return;
+    }
+
+    const csvData = this._convertToCsv(orders);
+    const fileName = `report_${timeRange.toLowerCase()}_${
+      new Date().toISOString().split('T')[0]
+    }.csv`;
+
+    await ctx.replyWithDocument({
+      source: Buffer.from(csvData, 'utf-8'),
+      filename: fileName,
+    });
+  }
+
+  private async _getOrdersForReport(
+    user: any,
+    timeRange: string,
+  ): Promise<any[]> {
+    const gte = this.getDateFilter(timeRange);
+    const where: Prisma.OrderWhereInput = {
+      created_at: { gte },
+    };
+
+    if (user.role === Role.ADMIN) {
+      if (!user.branch_id) {
+        return [];
+      }
+      where.branch_id = user.branch_id;
+    } else if (user.role === Role.KASSIR) {
+      where.cashier_id = user.id;
+    }
+
+    // For SUPER_ADMIN, no additional where clause is needed.
+
+    return this.prisma.order.findMany({
+      where,
+      include: { branch: true, cashier: true },
+      orderBy: { created_at: 'desc' },
+    });
+  }
+
+  private _convertToCsv(orders: any[]): string {
+    const header =
+      'Order Number,Date,Client Name,Client Phone,Branch,Cashier,Payment Type,Total Amount\n';
+    const rows = orders
+      .map((o) => {
+        const clientName = o.client_name.includes(',')
+          ? `"${o.client_name}"`
+          : o.client_name;
+        return `${o.order_number},${o.created_at.toISOString()},${clientName},"${
+          o.client_phone
+        }",${o.branch.name},${o.cashier.full_name},${o.payment_type},${
+          o.total_amount
+        }`;
+      })
+      .join('\n');
+    return header + rows;
   }
 }
