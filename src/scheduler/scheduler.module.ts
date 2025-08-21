@@ -6,7 +6,7 @@ import { ReportsService } from 'src/reports/reports.service';
 import { EncryptionService } from 'src/settings/encryption.service';
 
 @Module({
-  imports: [ScheduleModule.forRoot(), ReportsModule],
-  providers: [SchedulerService, ReportsService, EncryptionService],
+    imports: [ScheduleModule.forRoot(), ReportsModule],
+    providers: [SchedulerService, ReportsService, EncryptionService],
 })
 export class SchedulerModule {}

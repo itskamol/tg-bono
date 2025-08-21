@@ -4,10 +4,7 @@ import { NewOrderScene } from './scenes';
 import { PrismaModule } from '../prisma/prisma.module';
 
 @Module({
-  imports: [PrismaModule],
-  providers: [
-    OrdersUpdate,
-    NewOrderScene,
-  ],
+    imports: [PrismaModule],
+    providers: [OrdersUpdate, NewOrderScene],
 })
 export class OrdersModule {}

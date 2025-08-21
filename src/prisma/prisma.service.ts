@@ -3,8 +3,8 @@ import { PrismaClient } from '@prisma/client';
 
 @Injectable()
 export class PrismaService extends PrismaClient implements OnModuleInit {
-  $queryRaw: any;
-  async onModuleInit() {
-    await this.$connect();
-  }
+    $queryRaw: any;
+    async onModuleInit() {
+        await this.$connect();
+    }
 }

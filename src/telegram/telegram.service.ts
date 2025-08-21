@@ -6,7 +6,7 @@ import { PrismaService } from '../prisma/prisma.service';
 @Update()
 @Injectable()
 export class TelegramService {
-    constructor(private readonly prisma: PrismaService) { }
+    constructor(private readonly prisma: PrismaService) {}
 
     @Start()
     async start(@Ctx() ctx: Context) {
@@ -20,7 +20,7 @@ export class TelegramService {
         // Check if user exists in database
         const user = await this.prisma.user.findUnique({
             where: { telegram_id: telegramId },
-            include: { branch: true }
+            include: { branch: true },
         });
 
         if (!user) {
@@ -36,11 +36,12 @@ Admin sizni tizimga qo'shishi kerak.
             return;
         }
 
-        const roleText = {
-            'super_admin': 'Super Admin',
-            'admin': 'Admin',
-            'kassir': 'Kassir'
-        }[user.role] || user.role;
+        const roleText =
+            {
+                super_admin: 'Super Admin',
+                admin: 'Admin',
+                kassir: 'Kassir',
+            }[user.role] || user.role;
 
         const startMessage = `
 🤖 Assalomu alaykum, ${user.full_name}!
@@ -65,11 +66,11 @@ Admin sizni tizimga qo'shishi kerak.
         }
 
         const user = await this.prisma.user.findUnique({
-            where: { telegram_id: telegramId }
+            where: { telegram_id: telegramId },
         });
 
         if (!user) {
-            await ctx.reply('❌ Siz tizimda ro\'yxatdan o\'tmagansiz. Admin bilan bog\'laning.');
+            await ctx.reply("❌ Siz tizimda ro'yxatdan o'tmagansiz. Admin bilan bog'laning.");
             return;
         }
 
@@ -152,19 +153,20 @@ Admin sizni tizimga qo'shishi kerak.
 
         const user = await this.prisma.user.findUnique({
             where: { telegram_id: telegramId },
-            include: { branch: true }
+            include: { branch: true },
         });
 
         if (!user) {
-            await ctx.reply('❌ Siz tizimda ro\'yxatdan o\'tmagansiz.');
+            await ctx.reply("❌ Siz tizimda ro'yxatdan o'tmagansiz.");
             return;
         }
 
-        const roleText = {
-            'super_admin': 'Super Admin',
-            'admin': 'Admin',
-            'kassir': 'Kassir'
-        }[user.role] || user.role;
+        const roleText =
+            {
+                super_admin: 'Super Admin',
+                admin: 'Admin',
+                kassir: 'Kassir',
+            }[user.role] || user.role;
 
         const profileMessage = `
 👤 Profil ma'lumotlari:

@@ -9,7 +9,15 @@ import { ReportsModule } from '../reports/reports.module';
 import { ProductsModule } from '../products/products.module';
 
 @Module({
-  imports: [PrismaModule, AuthModule, UsersModule, BranchesModule, OrdersModule, ReportsModule, ProductsModule],
-  providers: [TelegramService],
+    imports: [
+        PrismaModule,
+        AuthModule,
+        UsersModule,
+        BranchesModule,
+        OrdersModule,
+        ReportsModule,
+        ProductsModule,
+    ],
+    providers: [TelegramService],
 })
 export class TelegramModule {}
