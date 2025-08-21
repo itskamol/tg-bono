@@ -3,12 +3,25 @@ import { Markup } from 'telegraf';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Context } from '../../interfaces/context.interface';
 
+interface AddProductSceneState {
+    type?: string;
+    name?: string;
+    sides?: string[];
+    price?: number;
+}
+
 @Scene('add-product-scene')
 export class AddProductScene {
     constructor(private readonly prisma: PrismaService) {}
 
     @SceneEnter()
     async onSceneEnter(@Ctx() ctx: Context) {
+        const sceneState = ctx.scene.state as AddProductSceneState;
+        sceneState.type = undefined;
+        sceneState.name = undefined;
+        sceneState.sides = undefined;
+        sceneState.price = undefined;
+
         await ctx.reply(
             "📦 Yangi mahsulot qo'shish\n\nMahsulot turini kiriting (masalan: pizza, burger, drink):",
             Markup.inlineKeyboard([
@@ -19,7 +32,7 @@ export class AddProductScene {
 
     @On('text')
     async onText(@Ctx() ctx: Context, @Message('text') text: string) {
-        const sceneState = ctx.scene.state as any;
+        const sceneState = ctx.scene.state as AddProductSceneState;
 
         // Step 1: Set Type
         if (!sceneState.type) {
@@ -110,7 +123,7 @@ export class AddProductScene {
                         `💰 Narxi: ${product.price} so'm`,
                 );
                 await ctx.scene.leave();
-            } catch (error) {
+            } catch {
                 await ctx.reply('❌ Mahsulot yaratishda xatolik yuz berdi.');
                 await ctx.scene.leave();
             }
@@ -119,11 +132,12 @@ export class AddProductScene {
 
     @On('callback_query')
     async onCallbackQuery(@Ctx() ctx: Context) {
-        const data = (ctx.callbackQuery as any).data;
+        if (!('data' in ctx.callbackQuery)) return;
+        const data = ctx.callbackQuery.data;
 
         if (data === 'NO_SIDES') {
-            const sceneState = ctx.scene.state as any;
-            sceneState.sides = ['N/A'];
+            const sceneState = ctx.scene.state as AddProductSceneState;
+            sceneState.sides = []; // Represent "no sides" as an empty array
 
             await ctx.editMessageText(`✅ Tomonlar: yo'q\n\n💰 Narxini kiriting (so'mda):`);
         } else if (data === 'CANCEL_ADD_PRODUCT') {

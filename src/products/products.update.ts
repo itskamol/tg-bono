@@ -1,5 +1,5 @@
 import { UseGuards } from '@nestjs/common';
-import { Update, Command, Ctx, Action, SceneEnter } from 'nestjs-telegraf';
+import { Update, Command, Ctx, Action } from 'nestjs-telegraf';
 import { Markup } from 'telegraf';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
@@ -14,7 +14,7 @@ export class ProductsUpdate {
 
     @Command('list_products')
     @Roles(Role.SUPER_ADMIN, Role.ADMIN)
-    async listProducts(@Ctx() ctx: Context) {
+    async listProducts() {
         const products = await this.prisma.product.findMany({
             orderBy: [{ type: 'asc' }, { name: 'asc' }],
         });
@@ -73,7 +73,7 @@ export class ProductsUpdate {
         await ctx.reply(
             '✏️ Qaysi mahsulotni tahrirlashni xohlaysiz?',
             Markup.inlineKeyboard(productButtons, {
-                columns: 2, // Har bir qatordagi tugmalar soni. 2 yoki 3 qilib o'zgartirishingiz mumkin.
+                columns: 2,
             }),
         );
     }
@@ -86,8 +86,8 @@ export class ProductsUpdate {
 
     @Action(/^EDIT_PRODUCT_(.+)$/)
     async onEditProductSelect(@Ctx() ctx: Context) {
-        const productData = (ctx.callbackQuery as any).data;
-        const productId = productData.replace('EDIT_PRODUCT_', '');
+        if (!('data' in ctx.callbackQuery)) return;
+        const productId = ctx.callbackQuery.data.replace('EDIT_PRODUCT_', '');
 
         const product = await this.prisma.product.findUnique({
             where: { id: productId },
@@ -114,7 +114,7 @@ export class ProductsUpdate {
                     Markup.button.callback('❌ Bekor', 'CANCEL_PRODUCT_EDIT'),
                 ],
                 {
-                    columns: 2, // Har bir qatordagi tugmalar soni. 2 yoki 3 qilib o'zgartirishingiz mumkin.
+                    columns: 2,
                 },
             ),
         );
@@ -127,38 +127,34 @@ export class ProductsUpdate {
 
     @Action(/^EDIT_PRODUCT_TYPE_(.+)$/)
     async onEditProductType(@Ctx() ctx: Context) {
-        const productData = (ctx.callbackQuery as any).data;
-        const productId = productData.replace('EDIT_PRODUCT_TYPE_', '');
-
+        if (!('data' in ctx.callbackQuery)) return;
+        const productId = ctx.callbackQuery.data.replace('EDIT_PRODUCT_TYPE_', '');
         await ctx.scene.enter('edit-product-type-scene', { productId });
     }
 
     @Action(/^EDIT_PRODUCT_NAME_(.+)$/)
     async onEditProductName(@Ctx() ctx: Context) {
-        const productData = (ctx.callbackQuery as any).data;
-        const productId = productData.replace('EDIT_PRODUCT_NAME_', '');
-
+        if (!('data' in ctx.callbackQuery)) return;
+        const productId = ctx.callbackQuery.data.replace('EDIT_PRODUCT_NAME_', '');
         await ctx.scene.enter('edit-product-name-scene', { productId });
     }
 
     @Action(/^EDIT_PRODUCT_SIDES_(.+)$/)
     async onEditProductSides(@Ctx() ctx: Context) {
-        const productData = (ctx.callbackQuery as any).data;
-        const productId = productData.replace('EDIT_PRODUCT_SIDES_', '');
-
+        if (!('data' in ctx.callbackQuery)) return;
+        const productId = ctx.callbackQuery.data.replace('EDIT_PRODUCT_SIDES_', '');
         await ctx.scene.enter('edit-product-sides-scene', { productId });
     }
 
     @Action(/^EDIT_PRODUCT_PRICE_(.+)$/)
     async onEditProductPrice(@Ctx() ctx: Context) {
-        const productData = (ctx.callbackQuery as any).data;
-        const productId = productData.replace('EDIT_PRODUCT_PRICE_', '');
-
+        if (!('data' in ctx.callbackQuery)) return;
+        const productId = ctx.callbackQuery.data.replace('EDIT_PRODUCT_PRICE_', '');
         await ctx.scene.enter('edit-product-price-scene', { productId });
     }
 
     private getTypeEmoji(type: string): string {
-        const emojis = {
+        const emojis: { [key: string]: string } = {
             pizza: '🍕',
             burger: '🍔',
             drink: '🥤',

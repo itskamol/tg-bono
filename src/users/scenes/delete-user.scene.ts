@@ -2,7 +2,7 @@ import { Scene, SceneEnter, Action, Ctx } from 'nestjs-telegraf';
 import { Markup } from 'telegraf';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Context } from '../../interfaces/context.interface';
-import { Role } from '@prisma/client';
+import { Role, User } from '@prisma/client';
 
 @Scene('delete-user-scene')
 export class DeleteUserScene {
@@ -19,7 +19,6 @@ export class DeleteUserScene {
 
         const currentUser = await this.prisma.user.findUnique({
             where: { telegram_id: telegramId },
-            include: { branch: true },
         });
 
         if (!currentUser) {
@@ -28,12 +27,11 @@ export class DeleteUserScene {
             return;
         }
 
-        let users;
+        let users: User[] = [];
 
         if (currentUser.role === Role.SUPER_ADMIN) {
             users = await this.prisma.user.findMany({
                 where: { role: { not: Role.SUPER_ADMIN } }, // Don't show super admins
-                include: { branch: true },
             });
         } else if (currentUser.role === Role.ADMIN) {
             if (!currentUser.branch_id) {
@@ -46,11 +44,10 @@ export class DeleteUserScene {
                     branch_id: currentUser.branch_id,
                     role: Role.CASHIER, // Admin can only delete cashiers
                 },
-                include: { branch: true },
             });
         }
 
-        if (!users || users.length === 0) {
+        if (users.length === 0) {
             await ctx.reply("❌ O'chiriladigan foydalanuvchilar topilmadi.");
             await ctx.scene.leave();
             return;
@@ -62,16 +59,19 @@ export class DeleteUserScene {
 
         await ctx.reply(
             "🗑️ Qaysi foydalanuvchini o'chirmoqchisiz?",
-            Markup.inlineKeyboard(userButtons, {
-                columns: 2, // Har bir qatordagi tugmalar soni. 2 yoki 3 qilib o'zgartirishingiz mumkin.
-            }),
+            Markup.inlineKeyboard(
+                [...userButtons, Markup.button.callback('❌ Bekor qilish', 'CANCEL_DELETE')],
+                {
+                    columns: 2,
+                },
+            ),
         );
     }
 
     @Action(/DELETE_USER_(.+)/)
     async onDeleteUserConfirm(@Ctx() ctx: Context) {
-        const userData = (ctx.callbackQuery as any).data;
-        const userId = userData.split('_')[2];
+        if (!('data' in ctx.callbackQuery)) return;
+        const userId = ctx.callbackQuery.data.replace('DELETE_USER_', '');
 
         const user = await this.prisma.user.findUnique({
             where: { id: userId },
@@ -105,8 +105,8 @@ export class DeleteUserScene {
 
     @Action(/CONFIRM_DELETE_(.+)/)
     async onConfirmDelete(@Ctx() ctx: Context) {
-        const userData = (ctx.callbackQuery as any).data;
-        const userId = userData.split('_')[2];
+        if (!('data' in ctx.callbackQuery)) return;
+        const userId = ctx.callbackQuery.data.replace('CONFIRM_DELETE_', '');
 
         try {
             const user = await this.prisma.user.findUnique({
@@ -127,7 +127,7 @@ export class DeleteUserScene {
                 `✅ "${user.full_name}" foydalanuvchisi muvaffaqiyatli o'chirildi.`,
             );
             await ctx.scene.leave();
-        } catch (error) {
+        } catch {
             await ctx.editMessageText("❌ Foydalanuvchini o'chirishda xatolik yuz berdi.");
             await ctx.scene.leave();
         }

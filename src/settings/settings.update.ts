@@ -9,6 +9,53 @@ import { EncryptionService } from './encryption.service';
 import { SchedulerService } from '../scheduler/scheduler.service';
 import { Role } from '@prisma/client';
 
+// Interfaces for Scene States
+interface EmailSettingsSceneState {
+    host?: string;
+    port?: number;
+    user?: string;
+    pass?: string;
+    recipient?: string;
+}
+
+interface ScheduleSettingsSceneState {
+    cron?: string;
+}
+
+interface GoogleSheetsSettingsSceneState {
+    sheetId?: string;
+    serviceAccountJson?: string;
+}
+
+// Interfaces for Config Objects
+interface EmailConfig {
+    host: string;
+    port: number;
+    secure: boolean;
+    auth: {
+        user: string;
+        pass: string;
+    };
+    recipient: string;
+}
+
+interface ScheduleConfig {
+    cron: string;
+    enabled: boolean;
+    destination: string;
+}
+
+interface GoogleSheetsConfig {
+    sheetId: string;
+    credentials: string; // The service account JSON is stored as a string
+}
+
+interface ServiceAccountJson {
+    type: string;
+    private_key: string;
+    // other fields are not needed for validation
+}
+
 @Update()
 @UseGuards(AuthGuard)
 export class SettingsUpdate {
@@ -29,7 +76,7 @@ export class SettingsUpdate {
                     Markup.button.callback('Configure Scheduled Reports', 'configure_schedule'),
                 ],
                 {
-                    columns: 2, // Har bir qatordagi tugmalar soni. 2 yoki 3 qilib o'zgartirishingiz mumkin.
+                    columns: 2,
                 },
             ),
         );
@@ -60,13 +107,20 @@ export class EmailSettingsScene {
 
     @SceneEnter()
     async onSceneEnter(@Ctx() ctx: Context) {
+        const sceneState = ctx.scene.state as EmailSettingsSceneState;
+        sceneState.host = undefined;
+        sceneState.port = undefined;
+        sceneState.user = undefined;
+        sceneState.pass = undefined;
+        sceneState.recipient = undefined;
+
         await ctx.reply('Starting Email Export configuration...');
         await ctx.reply('Please enter the SMTP host (e.g., smtp.gmail.com).');
     }
 
     @On('text')
     async onText(@Ctx() ctx: Context, @Message('text') text: string) {
-        const sceneState = ctx.scene.state as any;
+        const sceneState = ctx.scene.state as EmailSettingsSceneState;
 
         if (!sceneState.host) {
             sceneState.host = text;
@@ -104,7 +158,7 @@ export class EmailSettingsScene {
         if (!sceneState.recipient) {
             sceneState.recipient = text;
 
-            const emailConfig = {
+            const emailConfig: EmailConfig = {
                 host: sceneState.host,
                 port: sceneState.port,
                 secure: sceneState.port === 465, // Common practice
@@ -138,6 +192,8 @@ export class ScheduleSettingsScene {
 
     @SceneEnter()
     async onSceneEnter(@Ctx() ctx: Context) {
+        const sceneState = ctx.scene.state as ScheduleSettingsSceneState;
+        sceneState.cron = undefined;
         await ctx.reply('Starting Scheduled Reports configuration...');
         await ctx.reply(
             'Please provide a cron string for the schedule. For example, `0 9 * * *` for every day at 9 AM. You can use a tool like crontab.guru to generate one.',
@@ -146,10 +202,9 @@ export class ScheduleSettingsScene {
 
     @On('text')
     async onText(@Ctx() ctx: Context, @Message('text') text: string) {
-        const sceneState = ctx.scene.state as any;
+        const sceneState = ctx.scene.state as ScheduleSettingsSceneState;
 
         if (!sceneState.cron) {
-            // Basic validation for cron string
             const cronParts = text.split(' ');
             if (cronParts.length !== 5) {
                 await ctx.reply('Invalid cron string. It must have 5 parts. Please try again.');
@@ -169,11 +224,12 @@ export class ScheduleSettingsScene {
 
     @Action(/schedule_(.+)/)
     async onEnableDisable(@Ctx() ctx: Context) {
-        const sceneState = ctx.scene.state as any;
-        const action = (ctx.callbackQuery as any).data.split('_')[1];
+        if (!('data' in ctx.callbackQuery)) return;
+        const sceneState = ctx.scene.state as ScheduleSettingsSceneState;
+        const action = ctx.callbackQuery.data.split('_')[1];
         const enabled = action === 'enable';
 
-        const scheduleConfig = {
+        const scheduleConfig: ScheduleConfig = {
             cron: sceneState.cron,
             enabled: enabled,
             destination: 'email', // Hardcoded for now
@@ -188,7 +244,6 @@ export class ScheduleSettingsScene {
             },
         });
 
-        // Update the running cron job
         await this.schedulerService.updateCronJobFromSettings();
 
         const status = enabled ? 'enabled' : 'disabled';
@@ -206,13 +261,16 @@ export class GoogleSheetsSettingsScene {
 
     @SceneEnter()
     async onSceneEnter(@Ctx() ctx: Context) {
+        const sceneState = ctx.scene.state as GoogleSheetsSettingsSceneState;
+        sceneState.sheetId = undefined;
+        sceneState.serviceAccountJson = undefined;
         await ctx.reply('Starting Google Sheets Export configuration...');
         await ctx.reply('Please enter the Google Sheet ID.');
     }
 
     @On('text')
     async onText(@Ctx() ctx: Context, @Message('text') text: string) {
-        const sceneState = ctx.scene.state as any;
+        const sceneState = ctx.scene.state as GoogleSheetsSettingsSceneState;
 
         if (!sceneState.sheetId) {
             sceneState.sheetId = text;
@@ -224,8 +282,7 @@ export class GoogleSheetsSettingsScene {
 
         if (!sceneState.serviceAccountJson) {
             try {
-                // Validate that the input is a valid JSON
-                const parsedJson = JSON.parse(text);
+                const parsedJson = JSON.parse(text) as ServiceAccountJson;
                 if (parsedJson.type !== 'service_account' || !parsedJson.private_key) {
                     await ctx.reply(
                         'Invalid Service Account JSON. It must contain "type": "service_account" and a "private_key". Please try again.',
@@ -234,7 +291,7 @@ export class GoogleSheetsSettingsScene {
                 }
                 sceneState.serviceAccountJson = text;
 
-                const gSheetsConfig = {
+                const gSheetsConfig: GoogleSheetsConfig = {
                     sheetId: sceneState.sheetId,
                     credentials: text,
                 };
@@ -251,7 +308,7 @@ export class GoogleSheetsSettingsScene {
 
                 await ctx.reply('Google Sheets export settings have been saved successfully!');
                 await ctx.scene.leave();
-            } catch (e) {
+            } catch {
                 await ctx.reply(
                     'The text you provided is not a valid JSON object. Please paste the exact content of the JSON file.',
                 );

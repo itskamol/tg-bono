@@ -2,13 +2,17 @@ import { Scene, SceneEnter, On, Message, Ctx } from 'nestjs-telegraf';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Context } from '../../interfaces/context.interface';
 
+interface EditProductSceneState {
+    productId: string;
+}
+
 @Scene('edit-product-price-scene')
 export class EditProductPriceScene {
     constructor(private readonly prisma: PrismaService) {}
 
     @SceneEnter()
     async onSceneEnter(@Ctx() ctx: Context) {
-        const sceneState = ctx.scene.state as any;
+        const sceneState = ctx.scene.state as EditProductSceneState;
         const product = await this.prisma.product.findUnique({
             where: { id: sceneState.productId },
         });
@@ -26,7 +30,7 @@ export class EditProductPriceScene {
 
     @On('text')
     async onText(@Ctx() ctx: Context, @Message('text') text: string) {
-        const sceneState = ctx.scene.state as any;
+        const sceneState = ctx.scene.state as EditProductSceneState;
 
         const price = parseFloat(text);
         if (isNaN(price) || price <= 0) {
@@ -42,7 +46,7 @@ export class EditProductPriceScene {
 
             await ctx.reply(`✅ Mahsulot narxi ${price} so'm ga o'zgartirildi.`);
             await ctx.scene.leave();
-        } catch (error) {
+        } catch {
             await ctx.reply("❌ Mahsulot narxini o'zgartirishda xatolik yuz berdi.");
             await ctx.scene.leave();
         }

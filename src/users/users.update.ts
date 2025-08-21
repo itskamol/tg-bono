@@ -5,7 +5,7 @@ import { AuthGuard } from '../auth/guards/auth.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { PrismaService } from '../prisma/prisma.service';
 import { Context } from '../interfaces/context.interface';
-import { Role } from '@prisma/client';
+import { Role, User } from '@prisma/client';
 
 @Update()
 @UseGuards(AuthGuard)
@@ -16,7 +16,7 @@ export class UsersUpdate {
     @Roles(Role.SUPER_ADMIN, Role.ADMIN)
     async listUsers(@Ctx() ctx: Context) {
         const user = ctx.user;
-        let users;
+        let users: (User & { branch: { name: string } | null })[] = [];
 
         if (user.role === Role.SUPER_ADMIN) {
             users = await this.prisma.user.findMany({
@@ -59,7 +59,7 @@ export class UsersUpdate {
     @Roles(Role.SUPER_ADMIN, Role.ADMIN)
     async onEditUser(@Ctx() ctx: Context) {
         const user = ctx.user;
-        let users;
+        let users: User[] = [];
 
         if (user.role === Role.SUPER_ADMIN) {
             users = await this.prisma.user.findMany({
@@ -80,7 +80,7 @@ export class UsersUpdate {
             });
         }
 
-        if (!users || users.length === 0) {
+        if (users.length === 0) {
             await ctx.reply('❌ Tahrirlanadigan foydalanuvchilar topilmadi.');
             return;
         }
@@ -92,15 +92,15 @@ export class UsersUpdate {
         await ctx.reply(
             '✏️ Qaysi foydalanuvchini tahrirlashni xohlaysiz?',
             Markup.inlineKeyboard(userButtons, {
-                columns: 2, // Har bir qatordagi tugmalar soni. 2 yoki 3 qilib o'zgartirishingiz mumkin.
+                columns: 2,
             }),
         );
     }
 
     @Action(/EDIT_USER_(.+)/)
     async onEditUserSelect(@Ctx() ctx: Context) {
-        const userData = (ctx.callbackQuery as any).data;
-        const userId = userData.split('_')[2];
+        if (!('data' in ctx.callbackQuery)) return;
+        const userId = ctx.callbackQuery.data.split('_')[2];
 
         const user = await this.prisma.user.findUnique({
             where: { id: userId },
@@ -132,7 +132,7 @@ export class UsersUpdate {
                     Markup.button.callback('❌ Bekor', 'CANCEL_EDIT'),
                 ],
                 {
-                    columns: 2, // Har bir qatordagi tugmalar soni. 2 yoki 3 qilib o'zgartirishingiz mumkin.
+                    columns: 2,
                 },
             ),
         );
@@ -145,16 +145,15 @@ export class UsersUpdate {
 
     @Action(/EDIT_NAME_(.+)/)
     async onEditName(@Ctx() ctx: Context) {
-        const userData = (ctx.callbackQuery as any).data;
-        const userId = userData.split('_')[2];
-
+        if (!('data' in ctx.callbackQuery)) return;
+        const userId = ctx.callbackQuery.data.split('_')[2];
         await ctx.scene.enter('edit-name-scene', { userId });
     }
 
     @Action(/EDIT_BRANCH_(.+)/)
     async onEditBranch(@Ctx() ctx: Context) {
-        const userData = (ctx.callbackQuery as any).data;
-        const userId = userData.split('_')[2];
+        if (!('data' in ctx.callbackQuery)) return;
+        const userId = ctx.callbackQuery.data.split('_')[2];
 
         const branches = await this.prisma.branch.findMany();
         if (branches.length === 0) {
@@ -169,15 +168,15 @@ export class UsersUpdate {
         await ctx.editMessageText(
             '🏪 Yangi filialni tanlang:',
             Markup.inlineKeyboard(branchButtons, {
-                columns: 2, // Har bir qatordagi tugmalar soni. 2 yoki 3 qilib o'zgartirishingiz mumkin.
+                columns: 2,
             }),
         );
     }
 
     @Action(/SET_BRANCH_(.+)_(.+)/)
     async onSetBranch(@Ctx() ctx: Context) {
-        const actionData = (ctx.callbackQuery as any).data;
-        const parts = actionData.split('_');
+        if (!('data' in ctx.callbackQuery)) return;
+        const parts = ctx.callbackQuery.data.split('_');
         const userId = parts[2];
         const branchId = parts[3];
 
@@ -197,7 +196,7 @@ export class UsersUpdate {
             });
 
             await ctx.editMessageText(`✅ Filial "${branch.name}" ga o'zgartirildi.`);
-        } catch (error) {
+        } catch {
             await ctx.editMessageText("❌ Filialni o'zgartirishda xatolik yuz berdi.");
         }
     }

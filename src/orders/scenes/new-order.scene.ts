@@ -2,12 +2,21 @@ import { Scene, SceneEnter, On, Message, Action, Ctx } from 'nestjs-telegraf';
 import { Markup } from 'telegraf';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Context } from '../../interfaces/context.interface';
-import { PaymentType } from '@prisma/client';
+import { PaymentType, Product } from '@prisma/client';
+
+interface OrderProduct {
+    productId: string;
+    name: string;
+    price: number;
+    side: string;
+    quantity: number;
+    type: string;
+}
 
 interface NewOrderSceneState {
-    products: any[];
-    currentProduct: any;
-    newProduct?: any;
+    products: OrderProduct[];
+    currentProduct: Partial<OrderProduct>;
+    newProduct?: Partial<Product>;
     clientName?: string;
     clientPhone?: string | null;
     clientBirthday?: Date | null;
@@ -324,9 +333,7 @@ export class NewOrderScene {
         sceneState.currentProduct.quantity = 1;
         sceneState.products.push({ ...sceneState.currentProduct });
         await ctx.editMessageText(
-            `✅ "${sceneState.currentProduct.name}" (${this.capitalizeFirst(
-                side,
-            )}) qo'shildi.`,
+            `✅ "${sceneState.currentProduct.name}" (${this.capitalizeFirst(side)}) qo'shildi.`,
         );
         sceneState.currentProduct = {};
         await this.showOrderSummary(ctx);
@@ -476,8 +483,12 @@ ${paymentEmoji} To'lov: ${paymentText}
                     client_name: sceneState.clientName,
                     client_phone: sceneState.clientPhone,
                     client_birthday: sceneState.clientBirthday,
-                    branch_id: user.branch_id,
-                    cashier_id: user.id,
+                    branch: {
+                        connect: { id: user.branch_id },
+                    },
+                    cashier: {
+                        connect: { id: user.id },
+                    },
                     payment_type: sceneState.paymentType,
                     total_amount: sceneState.totalAmount,
                     order_products: {
@@ -512,7 +523,7 @@ ${paymentEmoji} To'lov: ${paymentText}
 
     // Helper methods
     private getTypeEmoji(type: string): string {
-        const emojis = {
+        const emojis: { [key: string]: string } = {
             pizza: '🍕',
             burger: '🍔',
             drink: '🥤',
@@ -523,7 +534,7 @@ ${paymentEmoji} To'lov: ${paymentText}
     }
 
     private getSideEmoji(side: string): string {
-        const emojis = {
+        const emojis: { [key: string]: string } = {
             oldi: '⬆️',
             orqa: '⬇️',
             left: '⬅️',

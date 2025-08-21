@@ -1,8 +1,23 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { EncryptionService } from '../settings/encryption.service';
-import { Prisma, Role } from '@prisma/client';
+import { Prisma, Role, User } from '@prisma/client';
 import * as nodemailer from 'nodemailer';
+
+type OrderForReport = Prisma.OrderGetPayload<{
+    include: { branch: true; cashier: true };
+}>;
+
+interface EmailConfig {
+    host: string;
+    port: number;
+    secure: boolean;
+    auth: {
+        user: string;
+        pass: string;
+    };
+    recipient: string;
+}
 
 @Injectable()
 export class ReportsService {
@@ -13,7 +28,7 @@ export class ReportsService {
         private readonly encryptionService: EncryptionService,
     ) {}
 
-    async sendReportByEmail(user: any, timeRange: string): Promise<boolean> {
+    async sendReportByEmail(user: User, timeRange: string): Promise<boolean> {
         this.logger.log(
             `Attempting to send report via email for user ${user.id} and range ${timeRange}`,
         );
@@ -28,7 +43,7 @@ export class ReportsService {
         }
 
         const configStr = this.encryptionService.decrypt(emailConfigSetting.value);
-        const config = JSON.parse(configStr);
+        const config = JSON.parse(configStr) as EmailConfig;
 
         const orders = await this.getOrdersForReport(user, timeRange);
 
@@ -69,7 +84,7 @@ export class ReportsService {
         }
     }
 
-    public async getOrdersForReport(user: any, timeRange: string): Promise<any[]> {
+    public async getOrdersForReport(user: User, timeRange: string): Promise<OrderForReport[]> {
         const gte = this._getDateFilter(timeRange);
         const where: Prisma.OrderWhereInput = { created_at: { gte } };
 
@@ -87,7 +102,7 @@ export class ReportsService {
         });
     }
 
-    public convertToCsv(orders: any[]): string {
+    public convertToCsv(orders: OrderForReport[]): string {
         const header =
             'Order Number,Date,Client Name,Client Phone,Branch,Cashier,Payment Type,Total Amount\n';
         const rows = orders

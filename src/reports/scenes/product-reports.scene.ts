@@ -3,7 +3,14 @@ import { Markup } from 'telegraf';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Context } from '../../interfaces/context.interface';
 import { ReportHelpers } from '../helpers/report.helpers';
-import { Role } from '@prisma/client';
+import { Prisma, Role } from '@prisma/client';
+
+interface ProductTypeStats {
+    type: string;
+    total_quantity: bigint;
+    total_revenue: number;
+    order_count: bigint;
+}
 
 @Scene('product-reports-scene')
 export class ProductReportsScene {
@@ -22,7 +29,7 @@ export class ProductReportsScene {
                     Markup.button.callback('🔙 Orqaga', 'BACK_TO_REPORTS'),
                 ],
                 {
-                    columns: 2, // Har bir qatordagi tugmalar soni. 2 yoki 3 qilib o'zgartirishingiz mumkin.
+                    columns: 2,
                 },
             ),
         );
@@ -58,7 +65,6 @@ export class ProductReportsScene {
     }
 
     private async generateProductReport(ctx: Context, period: string) {
-        // Get user from database since ctx.user might not be available in scenes
         const telegramId = ctx.from?.id;
         if (!telegramId) {
             await ctx.editMessageText('❌ Telegram ID topilmadi.');
@@ -76,43 +82,51 @@ export class ProductReportsScene {
         }
 
         const { startDate, endDate, periodName } = ReportHelpers.getPeriodDates(period);
-        let whereClause = {};
+        const whereClause: Prisma.OrderWhereInput = {
+            created_at: { gte: startDate, lt: endDate },
+        };
 
         if (user.role === Role.ADMIN && user.branch_id) {
-            whereClause = { branch_id: user.branch_id };
+            whereClause.branch_id = user.branch_id;
         }
 
+        const productStatsPromise = this.prisma.order_Product.groupBy({
+            by: ['product_id'],
+            where: {
+                order: whereClause,
+            },
+            _sum: {
+                quantity: true,
+                price: true,
+            },
+            _count: true,
+            orderBy: { _sum: { quantity: 'desc' } },
+            take: 10,
+        });
+
+        const branchFilter =
+            user.role === Role.ADMIN && user.branch_id
+                ? Prisma.sql`AND o.branch_id = ${user.branch_id}`
+                : Prisma.empty;
+
+        const productTypeStatsPromise = this.prisma.$queryRaw<ProductTypeStats[]>`
+            SELECT
+              p.type,
+              SUM(op.quantity) as total_quantity,
+              SUM(op.price * op.quantity) as total_revenue,
+              COUNT(DISTINCT op.order_id) as order_count
+            FROM Order_Product op
+            JOIN Product p ON op.product_id = p.id
+            JOIN \`Order\` o ON op.order_id = o.id
+            WHERE o.created_at >= ${startDate} AND o.created_at < ${endDate}
+            ${branchFilter}
+            GROUP BY p.type
+            ORDER BY total_quantity DESC
+        `;
+
         const [productStats, productTypeStats] = await Promise.all([
-            this.prisma.order_Product.groupBy({
-                by: ['product_id'],
-                where: {
-                    order: {
-                        ...whereClause,
-                        created_at: { gte: startDate, lt: endDate },
-                    },
-                },
-                _sum: {
-                    quantity: true,
-                    price: true,
-                },
-                _count: true,
-                orderBy: { _sum: { quantity: 'desc' } },
-                take: 10,
-            }),
-            this.prisma.$queryRaw`
-        SELECT 
-          p.type,
-          SUM(op.quantity) as total_quantity,
-          SUM(op.price * op.quantity) as total_revenue,
-          COUNT(DISTINCT op.order_id) as order_count
-        FROM OrderProduct op
-        JOIN Product p ON op.product_id = p.id
-        JOIN \`Order\` o ON op.order_id = o.id
-        WHERE o.created_at >= ${startDate} AND o.created_at < ${endDate}
-        ${user.role === Role.ADMIN && user.branch_id ? `AND o.branch_id = '${user.branch_id}'` : ''}
-        GROUP BY p.type
-        ORDER BY total_quantity DESC
-      `,
+            productStatsPromise,
+            productTypeStatsPromise,
         ]);
 
         const productIds = productStats.map((p) => p.product_id);
@@ -123,14 +137,17 @@ export class ProductReportsScene {
         const productList = productStats
             .map((ps, index) => {
                 const product = products.find((p) => p.id === ps.product_id);
+                const sumQuantity = ps._sum.quantity ?? 0;
+                const sumPrice = ps._sum.price ?? 0;
+                const count = ps._count._all ?? 0;
                 return `${index + 1}. ${product?.name || 'N/A'}:
-  • Sotildi: ${ps._sum.quantity} ta
-  • Daromad: ${ps._sum.price} so'm
-  • Buyurtmalar: ${ps._count} ta`;
+  • Sotildi: ${sumQuantity} ta
+  • Daromad: ${sumPrice} so'm
+  • Buyurtmalar: ${count} ta`;
             })
             .join('\n\n');
 
-        const typeList = (productTypeStats as any[])
+        const typeList = productTypeStats
             .map(
                 (ts) =>
                     `${ReportHelpers.getTypeEmoji(ts.type)} ${ReportHelpers.capitalizeFirst(ts.type)}:
@@ -139,6 +156,7 @@ export class ProductReportsScene {
             )
             .join('\n\n');
 
+        const branchName = user.branch?.name ?? 'N/A';
         const report = `
 📦 ${periodName.toUpperCase()} MAHSULOT HISOBOTI
 
@@ -148,7 +166,7 @@ ${productList || "Ma'lumot yo'q"}
 📊 Tur bo'yicha statistika:
 ${typeList || "Ma'lumot yo'q"}
 
-${user.role === Role.ADMIN ? `🏪 Filial: ${user.branch?.name || 'N/A'}` : '🌐 Barcha filiallar'}
+${user.role === Role.ADMIN ? `🏪 Filial: ${branchName}` : '🌐 Barcha filiallar'}
     `;
 
         await ctx.editMessageText(report);

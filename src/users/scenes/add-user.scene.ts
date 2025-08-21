@@ -4,6 +4,12 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { Context } from '../../interfaces/context.interface';
 import { Role } from '@prisma/client';
 
+interface AddUserSceneState {
+    role?: Role;
+    telegramId?: number;
+    fullName?: string;
+}
+
 @Scene('add-user-scene')
 export class AddUserScene {
     constructor(private readonly prisma: PrismaService) {}
@@ -28,7 +34,10 @@ export class AddUserScene {
             return;
         }
 
-        const sceneState = ctx.scene.state as any;
+        const sceneState = ctx.scene.state as AddUserSceneState;
+        sceneState.role = undefined;
+        sceneState.telegramId = undefined;
+        sceneState.fullName = undefined;
 
         if (user.role === Role.SUPER_ADMIN) {
             // Super Admin can choose role with inline keyboard
@@ -42,7 +51,7 @@ export class AddUserScene {
                         Markup.button.callback('🔙 Orqaga', 'BACK_TO_MAIN_MENU'),
                     ],
                     {
-                        columns: 2, // Har bir qatordagi tugmalar soni. 2 yoki 3 qilib o'zgartirishingiz mumkin.
+                        columns: 2,
                     },
                 ),
             );
@@ -72,9 +81,9 @@ export class AddUserScene {
 
     @Action(/ROLE_(.+)/)
     async onRoleSelect(@Ctx() ctx: Context) {
-        const roleData = (ctx.callbackQuery as any).data;
-        const role = roleData.split('_')[1];
-        const sceneState = ctx.scene.state as any;
+        if (!('data' in ctx.callbackQuery)) return;
+        const role = ctx.callbackQuery.data.split('_')[1] as Role;
+        const sceneState = ctx.scene.state as AddUserSceneState;
 
         sceneState.role = role === Role.ADMIN ? Role.ADMIN : Role.CASHIER;
 
@@ -88,9 +97,9 @@ export class AddUserScene {
 
     @Action(/BRANCH_(.+)/)
     async onBranchSelect(@Ctx() ctx: Context) {
-        const branchData = (ctx.callbackQuery as any).data;
-        const branchId = branchData.split('_')[1];
-        const sceneState = ctx.scene.state as any;
+        if (!('data' in ctx.callbackQuery)) return;
+        const branchId = ctx.callbackQuery.data.split('_')[1];
+        const sceneState = ctx.scene.state as AddUserSceneState;
 
         const branch = await this.prisma.branch.findUnique({
             where: { id: branchId },
@@ -118,7 +127,7 @@ export class AddUserScene {
                 `✅ ${roleText} "${sceneState.fullName}" muvaffaqiyatli yaratildi!\n\n🏪 Filial: ${branch.name}`,
             );
             await ctx.scene.leave();
-        } catch (error) {
+        } catch {
             await ctx.editMessageText('❌ Foydalanuvchi yaratishda xatolik yuz berdi.');
             await ctx.scene.leave();
         }
@@ -126,7 +135,7 @@ export class AddUserScene {
 
     @On('text')
     async onText(@Ctx() ctx: Context, @Message('text') text: string) {
-        const sceneState = ctx.scene.state as any;
+        const sceneState = ctx.scene.state as AddUserSceneState;
 
         // Get user from database since ctx.user might not be available in scenes
         const telegramId = ctx.from?.id;
@@ -206,7 +215,7 @@ export class AddUserScene {
                             Markup.button.callback('❌ Bekor qilish', 'CANCEL_ADD_USER'),
                         ],
                         {
-                            columns: 2, // Har bir qatordagi tugmalar soni. 2 yoki 3 qilib o'zgartirishingiz mumkin.
+                            columns: 2,
                         },
                     ),
                 );
@@ -214,6 +223,11 @@ export class AddUserScene {
             } else {
                 // Admin creating a Kassir
                 try {
+                    if (!user.branch_id) {
+                        await ctx.reply('❌ Siz filialga biriktirilmagansiz.');
+                        await ctx.scene.leave();
+                        return;
+                    }
                     await this.prisma.user.create({
                         data: {
                             telegram_id: sceneState.telegramId,
@@ -224,7 +238,7 @@ export class AddUserScene {
                     });
                     await ctx.reply(`✅ Kassir "${sceneState.fullName}" muvaffaqiyatli yaratildi!`);
                     await ctx.scene.leave();
-                } catch (error) {
+                } catch {
                     await ctx.reply('❌ Foydalanuvchi yaratishda xatolik yuz berdi.');
                     await ctx.scene.leave();
                 }

@@ -2,8 +2,14 @@ import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import { SchedulerRegistry } from '@nestjs/schedule';
 import { CronJob } from 'cron';
 import { ReportsService } from '../reports/reports.service';
-import { PrismaService } from 'src/prisma/prisma.service';
-import { Role } from '@prisma/client';
+import { PrismaService } from '../prisma/prisma.service';
+import { Role, User } from '@prisma/client';
+
+interface ScheduleConfig {
+    cron: string;
+    enabled: boolean;
+    destination: string;
+}
 
 @Injectable()
 export class SchedulerService implements OnModuleInit {
@@ -27,7 +33,7 @@ export class SchedulerService implements OnModuleInit {
             existingJob.stop();
             this.schedulerRegistry.deleteCronJob(this.jobName);
             this.logger.log(`Stopped and removed existing cron job: ${this.jobName}`);
-        } catch (e) {
+        } catch {
             // Job doesn't exist, which is fine.
         }
 
@@ -40,20 +46,19 @@ export class SchedulerService implements OnModuleInit {
             return;
         }
 
-        const config = JSON.parse(scheduleSetting.value);
+        const config = JSON.parse(scheduleSetting.value) as ScheduleConfig;
 
         if (config.enabled) {
-            const job = new CronJob(config.cron, async () => {
+            const job = new CronJob(config.cron, () => {
                 this.logger.log(`Executing scheduled job: ${this.jobName}`);
 
                 if (config.destination === 'email') {
-                    // Assume the scheduled report is for the super admin and is a daily report
-                    const schedulerUser = {
+                    const schedulerUser: Partial<User> = {
                         role: Role.SUPER_ADMIN,
                         id: 'scheduler',
                     };
                     const timeRange = 'DAILY';
-                    await this.reportsService.sendReportByEmail(schedulerUser, timeRange);
+                    void this.reportsService.sendReportByEmail(schedulerUser as User, timeRange);
                 }
             });
 

@@ -22,7 +22,7 @@ export class RevenueReportsScene {
                     Markup.button.callback('🔙 Orqaga', 'BACK_TO_REPORTS'),
                 ],
                 {
-                    columns: 2, // Har bir qatordagi tugmalar soni. 2 yoki 3 qilib o'zgartirishingiz mumkin.
+                    columns: 2,
                 },
             ),
         );
@@ -58,7 +58,6 @@ export class RevenueReportsScene {
     }
 
     private async generateRevenueReport(ctx: Context, period: string) {
-        // Get user from database since ctx.user might not be available in scenes
         const telegramId = ctx.from?.id;
         if (!telegramId) {
             await ctx.editMessageText('❌ Telegram ID topilmadi.');
@@ -76,89 +75,60 @@ export class RevenueReportsScene {
         }
 
         const { startDate, endDate, periodName } = ReportHelpers.getPeriodDates(period);
-        let whereClause: Prisma.OrderWhereInput = {
+        const whereClause: Prisma.OrderWhereInput = {
             created_at: {
-                gte: startDate, // created_at >= startDate
-                lt: endDate, // created_at < endDate
+                gte: startDate,
+                lt: endDate,
             },
         };
 
         if (user.role === Role.ADMIN && user.branch_id) {
-            whereClause = { branch_id: user.branch_id };
-        }
-
-        // 1. Filtrlash shartlarini o'zgaruvchiga olib olamiz
-        // Bu kodni yanada o'qiladigan qiladi
-
-        // 2. Agar foydalanuvchi admin bo'lsa va unga filial biriktirilgan bo'lsa,
-        // filtrga shu filialni ham qo'shamiz
-        if (user.role === Role.ADMIN && user.branch_id) {
             whereClause.branch_id = user.branch_id;
         }
 
-        // 3. Asosiy Prisma `groupBy` so'rovi
         const revenueData = await this.prisma.order.groupBy({
-            // Qaysi ustun bo'yicha guruhlash
-            // !! MUHIM IZOHNI PASTDA O'QING
             by: ['created_at'],
-
-            // Filtrlash shartlari (WHERE)
             where: whereClause,
-
-            // Agregat funksiyalar (SUM, COUNT, AVG)
             _sum: {
                 total_amount: true,
             },
             _count: {
-                _all: true, // Bu COUNT(*) ga teng
+                _all: true,
             },
             _avg: {
                 total_amount: true,
             },
-
-            // Tartiblash (ORDER BY)
-            // Agregat maydonlari bo'yicha ham tartiblash mumkin, masalan:
-            // orderBy: { _sum: { total_amount: 'desc' } }
             orderBy: {
                 created_at: 'desc',
             },
-
-            // Cheklov (LIMIT)
             take: 15,
         });
 
-        // 4. Natijani asl so'rovdagi kabi formatlash
-        // Chunki `groupBy` natijani `_sum`, `_count` kabi obyektlar bilan qaytaradi
-        const formattedData = revenueData.map((item) => ({
-            date: item.created_at.toISOString().split('T')[0], // Faqat sana qismini olamiz (YYYY-MM-DD)
-            daily_revenue: item._sum.total_amount,
-            daily_orders: item._count._all,
-            avg_order_value: item._avg.total_amount,
-        }));
+        if (revenueData.length === 0) {
+            await ctx.editMessageText(`Sizda ${periodName} davr uchun ma'lumotlar mavjud emas.`);
+            return;
+        }
 
-        // Endi `formattedData` ni ishlatsangiz bo'ladi.
-        // return formattedData;
-
-        const revenueList = (revenueData as any[])
-            .map(
-                (day) =>
-                    `📅 ${new Date(day.date).toLocaleDateString('uz-UZ')}:
-  • Daromad: ${day.daily_revenue} so'm
-  • Buyurtmalar: ${day.daily_orders} ta
-  • O'rtacha: ${Math.round(day.avg_order_value)} so'm`,
-            )
+        const revenueList = revenueData
+            .map((day) => {
+                const dailyRevenue = day._sum.total_amount ?? 0;
+                const dailyOrders = day._count._all ?? 0;
+                const avgOrderValue = day._avg.total_amount ?? 0;
+                return `📅 ${new Date(day.created_at).toLocaleDateString('uz-UZ')}:
+  • Daromad: ${dailyRevenue} so'm
+  • Buyurtmalar: ${dailyOrders} ta
+  • O'rtacha: ${Math.round(avgOrderValue)} so'm`;
+            })
             .join('\n\n');
 
-        const totalRevenue = (revenueData as any[]).reduce(
-            (sum, day) => sum + Number(day.daily_revenue),
+        const totalRevenue = revenueData.reduce(
+            (sum, day) => sum + (day._sum.total_amount ?? 0),
             0,
         );
-        const totalOrders = (revenueData as any[]).reduce(
-            (sum, day) => sum + Number(day.daily_orders),
-            0,
-        );
-        const avgDaily = Math.round(totalRevenue / (revenueData as any[]).length);
+        const totalOrders = revenueData.reduce((sum, day) => sum + (day._count._all ?? 0), 0);
+        const avgDaily = Math.round(totalRevenue / revenueData.length);
 
+        const branchName = user.branch?.name ?? 'N/A';
         const report = `
 💰 ${periodName.toUpperCase()} DAROMAD HISOBOTI
 
@@ -170,7 +140,7 @@ export class RevenueReportsScene {
 📅 Kunlik taqsimot:
 ${revenueList || "Ma'lumot yo'q"}
 
-${user.role === Role.ADMIN ? `🏪 Filial: ${user.branch?.name || 'N/A'}` : '🌐 Barcha filiallar'}
+${user.role === Role.ADMIN ? `🏪 Filial: ${branchName}` : '🌐 Barcha filiallar'}
     `;
 
         await ctx.editMessageText(report);

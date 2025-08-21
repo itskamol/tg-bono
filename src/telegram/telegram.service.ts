@@ -164,9 +164,9 @@ Admin sizni tizimga qo'shishi kerak.
 
         const roleText =
             {
-                super_admin: 'Super Admin',
-                admin: 'Admin',
-                kassir: 'Kassir',
+                [Role.SUPER_ADMIN]: 'Super Admin',
+                [Role.ADMIN]: 'Admin',
+                [Role.CASHIER]: 'Kassir',
             }[user.role] || user.role;
 
         const profileMessage = `

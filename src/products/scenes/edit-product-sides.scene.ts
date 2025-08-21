@@ -3,13 +3,17 @@ import { Markup } from 'telegraf';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Context } from '../../interfaces/context.interface';
 
+interface EditProductSceneState {
+    productId: string;
+}
+
 @Scene('edit-product-sides-scene')
 export class EditProductSidesScene {
     constructor(private readonly prisma: PrismaService) {}
 
     @SceneEnter()
     async onSceneEnter(@Ctx() ctx: Context) {
-        const sceneState = ctx.scene.state as any;
+        const sceneState = ctx.scene.state as EditProductSceneState;
         const product = await this.prisma.product.findUnique({
             where: { id: sceneState.productId },
         });
@@ -31,7 +35,7 @@ export class EditProductSidesScene {
 
     @On('text')
     async onText(@Ctx() ctx: Context, @Message('text') text: string) {
-        const sceneState = ctx.scene.state as any;
+        const sceneState = ctx.scene.state as EditProductSceneState;
 
         const sides = text
             .split(',')
@@ -52,7 +56,7 @@ export class EditProductSidesScene {
 
             await ctx.reply(`✅ Mahsulot tomonlari "${sides.join(', ')}" ga o'zgartirildi.`);
             await ctx.scene.leave();
-        } catch (error) {
+        } catch {
             await ctx.reply("❌ Mahsulot tomonlarini o'zgartirishda xatolik yuz berdi.");
             await ctx.scene.leave();
         }
@@ -60,17 +64,17 @@ export class EditProductSidesScene {
 
     @Action('NO_SIDES')
     async onNoSides(@Ctx() ctx: Context) {
-        const sceneState = ctx.scene.state as any;
+        const sceneState = ctx.scene.state as EditProductSceneState;
 
         try {
             await this.prisma.product.update({
                 where: { id: sceneState.productId },
-                data: { sides: ['N/A'] },
+                data: { sides: [] },
             });
 
-            await ctx.editMessageText('✅ Mahsulot tomonlari "yo\'q" ga o\'zgartirildi.');
+            await ctx.editMessageText('✅ Mahsulot tomonlari olib tashlandi.');
             await ctx.scene.leave();
-        } catch (error) {
+        } catch {
             await ctx.editMessageText("❌ Mahsulot tomonlarini o'zgartirishda xatolik yuz berdi.");
             await ctx.scene.leave();
         }

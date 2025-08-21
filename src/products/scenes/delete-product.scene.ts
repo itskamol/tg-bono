@@ -34,7 +34,7 @@ export class DeleteProductScene {
                     Markup.button.callback('❌ Bekor qilish', 'CANCEL_DELETE_PRODUCT'),
                 ],
                 {
-                    columns: 2, // Har bir qatordagi tugmalar soni. 2 yoki 3 qilib o'zgartirishingiz mumkin.
+                    columns: 2,
                 },
             ),
         );
@@ -42,8 +42,8 @@ export class DeleteProductScene {
 
     @Action(/^DELETE_PRODUCT_(.+)$/)
     async onDeleteProductConfirm(@Ctx() ctx: Context) {
-        const productData = (ctx.callbackQuery as any).data;
-        const productId = productData.replace('DELETE_PRODUCT_', '');
+        if (!('data' in ctx.callbackQuery)) return;
+        const productId = ctx.callbackQuery.data.replace('DELETE_PRODUCT_', '');
 
         const product = await this.prisma.product.findUnique({
             where: { id: productId },
@@ -77,8 +77,8 @@ export class DeleteProductScene {
 
     @Action(/^CONFIRM_DELETE_PRODUCT_(.+)$/)
     async onConfirmDelete(@Ctx() ctx: Context) {
-        const productData = (ctx.callbackQuery as any).data;
-        const productId = productData.replace('CONFIRM_DELETE_PRODUCT_', '');
+        if (!('data' in ctx.callbackQuery)) return;
+        const productId = ctx.callbackQuery.data.replace('CONFIRM_DELETE_PRODUCT_', '');
 
         try {
             const product = await this.prisma.product.findUnique({
@@ -97,7 +97,7 @@ export class DeleteProductScene {
 
             await ctx.editMessageText(`✅ "${product.name}" mahsuloti muvaffaqiyatli o'chirildi.`);
             await ctx.scene.leave();
-        } catch (error) {
+        } catch {
             await ctx.editMessageText(
                 "❌ Mahsulotni o'chirishda xatolik yuz berdi. Bu mahsulot buyurtmalarda ishlatilgan bo'lishi mumkin.",
             );
@@ -112,7 +112,7 @@ export class DeleteProductScene {
     }
 
     private getTypeEmoji(type: string): string {
-        const emojis = {
+        const emojis: { [key: string]: string } = {
             pizza: '🍕',
             burger: '🍔',
             drink: '🥤',
