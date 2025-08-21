@@ -13,13 +13,18 @@ export class BranchReportsScene {
     async onSceneEnter(@Ctx() ctx: Context) {
         await ctx.reply(
             '🏪 Filiallar hisoboti\n\nDavrni tanlang:',
-            Markup.inlineKeyboard([
-                Markup.button.callback('📅 Bugun', 'BRANCH_TODAY'),
-                Markup.button.callback('📈 Hafta', 'BRANCH_WEEK'),
-                Markup.button.callback('📅 Oy', 'BRANCH_MONTH'),
-                Markup.button.callback('📊 3 oy', 'BRANCH_QUARTER'),
-                Markup.button.callback('🔙 Orqaga', 'BACK_TO_REPORTS'),
-            ]),
+            Markup.inlineKeyboard(
+                [
+                    Markup.button.callback('📅 Bugun', 'BRANCH_TODAY'),
+                    Markup.button.callback('📈 Hafta', 'BRANCH_WEEK'),
+                    Markup.button.callback('📅 Oy', 'BRANCH_MONTH'),
+                    Markup.button.callback('📊 3 oy', 'BRANCH_QUARTER'),
+                    Markup.button.callback('🔙 Orqaga', 'BACK_TO_REPORTS'),
+                ],
+                {
+                    columns: 2, // Har bir qatordagi tugmalar soni. 2 yoki 3 qilib o'zgartirishingiz mumkin.
+                },
+            ),
         );
     }
 

@@ -62,7 +62,9 @@ export class DeleteUserScene {
 
         await ctx.reply(
             "🗑️ Qaysi foydalanuvchini o'chirmoqchisiz?",
-            Markup.inlineKeyboard(userButtons),
+            Markup.inlineKeyboard(userButtons, {
+                columns: 2, // Har bir qatordagi tugmalar soni. 2 yoki 3 qilib o'zgartirishingiz mumkin.
+            }),
         );
     }
 

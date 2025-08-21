@@ -72,7 +72,9 @@ export class ProductsUpdate {
 
         await ctx.reply(
             '✏️ Qaysi mahsulotni tahrirlashni xohlaysiz?',
-            Markup.inlineKeyboard(productButtons),
+            Markup.inlineKeyboard(productButtons, {
+                columns: 2, // Har bir qatordagi tugmalar soni. 2 yoki 3 qilib o'zgartirishingiz mumkin.
+            }),
         );
     }
 
@@ -103,13 +105,18 @@ export class ProductsUpdate {
                 `🍕 Tomonlar: ${product.sides.join(', ')}\n` +
                 `💰 Narxi: ${product.price} so'm\n\n` +
                 `Nimani o'zgartirmoqchisiz?`,
-            Markup.inlineKeyboard([
-                Markup.button.callback('📦 Turi', `EDIT_PRODUCT_TYPE_${productId}`),
-                Markup.button.callback('📝 Nomi', `EDIT_PRODUCT_NAME_${productId}`),
-                Markup.button.callback('🍕 Tomonlar', `EDIT_PRODUCT_SIDES_${productId}`),
-                Markup.button.callback('💰 Narxi', `EDIT_PRODUCT_PRICE_${productId}`),
-                Markup.button.callback('❌ Bekor', 'CANCEL_PRODUCT_EDIT'),
-            ]),
+            Markup.inlineKeyboard(
+                [
+                    Markup.button.callback('📦 Turi', `EDIT_PRODUCT_TYPE_${productId}`),
+                    Markup.button.callback('📝 Nomi', `EDIT_PRODUCT_NAME_${productId}`),
+                    Markup.button.callback('🍕 Tomonlar', `EDIT_PRODUCT_SIDES_${productId}`),
+                    Markup.button.callback('💰 Narxi', `EDIT_PRODUCT_PRICE_${productId}`),
+                    Markup.button.callback('❌ Bekor', 'CANCEL_PRODUCT_EDIT'),
+                ],
+                {
+                    columns: 2, // Har bir qatordagi tugmalar soni. 2 yoki 3 qilib o'zgartirishingiz mumkin.
+                },
+            ),
         );
     }
 

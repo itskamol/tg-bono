@@ -23,7 +23,7 @@ export class AuthGuard implements CanActivate {
             return true;
         }
 
-        const ctx = TelegrafExecutionContext.create(context);
+        const ctx: TelegrafExecutionContext = TelegrafExecutionContext.create(context);
         const { from } = ctx.getContext();
 
         if (!from) {
@@ -44,7 +44,7 @@ export class AuthGuard implements CanActivate {
         // Attach user to context for use in handlers
         ctx.getContext()['user'] = user;
 
-        const hasRole = () => requiredRoles.some((role) => user.role === role);
+        const hasRole = () => requiredRoles.some((role: Role) => user.role === role);
 
         if (!hasRole()) {
             throw new UnauthorizedException("You don't have permission to perform this action.");

@@ -34,11 +34,16 @@ export class AddUserScene {
             // Super Admin can choose role with inline keyboard
             await ctx.reply(
                 '👤 Yangi foydalanuvchi uchun rolni tanlang:',
-                Markup.inlineKeyboard([
-                    Markup.button.callback('👨‍💼 Admin', `ROLE_${Role.ADMIN}`),
-                    Markup.button.callback('💰 Kassir', `ROLE_${Role.CASHIER}`),
-                    Markup.button.callback('🔙 Orqaga', 'BACK_TO_MAIN_MENU'),
-                ]),
+                Markup.inlineKeyboard(
+                    [
+                        Markup.button.callback('👨‍💼 Admin', `ROLE_${Role.ADMIN}`),
+                        Markup.button.callback('💰 Kassir', `ROLE_${Role.CASHIER}`),
+                        Markup.button.callback('🔙 Orqaga', 'BACK_TO_MAIN_MENU'),
+                    ],
+                    {
+                        columns: 2, // Har bir qatordagi tugmalar soni. 2 yoki 3 qilib o'zgartirishingiz mumkin.
+                    },
+                ),
             );
         } else if (user.role === Role.ADMIN) {
             // Admin can only create Kassir
@@ -179,7 +184,9 @@ export class AddUserScene {
 
                 await ctx.reply(
                     "✅ To'liq ism saqlandi.\n\n🏪 Foydalanuvchini qaysi filialga tayinlaysiz?",
-                    Markup.inlineKeyboard(branchButtons),
+                    Markup.inlineKeyboard(branchButtons, {
+                        columns: 2, // Har bir qatordagi tugmalar soni. 2 yoki 3 qilib o'zgartirishingiz mumkin.
+                    }),
                 );
                 return;
             } else {

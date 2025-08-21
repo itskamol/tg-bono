@@ -13,13 +13,18 @@ export class UserReportsScene {
     async onSceneEnter(@Ctx() ctx: Context) {
         await ctx.reply(
             '👥 Foydalanuvchilar hisoboti\n\nDavrni tanlang:',
-            Markup.inlineKeyboard([
-                Markup.button.callback('📅 Bugun', 'USER_TODAY'),
-                Markup.button.callback('📈 Hafta', 'USER_WEEK'),
-                Markup.button.callback('📅 Oy', 'USER_MONTH'),
-                Markup.button.callback('📊 3 oy', 'USER_QUARTER'),
-                Markup.button.callback('🔙 Orqaga', 'BACK_TO_REPORTS'),
-            ]),
+            Markup.inlineKeyboard(
+                [
+                    Markup.button.callback('📅 Bugun', 'USER_TODAY'),
+                    Markup.button.callback('📈 Hafta', 'USER_WEEK'),
+                    Markup.button.callback('📅 Oy', 'USER_MONTH'),
+                    Markup.button.callback('📊 3 oy', 'USER_QUARTER'),
+                    Markup.button.callback('🔙 Orqaga', 'BACK_TO_REPORTS'),
+                ],
+                {
+                    columns: 2, // Har bir qatordagi tugmalar soni. 2 yoki 3 qilib o'zgartirishingiz mumkin.
+                },
+            ),
         );
     }
 

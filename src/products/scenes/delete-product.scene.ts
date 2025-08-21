@@ -28,10 +28,15 @@ export class DeleteProductScene {
 
         await ctx.reply(
             "🗑️ Qaysi mahsulotni o'chirmoqchisiz?\n\n⚠️ Diqqat: Mahsulot o'chirilganda unga bog'liq buyurtmalar ham ta'sirlanishi mumkin!",
-            Markup.inlineKeyboard([
-                ...productButtons,
-                Markup.button.callback('❌ Bekor qilish', 'CANCEL_DELETE_PRODUCT'),
-            ]),
+            Markup.inlineKeyboard(
+                [
+                    ...productButtons,
+                    Markup.button.callback('❌ Bekor qilish', 'CANCEL_DELETE_PRODUCT'),
+                ],
+                {
+                    columns: 2, // Har bir qatordagi tugmalar soni. 2 yoki 3 qilib o'zgartirishingiz mumkin.
+                },
+            ),
         );
     }
 

@@ -19,14 +19,19 @@ export class SettingsUpdate {
     async onSettings(@Ctx() ctx: Context) {
         await ctx.reply(
             'Settings:',
-            Markup.inlineKeyboard([
-                Markup.button.callback('Configure Email Export', 'configure_email_export'),
-                Markup.button.callback(
-                    'Configure Google Sheets Export',
-                    'configure_g_sheets_export',
-                ),
-                Markup.button.callback('Configure Scheduled Reports', 'configure_schedule'),
-            ]),
+            Markup.inlineKeyboard(
+                [
+                    Markup.button.callback('Configure Email Export', 'configure_email_export'),
+                    Markup.button.callback(
+                        'Configure Google Sheets Export',
+                        'configure_g_sheets_export',
+                    ),
+                    Markup.button.callback('Configure Scheduled Reports', 'configure_schedule'),
+                ],
+                {
+                    columns: 2, // Har bir qatordagi tugmalar soni. 2 yoki 3 qilib o'zgartirishingiz mumkin.
+                },
+            ),
         );
     }
 

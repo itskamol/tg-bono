@@ -91,7 +91,9 @@ export class UsersUpdate {
 
         await ctx.reply(
             '✏️ Qaysi foydalanuvchini tahrirlashni xohlaysiz?',
-            Markup.inlineKeyboard(userButtons),
+            Markup.inlineKeyboard(userButtons, {
+                columns: 2, // Har bir qatordagi tugmalar soni. 2 yoki 3 qilib o'zgartirishingiz mumkin.
+            }),
         );
     }
 
@@ -123,11 +125,16 @@ export class UsersUpdate {
                 `🎭 Rol: ${roleText}\n` +
                 `🏪 Filial: ${user.branch?.name || 'N/A'}\n\n` +
                 `Nimani o'zgartirmoqchisiz?`,
-            Markup.inlineKeyboard([
-                Markup.button.callback('👤 Ism', `EDIT_NAME_${userId}`),
-                Markup.button.callback('🏪 Filial', `EDIT_BRANCH_${userId}`),
-                Markup.button.callback('❌ Bekor', 'CANCEL_EDIT'),
-            ]),
+            Markup.inlineKeyboard(
+                [
+                    Markup.button.callback('👤 Ism', `EDIT_NAME_${userId}`),
+                    Markup.button.callback('🏪 Filial', `EDIT_BRANCH_${userId}`),
+                    Markup.button.callback('❌ Bekor', 'CANCEL_EDIT'),
+                ],
+                {
+                    columns: 2, // Har bir qatordagi tugmalar soni. 2 yoki 3 qilib o'zgartirishingiz mumkin.
+                },
+            ),
         );
     }
 
@@ -161,7 +168,9 @@ export class UsersUpdate {
 
         await ctx.editMessageText(
             '🏪 Yangi filialni tanlang:',
-            Markup.inlineKeyboard(branchButtons),
+            Markup.inlineKeyboard(branchButtons, {
+                columns: 2, // Har bir qatordagi tugmalar soni. 2 yoki 3 qilib o'zgartirishingiz mumkin.
+            }),
         );
     }
 

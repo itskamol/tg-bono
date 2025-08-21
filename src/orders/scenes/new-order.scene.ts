@@ -95,11 +95,16 @@ export class NewOrderScene {
 
             await ctx.reply(
                 `✅ Mahsulot qo'shildi!\n\n📦 Joriy mahsulotlar:\n${productsList}\n\n💰 Jami: ${total} so'm\n\nYana mahsulot qo'shasizmi?`,
-                Markup.inlineKeyboard([
-                    Markup.button.callback('➕ Yana', 'ADD_PRODUCT'),
-                    Markup.button.callback("💳 To'lov", 'PAYMENT'),
-                    Markup.button.callback('❌ Bekor', 'CANCEL_ORDER'),
-                ]),
+                Markup.inlineKeyboard(
+                    [
+                        Markup.button.callback('➕ Yana', 'ADD_PRODUCT'),
+                        Markup.button.callback("💳 To'lov", 'PAYMENT'),
+                        Markup.button.callback('❌ Bekor', 'CANCEL_ORDER'),
+                    ],
+                    {
+                        columns: 2, // Har bir qatordagi tugmalar soni. 2 yoki 3 qilib o'zgartirishingiz mumkin.
+                    },
+                ),
             );
         }
     }
@@ -136,10 +141,12 @@ export class NewOrderScene {
 
         await ctx.reply(
             '📦 Mahsulot turini tanlang:',
-            Markup.inlineKeyboard([
-                ...typeButtons,
-                Markup.button.callback('❌ Bekor qilish', 'CANCEL_ORDER'),
-            ]),
+            Markup.inlineKeyboard(
+                [...typeButtons, Markup.button.callback('❌ Bekor qilish', 'CANCEL_ORDER')],
+                {
+                    columns: 2, // Har bir qatordagi tugmalar soni. 2 yoki 3 qilib o'zgartirishingiz mumkin.
+                },
+            ),
         );
     }
 
@@ -160,11 +167,16 @@ export class NewOrderScene {
 
         await ctx.editMessageText(
             `${this.getTypeEmoji(type)} "${this.capitalizeFirst(type)}" tanlandi.\n\n📋 Mahsulotni tanlang:`,
-            Markup.inlineKeyboard([
-                ...productButtons,
-                Markup.button.callback('🔙 Orqaga', 'BACK_TO_TYPES'),
-                Markup.button.callback('❌ Bekor qilish', 'CANCEL_ORDER'),
-            ]),
+            Markup.inlineKeyboard(
+                [
+                    ...productButtons,
+                    Markup.button.callback('🔙 Orqaga', 'BACK_TO_TYPES'),
+                    Markup.button.callback('❌ Bekor qilish', 'CANCEL_ORDER'),
+                ],
+                {
+                    columns: 2, // Har bir qatordagi tugmalar soni. 2 yoki 3 qilib o'zgartirishingiz mumkin.
+                },
+            ),
         );
     }
 
@@ -196,11 +208,19 @@ export class NewOrderScene {
 
             await ctx.editMessageText(
                 `📦 "${product.name}" tanlandi (${product.price} so'm)\n\n🍕 Tomonni tanlang:`,
-                Markup.inlineKeyboard([
-                    ...sideButtons,
-                    Markup.button.callback('🔙 Orqaga', `TYPE_${sceneState.currentProduct.type}`),
-                    Markup.button.callback('❌ Bekor qilish', 'CANCEL_ORDER'),
-                ]),
+                Markup.inlineKeyboard(
+                    [
+                        ...sideButtons,
+                        Markup.button.callback(
+                            '🔙 Orqaga',
+                            `TYPE_${sceneState.currentProduct.type}`,
+                        ),
+                        Markup.button.callback('❌ Bekor qilish', 'CANCEL_ORDER'),
+                    ],
+                    {
+                        columns: 2, // Har bir qatordagi tugmalar soni. 2 yoki 3 qilib o'zgartirishingiz mumkin.
+                    },
+                ),
             );
         } else {
             sceneState.currentProduct.side = 'N/A';
@@ -255,13 +275,18 @@ export class NewOrderScene {
 
         await ctx.editMessageText(
             `💰 Buyurtma jami: ${total} so'm\n\n📦 Mahsulotlar:\n${productsList}\n\n💳 To'lov turini tanlang:`,
-            Markup.inlineKeyboard([
-                Markup.button.callback('💵 Naqd', `PAYMENT_${PaymentType.CASH}`),
-                Markup.button.callback('💳 Karta', `PAYMENT_${PaymentType.CARD}`),
-                Markup.button.callback('🏦 Kredit', `PAYMENT_${PaymentType.CREDIT}`),
-                Markup.button.callback('🔙 Orqaga', 'ADD_PRODUCT'),
-                Markup.button.callback('❌ Bekor', 'CANCEL_ORDER'),
-            ]),
+            Markup.inlineKeyboard(
+                [
+                    Markup.button.callback('💵 Naqd', `PAYMENT_${PaymentType.CASH}`),
+                    Markup.button.callback('💳 Karta', `PAYMENT_${PaymentType.CARD}`),
+                    Markup.button.callback('🏦 Kredit', `PAYMENT_${PaymentType.CREDIT}`),
+                    Markup.button.callback('🔙 Orqaga', 'ADD_PRODUCT'),
+                    Markup.button.callback('❌ Bekor', 'CANCEL_ORDER'),
+                ],
+                {
+                    columns: 2, // Har bir qatordagi tugmalar soni. 2 yoki 3 qilib o'zgartirishingiz mumkin.
+                },
+            ),
         );
     }
 
@@ -308,11 +333,16 @@ ${paymentEmoji} To'lov: ${paymentText}
 
         await ctx.editMessageText(
             orderSummary,
-            Markup.inlineKeyboard([
-                Markup.button.callback('✅ Tasdiqlash', 'CONFIRM_ORDER'),
-                Markup.button.callback('🔙 Orqaga', 'PAYMENT'),
-                Markup.button.callback('❌ Bekor', 'CANCEL_ORDER'),
-            ]),
+            Markup.inlineKeyboard(
+                [
+                    Markup.button.callback('✅ Tasdiqlash', 'CONFIRM_ORDER'),
+                    Markup.button.callback('🔙 Orqaga', 'PAYMENT'),
+                    Markup.button.callback('❌ Bekor', 'CANCEL_ORDER'),
+                ],
+                {
+                    columns: 2, // Har bir qatordagi tugmalar soni. 2 yoki 3 qilib o'zgartirishingiz mumkin.
+                },
+            ),
         );
     }
 

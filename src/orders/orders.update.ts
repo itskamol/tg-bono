@@ -5,7 +5,7 @@ import { AuthGuard } from '../auth/guards/auth.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { PrismaService } from '../prisma/prisma.service';
 import { Context } from '../interfaces/context.interface';
-import { PaymentType, Role } from '@prisma/client';
+import { Order, PaymentType, Role } from '@prisma/client';
 
 @Update()
 @UseGuards(AuthGuard)
@@ -28,7 +28,7 @@ export class OrdersUpdate {
     @Roles(Role.SUPER_ADMIN, Role.ADMIN, Role.CASHIER)
     async listOrders(@Ctx() ctx: Context) {
         const user = ctx.user;
-        let orders;
+        let orders: Order[] = [];
 
         if (user.role === Role.SUPER_ADMIN) {
             orders = await this.prisma.order.findMany({
@@ -73,7 +73,10 @@ export class OrdersUpdate {
             ),
         );
 
-        await ctx.reply("📋 So'nggi buyurtmalar (10 ta):", Markup.inlineKeyboard(orderButtons));
+        await ctx.reply(
+            `📋 Buyurtmalar ${orderButtons.length ? `(${orderButtons.length})` : ''}:`,
+            Markup.inlineKeyboard(orderButtons),
+        );
     }
 
     @Command('order_stats')

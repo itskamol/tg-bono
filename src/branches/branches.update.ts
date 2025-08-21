@@ -59,7 +59,9 @@ export class BranchesUpdate {
 
         await ctx.reply(
             '✏️ Qaysi filialni tahrirlashni xohlaysiz?',
-            Markup.inlineKeyboard(branchButtons),
+            Markup.inlineKeyboard(branchButtons, {
+                columns: 2, // Har bir qatordagi tugmalar soni. 2 yoki 3 qilib o'zgartirishingiz mumkin.
+            }),
         );
     }
 

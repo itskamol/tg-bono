@@ -30,7 +30,9 @@ export class ReportsUpdate {
 
         await ctx.reply(
             "📊 Hisobotlar bo'limi\n\nQaysi turdagi hisobotni ko'rmoqchisiz?",
-            Markup.inlineKeyboard(reportButtons),
+            Markup.inlineKeyboard(reportButtons, {
+                columns: 2, // Har bir qatordagi tugmalar soni. 2 yoki 3 qilib o'zgartirishingiz mumkin.
+            }),
         );
     }
 
