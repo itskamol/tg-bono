@@ -82,42 +82,43 @@ export class PaymentReportsScene {
             whereClause = { branch_id: user.branch_id };
         }
 
+        // Get payment statistics from Payment model instead of Order
         const [paymentStats, totalRevenue] = await Promise.all([
-            this.prisma.order.groupBy({
+            this.prisma.payment.groupBy({
                 by: ['payment_type'],
                 where: {
-                    ...whereClause,
+                    order: whereClause,
                     created_at: { gte: startDate, lt: endDate },
                 },
                 _count: true,
-                _sum: { total_amount: true },
-                _avg: { total_amount: true },
+                _sum: { amount: true },
+                _avg: { amount: true },
             }),
-            this.prisma.order.aggregate({
+            this.prisma.payment.aggregate({
                 where: {
-                    ...whereClause,
+                    order: whereClause,
                     created_at: { gte: startDate, lt: endDate },
                 },
-                _sum: { total_amount: true },
+                _sum: { amount: true },
             }),
         ]);
 
         const paymentList = paymentStats
             .map((ps) => {
-                const percentage = totalRevenue._sum.total_amount
-                    ? ((ps._sum.total_amount / totalRevenue._sum.total_amount) * 100).toFixed(1)
+                const percentage = totalRevenue._sum.amount
+                    ? ((ps._sum.amount / totalRevenue._sum.amount) * 100).toFixed(1)
                     : 0;
                 return `💳 ${ReportHelpers.getPaymentEmoji(ps.payment_type)} ${ReportHelpers.capitalizeFirst(ps.payment_type)}:
-  • Buyurtmalar: ${ps._count} ta
-  • Daromad: ${ps._sum.total_amount} so'm (${percentage}%)
-  • O'rtacha: ${Math.round(ps._avg.total_amount)} so'm`;
+  • To'lovlar: ${ps._count} ta
+  • Daromad: ${ps._sum.amount} so'm (${percentage}%)
+  • O'rtacha: ${Math.round(ps._avg.amount)} so'm`;
             })
             .join('\n\n');
 
         const report = `
 💳 ${periodName.toUpperCase()} TO'LOV TURLARI HISOBOTI
 
-📊 Jami daromad: ${totalRevenue._sum.total_amount || 0} so'm
+📊 Jami daromad: ${totalRevenue._sum.amount || 0} so'm
 
 ${paymentList || "Ma'lumot yo'q"}
 

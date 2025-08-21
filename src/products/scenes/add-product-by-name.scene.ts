@@ -44,7 +44,7 @@ export class AddProductByNameScene {
             });
 
             await ctx.reply(`✅ Yangi mahsulot "${newProduct.name}" yaratildi.`);
-            await ctx.scene.leave({ createdProduct: newProduct });
+            await ctx.scene.leave();
         }
     }
 }

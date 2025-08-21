@@ -4,7 +4,7 @@ import { TelegrafExecutionContext } from 'nestjs-telegraf';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ROLES_KEY } from '../decorators/roles.decorator';
 import { Role } from '@prisma/client';
-import { IContext } from 'src/interfaces/context.interface';
+import { Context } from 'src/interfaces/context.interface';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -25,7 +25,7 @@ export class AuthGuard implements CanActivate {
         }
 
         const ctx = TelegrafExecutionContext.create(context);
-        const telegramContext = ctx.getContext<IContext>();
+        const telegramContext = ctx.getContext<Context>();
         const { from } = telegramContext;
 
         if (!from) {

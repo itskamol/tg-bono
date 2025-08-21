@@ -151,6 +151,7 @@ ${user.role === Role.ADMIN ? `🏪 Filial: ${user.branch?.name || 'N/A'}` : '�
             include: {
                 branch: true,
                 cashier: true,
+                payments: true,
                 order_products: {
                     include: { product: true },
                 },
@@ -169,24 +170,38 @@ ${user.role === Role.ADMIN ? `🏪 Filial: ${user.branch?.name || 'N/A'}` : '�
             )
             .join('\n');
 
-        const paymentText =
-            {
-                [PaymentType.CASH]: "Naqd to'lov",
-                [PaymentType.CARD]: "Karta to'lov",
-                [PaymentType.CREDIT]: "Kredit to'lov",
-            }[order.payment_type] || "To'lov";
+        // Format payments display
+        const paymentsText = order.payments && order.payments.length > 0
+            ? order.payments.map((payment, index) => {
+                const emoji = {
+                    [PaymentType.CASH]: '💵',
+                    [PaymentType.CARD]: '💳',
+                    [PaymentType.CREDIT]: '🏦',
+                }[payment.payment_type] || '💰';
+                
+                const typeName = {
+                    [PaymentType.CASH]: 'Naqd',
+                    [PaymentType.CARD]: 'Karta',
+                    [PaymentType.CREDIT]: 'Kredit',
+                }[payment.payment_type] || 'Noma\'lum';
+                
+                return `${index + 1}. ${emoji} ${typeName}: ${payment.amount} so'm`;
+            }).join('\n')
+            : 'To\'lov ma\'lumotlari mavjud emas';
 
         const orderDetails = `
 📋 Buyurtma tafsilotlari:
 
 🔢 Raqam: ${order.order_number}
 👤 Mijoz: ${order.client_name}
-📞 Telefon: ${order.client_phone}
-🎂 Tug'ilgan kun: ${order.client_birthday.toLocaleDateString('uz-UZ')}
+📞 Telefon: ${order.client_phone || "Ko'rsatilmagan"}
+${order.client_birthday ? `🎂 Tug'ilgan kun: ${order.client_birthday.toLocaleDateString('uz-UZ')}` : ''}
 
 🏪 Filial: ${order.branch.name}
 💰 Kassir: ${order.cashier.full_name}
-💳 To'lov turi: ${paymentText}
+
+💳 To'lovlar:
+${paymentsText}
 
 📦 Mahsulotlar:
 ${products}

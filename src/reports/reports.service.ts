@@ -89,13 +89,19 @@ export class ReportsService {
 
     public convertToCsv(orders: any[]): string {
         const header =
-            'Order Number,Date,Client Name,Client Phone,Branch,Cashier,Payment Type,Total Amount\n';
+            'Order Number,Date,Client Name,Client Phone,Branch,Cashier,Payment Types,Total Amount\n';
         const rows = orders
             .map((o) => {
                 const clientName = o.client_name.includes(',')
                     ? `"${o.client_name}"`
                     : o.client_name;
-                return `${o.order_number},${o.created_at.toISOString()},${clientName},"${o.client_phone}",${o.branch.name},${o.cashier.full_name},${o.payment_type},${o.total_amount}`;
+                
+                // Format payment types from payments array
+                const paymentTypes = o.payments && o.payments.length > 0
+                    ? o.payments.map(p => `${p.payment_type}:${p.amount}`).join(';')
+                    : 'N/A';
+                
+                return `${o.order_number},${o.created_at.toISOString()},${clientName},"${o.client_phone}",${o.branch.name},${o.cashier.full_name},"${paymentTypes}",${o.total_amount}`;
             })
             .join('\n');
         return header + rows;

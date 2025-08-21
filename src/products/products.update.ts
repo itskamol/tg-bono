@@ -84,7 +84,7 @@ export class ProductsUpdate {
         await ctx.scene.enter('delete-product-scene');
     }
 
-    @Action(/^EDIT_PRODUCT_(.+)$/)
+    @Action(/^EDIT_PRODUCT_[0-9a-fA-F]{24}$/)
     async onEditProductSelect(@Ctx() ctx: Context) {
         const productData = (ctx.callbackQuery as any).data;
         const productId = productData.replace('EDIT_PRODUCT_', '');

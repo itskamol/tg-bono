@@ -45,15 +45,15 @@ model Order {
   id              String          @id @default(auto()) @map("_id") @db.ObjectId
   order_number    String          @unique
   client_name     String
-  client_phone    String
-  client_birthday DateTime
+  client_phone    String?
+  client_birthday DateTime?
   branch          Branch          @relation(fields: [branch_id], references: [id])
   branch_id       String          @db.ObjectId
   cashier         User            @relation(fields: [cashier_id], references: [id])
   cashier_id      String          @db.ObjectId
-  payment_type    PaymentType
   total_amount    Float
   order_products  Order_Product[]
+  payments        Payment[]
   created_at      DateTime        @default(now())
 }
 
@@ -66,6 +66,15 @@ model Order_Product {
   side       String // "oldi" or "orqa"
   quantity   Int
   price      Float
+}
+
+model Payment {
+  id           String      @id @default(auto()) @map("_id") @db.ObjectId
+  order        Order       @relation(fields: [order_id], references: [id])
+  order_id     String      @db.ObjectId
+  payment_type PaymentType
+  amount       Float
+  created_at   DateTime    @default(now())
 }
 
 model Setting {

@@ -80,10 +80,17 @@ export class AddUserScene {
 
         const roleText = role === Role.ADMIN ? '👨‍💼 Admin' : '💰 Kassir';
 
-        await ctx.editMessageText(
-            `✅ Rol tanlandi: ${roleText}\n\n📱 Yangi foydalanuvchining Telegram ID raqamini kiriting:`,
-            Markup.inlineKeyboard([Markup.button.callback('❌ Bekor qilish', 'CANCEL_ADD_USER')]),
-        );
+        try {
+            await ctx.editMessageText(
+                `✅ Rol tanlandi: ${roleText}\n\n📱 Yangi foydalanuvchining Telegram ID raqamini kiriting:`,
+                Markup.inlineKeyboard([Markup.button.callback('❌ Bekor qilish', 'CANCEL_ADD_USER')]),
+            );
+        } catch (error) {
+            await ctx.reply(
+                `✅ Rol tanlandi: ${roleText}\n\n📱 Yangi foydalanuvchining Telegram ID raqamini kiriting:`,
+                Markup.inlineKeyboard([Markup.button.callback('❌ Bekor qilish', 'CANCEL_ADD_USER')]),
+            );
+        }
     }
 
     @Action(/BRANCH_(.+)/)
@@ -97,7 +104,11 @@ export class AddUserScene {
         });
 
         if (!branch) {
-            await ctx.editMessageText('❌ Filial topilmadi.');
+            try {
+                await ctx.editMessageText('❌ Filial topilmadi.');
+            } catch (error) {
+                await ctx.reply('❌ Filial topilmadi.');
+            }
             await ctx.scene.leave();
             return;
         }
@@ -114,12 +125,22 @@ export class AddUserScene {
 
             const roleText = sceneState.role === Role.ADMIN ? '👨‍💼 Admin' : '💰 Kassir';
 
-            await ctx.editMessageText(
-                `✅ ${roleText} "${sceneState.fullName}" muvaffaqiyatli yaratildi!\n\n🏪 Filial: ${branch.name}`,
-            );
+            try {
+                await ctx.editMessageText(
+                    `✅ ${roleText} "${sceneState.fullName}" muvaffaqiyatli yaratildi!\n\n🏪 Filial: ${branch.name}`,
+                );
+            } catch (error) {
+                await ctx.reply(
+                    `✅ ${roleText} "${sceneState.fullName}" muvaffaqiyatli yaratildi!\n\n🏪 Filial: ${branch.name}`,
+                );
+            }
             await ctx.scene.leave();
         } catch (error) {
-            await ctx.editMessageText('❌ Foydalanuvchi yaratishda xatolik yuz berdi.');
+            try {
+                await ctx.editMessageText('❌ Foydalanuvchi yaratishda xatolik yuz berdi.');
+            } catch (error) {
+                await ctx.reply('❌ Foydalanuvchi yaratishda xatolik yuz berdi.');
+            }
             await ctx.scene.leave();
         }
     }

@@ -7,7 +7,7 @@ import { Role } from '@prisma/client';
 
 @Scene('product-reports-scene')
 export class ProductReportsScene {
-    constructor(private readonly prisma: PrismaService) {}
+    constructor(private readonly prisma: PrismaService) { }
 
     @SceneEnter()
     async onSceneEnter(@Ctx() ctx: Context) {
@@ -61,7 +61,7 @@ export class ProductReportsScene {
         // Get user from database since ctx.user might not be available in scenes
         const telegramId = ctx.from?.id;
         if (!telegramId) {
-            await ctx.editMessageText('❌ Telegram ID topilmadi.');
+            await ctx.reply('❌ Telegram ID topilmadi.');
             return;
         }
 
@@ -71,7 +71,7 @@ export class ProductReportsScene {
         });
 
         if (!user) {
-            await ctx.editMessageText("❌ Siz tizimda ro'yxatdan o'tmagansiz.");
+            await ctx.reply("❌ Siz tizimda ro'yxatdan o'tmagansiz.");
             return;
         }
 
@@ -99,20 +99,7 @@ export class ProductReportsScene {
                 orderBy: { _sum: { quantity: 'desc' } },
                 take: 10,
             }),
-            this.prisma.$queryRaw`
-        SELECT 
-          p.type,
-          SUM(op.quantity) as total_quantity,
-          SUM(op.price * op.quantity) as total_revenue,
-          COUNT(DISTINCT op.order_id) as order_count
-        FROM OrderProduct op
-        JOIN Product p ON op.product_id = p.id
-        JOIN \`Order\` o ON op.order_id = o.id
-        WHERE o.created_at >= ${startDate} AND o.created_at < ${endDate}
-        ${user.role === Role.ADMIN && user.branch_id ? `AND o.branch_id = '${user.branch_id}'` : ''}
-        GROUP BY p.type
-        ORDER BY total_quantity DESC
-      `,
+            this.getProductTypeStats(startDate, endDate, user.branch_id),
         ]);
 
         const productIds = productStats.map((p) => p.product_id);
@@ -151,6 +138,60 @@ ${typeList || "Ma'lumot yo'q"}
 ${user.role === Role.ADMIN ? `🏪 Filial: ${user.branch?.name || 'N/A'}` : '🌐 Barcha filiallar'}
     `;
 
-        await ctx.editMessageText(report);
+        await ctx.reply(report);
+    }
+
+    private async getProductTypeStats(startDate: Date, endDate: Date, branchId?: string) {
+        // Get all orders in the date range
+        const whereClause: any = {
+            created_at: {
+                gte: startDate,
+                lt: endDate,
+            },
+        };
+
+        if (branchId) {
+            whereClause.branch_id = branchId;
+        }
+
+        const orders = await this.prisma.order.findMany({
+            where: whereClause,
+            include: {
+                order_products: {
+                    include: {
+                        product: true,
+                    },
+                },
+            },
+        });
+
+        // Group by product type and calculate stats
+        const typeStats: { [key: string]: { total_quantity: number; total_revenue: number; order_count: Set<string> } } = {};
+
+        orders.forEach(order => {
+            order.order_products.forEach(orderProduct => {
+                const type = orderProduct.product.type;
+
+                if (!typeStats[type]) {
+                    typeStats[type] = {
+                        total_quantity: 0,
+                        total_revenue: 0,
+                        order_count: new Set(),
+                    };
+                }
+
+                typeStats[type].total_quantity += orderProduct.quantity;
+                typeStats[type].total_revenue += orderProduct.price * orderProduct.quantity;
+                typeStats[type].order_count.add(order.id);
+            });
+        });
+
+        // Convert to array format
+        return Object.entries(typeStats).map(([type, stats]) => ({
+            type,
+            total_quantity: stats.total_quantity,
+            total_revenue: stats.total_revenue,
+            order_count: stats.order_count.size,
+        })).sort((a, b) => b.total_quantity - a.total_quantity);
     }
 }

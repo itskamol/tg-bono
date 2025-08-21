@@ -1,4 +1,5 @@
-import { Scene, SceneEnter, On, Message, Ctx } from 'nestjs-telegraf';
+import { Scene, SceneEnter, On, Message, Action, Ctx } from 'nestjs-telegraf';
+import { Markup } from 'telegraf';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Context } from '../../interfaces/context.interface';
 
@@ -13,7 +14,12 @@ export class AddBranchScene {
 
     @SceneEnter()
     async onSceneEnter(@Ctx() ctx: Context) {
-        await ctx.reply('🏪 Yangi filial yaratish\n\nFilial nomini kiriting:');
+        await ctx.reply(
+            '🏪 Yangi filial yaratish\n\nFilial nomini kiriting:',
+            Markup.inlineKeyboard([
+                Markup.button.callback('❌ Bekor qilish', 'CANCEL_ADD_BRANCH'),
+            ])
+        );
     }
 
     @On('text')
@@ -33,7 +39,12 @@ export class AddBranchScene {
             }
 
             sceneState.name = text;
-            await ctx.reply('✅ Filial nomi saqlandi.\n\n📍 Filial manzilini kiriting:');
+            await ctx.reply(
+                '✅ Filial nomi saqlandi.\n\n📍 Filial manzilini kiriting:',
+                Markup.inlineKeyboard([
+                    Markup.button.callback('❌ Bekor qilish', 'CANCEL_ADD_BRANCH'),
+                ])
+            );
             return;
         }
 
@@ -61,5 +72,11 @@ export class AddBranchScene {
             }
             return;
         }
+    }
+
+    @Action('CANCEL_ADD_BRANCH')
+    async onCancelAddBranch(@Ctx() ctx: Context) {
+        await ctx.editMessageText('❌ Filial qo\'shish bekor qilindi.');
+        await ctx.scene.leave();
     }
 }
