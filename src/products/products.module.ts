@@ -7,6 +7,7 @@ import {
     EditProductTypeScene,
     EditProductSidesScene,
     EditProductPriceScene,
+    AddProductByNameScene,
 } from './scenes';
 import { PrismaModule } from '../prisma/prisma.module';
 
@@ -20,6 +21,7 @@ import { PrismaModule } from '../prisma/prisma.module';
         EditProductTypeScene,
         EditProductSidesScene,
         EditProductPriceScene,
+        AddProductByNameScene,
     ],
 })
 export class ProductsModule {}

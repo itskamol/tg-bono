@@ -2,13 +2,17 @@ import { Scene, SceneEnter, On, Message, Ctx } from 'nestjs-telegraf';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Context } from '../../interfaces/context.interface';
 
+interface EditBranchNameSceneState {
+    branchId: string;
+}
+
 @Scene('edit-branch-name-scene')
 export class EditBranchNameScene {
     constructor(private readonly prisma: PrismaService) {}
 
     @SceneEnter()
     async onSceneEnter(@Ctx() ctx: Context) {
-        const sceneState = ctx.scene.state as any;
+        const sceneState = ctx.scene.state as EditBranchNameSceneState;
         const branch = await this.prisma.branch.findUnique({
             where: { id: sceneState.branchId },
         });
@@ -24,7 +28,7 @@ export class EditBranchNameScene {
 
     @On('text')
     async onText(@Ctx() ctx: Context, @Message('text') text: string) {
-        const sceneState = ctx.scene.state as any;
+        const sceneState = ctx.scene.state as EditBranchNameSceneState;
 
         // Check if branch name already exists
         const existingBranch = await this.prisma.branch.findUnique({
@@ -44,7 +48,7 @@ export class EditBranchNameScene {
 
             await ctx.reply(`✅ Filial nomi "${text}" ga o'zgartirildi.`);
             await ctx.scene.leave();
-        } catch (error) {
+        } catch {
             await ctx.reply("❌ Filial nomini o'zgartirishda xatolik yuz berdi.");
             await ctx.scene.leave();
         }

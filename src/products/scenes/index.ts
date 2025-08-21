@@ -4,3 +4,4 @@ export { EditProductNameScene } from './edit-product-name.scene';
 export { EditProductTypeScene } from './edit-product-type.scene';
 export { EditProductSidesScene } from './edit-product-sides.scene';
 export { EditProductPriceScene } from './edit-product-price.scene';
+export { AddProductByNameScene } from './add-product-by-name.scene';

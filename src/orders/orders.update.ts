@@ -140,7 +140,10 @@ ${user.role === Role.ADMIN ? `ğŸª Filial: ${user.branch?.name || 'N/A'}` : 'ğŸŒ
 
     @Action(/^VIEW_ORDER_(.+)$/)
     async onViewOrder(@Ctx() ctx: Context) {
-        const orderData = (ctx.callbackQuery as any).data;
+        if (!('data' in ctx.callbackQuery)) {
+            return;
+        }
+        const orderData = ctx.callbackQuery.data;
         const orderId = orderData.replace('VIEW_ORDER_', '');
 
         const order = await this.prisma.order.findUnique({

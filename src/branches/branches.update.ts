@@ -14,7 +14,7 @@ export class BranchesUpdate {
 
     @Command('list_branches')
     @Roles(Role.SUPER_ADMIN)
-    async listBranches(@Ctx() ctx: Context) {
+    async listBranches() {
         const branches = await this.prisma.branch.findMany({
             include: {
                 _count: {
@@ -73,7 +73,10 @@ export class BranchesUpdate {
 
     @Action(/^EDIT_BRANCH_[^_]+$/)
     async onEditBranchSelect(@Ctx() ctx: Context) {
-        const branchData = (ctx.callbackQuery as any).data;
+        if (!('data' in ctx.callbackQuery)) {
+            return;
+        }
+        const branchData = ctx.callbackQuery.data;
         const branchId = branchData.replace('EDIT_BRANCH_', '');
 
         const branch = await this.prisma.branch.findUnique({
@@ -111,7 +114,10 @@ export class BranchesUpdate {
 
     @Action(/^EDIT_BRANCH_NAME_(.+)$/)
     async onEditBranchName(@Ctx() ctx: Context) {
-        const branchData = (ctx.callbackQuery as any).data;
+        if (!('data' in ctx.callbackQuery)) {
+            return;
+        }
+        const branchData = ctx.callbackQuery.data;
         const branchId = branchData.replace('EDIT_BRANCH_NAME_', '');
 
         await ctx.scene.enter('edit-branch-name-scene', { branchId });
@@ -119,7 +125,10 @@ export class BranchesUpdate {
 
     @Action(/^EDIT_BRANCH_ADDRESS_(.+)$/)
     async onEditBranchAddress(@Ctx() ctx: Context) {
-        const branchData = (ctx.callbackQuery as any).data;
+        if (!('data' in ctx.callbackQuery)) {
+            return;
+        }
+        const branchData = ctx.callbackQuery.data;
         const branchId = branchData.replace('EDIT_BRANCH_ADDRESS_', '');
 
         await ctx.scene.enter('edit-branch-address-scene', { branchId });

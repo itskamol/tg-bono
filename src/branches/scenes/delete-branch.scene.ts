@@ -38,7 +38,10 @@ export class DeleteBranchScene {
 
     @Action(/^DELETE_BRANCH_(.+)$/)
     async onDeleteBranchConfirm(@Ctx() ctx: Context) {
-        const branchData = (ctx.callbackQuery as any).data;
+        if (!('data' in ctx.callbackQuery)) {
+            return;
+        }
+        const branchData = ctx.callbackQuery.data;
         const branchId = branchData.replace('DELETE_BRANCH_', '');
 
         const branch = await this.prisma.branch.findUnique({
@@ -71,7 +74,10 @@ export class DeleteBranchScene {
 
     @Action(/^CONFIRM_DELETE_BRANCH_(.+)$/)
     async onConfirmDelete(@Ctx() ctx: Context) {
-        const branchData = (ctx.callbackQuery as any).data;
+        if (!('data' in ctx.callbackQuery)) {
+            return;
+        }
+        const branchData = ctx.callbackQuery.data;
         const branchId = branchData.replace('CONFIRM_DELETE_BRANCH_', '');
 
         try {
@@ -99,7 +105,7 @@ export class DeleteBranchScene {
                 `✅ "${branch.name}" filiali va unga tegishli barcha foydalanuvchilar muvaffaqiyatli o'chirildi.`,
             );
             await ctx.scene.leave();
-        } catch (error) {
+        } catch {
             await ctx.editMessageText("❌ Filialni o'chirishda xatolik yuz berdi.");
             await ctx.scene.leave();
         }

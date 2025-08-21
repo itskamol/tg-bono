@@ -38,6 +38,7 @@ export class AddUserScene {
                     [
                         Markup.button.callback('👨‍💼 Admin', `ROLE_${Role.ADMIN}`),
                         Markup.button.callback('💰 Kassir', `ROLE_${Role.CASHIER}`),
+                        Markup.button.callback('❌ Bekor qilish', 'CANCEL_ADD_USER'),
                         Markup.button.callback('🔙 Orqaga', 'BACK_TO_MAIN_MENU'),
                     ],
                     {
@@ -50,6 +51,9 @@ export class AddUserScene {
             sceneState.role = Role.CASHIER;
             await ctx.reply(
                 '💰 Siz yangi Kassir yaratyapsiz.\n\n📱 Yangi foydalanuvchining Telegram ID raqamini kiriting:',
+                Markup.inlineKeyboard([
+                    Markup.button.callback('❌ Bekor qilish', 'CANCEL_ADD_USER'),
+                ]),
             );
         }
     }
@@ -57,6 +61,12 @@ export class AddUserScene {
     @Action('BACK_TO_MAIN_MENU')
     async onBackToMainMenu(@Ctx() ctx: Context) {
         await ctx.reply('🔙 Asosiy menyuga qaytdingiz.');
+        await ctx.scene.leave();
+    }
+
+    @Action('CANCEL_ADD_USER')
+    async onCancelAddUser(@Ctx() ctx: Context) {
+        await ctx.reply("❌ Foydalanuvchi qo'shish bekor qilindi.");
         await ctx.scene.leave();
     }
 
@@ -72,6 +82,7 @@ export class AddUserScene {
 
         await ctx.editMessageText(
             `✅ Rol tanlandi: ${roleText}\n\n📱 Yangi foydalanuvchining Telegram ID raqamini kiriting:`,
+            Markup.inlineKeyboard([Markup.button.callback('❌ Bekor qilish', 'CANCEL_ADD_USER')]),
         );
     }
 
@@ -161,7 +172,12 @@ export class AddUserScene {
             }
 
             sceneState.telegramId = telegramIdInput;
-            await ctx.reply("✅ Telegram ID saqlandi.\n\n👤 To'liq ismni kiriting:");
+            await ctx.reply(
+                "✅ Telegram ID saqlandi.\n\n👤 To'liq ismni kiriting:",
+                Markup.inlineKeyboard([
+                    Markup.button.callback('❌ Bekor qilish', 'CANCEL_ADD_USER'),
+                ]),
+            );
             return;
         }
 
@@ -184,9 +200,15 @@ export class AddUserScene {
 
                 await ctx.reply(
                     "✅ To'liq ism saqlandi.\n\n🏪 Foydalanuvchini qaysi filialga tayinlaysiz?",
-                    Markup.inlineKeyboard(branchButtons, {
-                        columns: 2, // Har bir qatordagi tugmalar soni. 2 yoki 3 qilib o'zgartirishingiz mumkin.
-                    }),
+                    Markup.inlineKeyboard(
+                        [
+                            ...branchButtons,
+                            Markup.button.callback('❌ Bekor qilish', 'CANCEL_ADD_USER'),
+                        ],
+                        {
+                            columns: 2, // Har bir qatordagi tugmalar soni. 2 yoki 3 qilib o'zgartirishingiz mumkin.
+                        },
+                    ),
                 );
                 return;
             } else {

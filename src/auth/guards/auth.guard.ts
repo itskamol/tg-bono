@@ -4,6 +4,7 @@ import { TelegrafExecutionContext } from 'nestjs-telegraf';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ROLES_KEY } from '../decorators/roles.decorator';
 import { Role } from '@prisma/client';
+import { IContext } from 'src/interfaces/context.interface';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -23,8 +24,9 @@ export class AuthGuard implements CanActivate {
             return true;
         }
 
-        const ctx: TelegrafExecutionContext = TelegrafExecutionContext.create(context);
-        const { from } = ctx.getContext();
+        const ctx = TelegrafExecutionContext.create(context);
+        const telegramContext = ctx.getContext<IContext>();
+        const { from } = telegramContext;
 
         if (!from) {
             throw new UnauthorizedException('Telegram user not found.');
@@ -42,7 +44,7 @@ export class AuthGuard implements CanActivate {
         }
 
         // Attach user to context for use in handlers
-        ctx.getContext()['user'] = user;
+        telegramContext.user = user;
 
         const hasRole = () => requiredRoles.some((role: Role) => user.role === role);
 

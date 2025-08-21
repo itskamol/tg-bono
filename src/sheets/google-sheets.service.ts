@@ -19,7 +19,7 @@ export class GoogleSheetsService {
     private async getSheetsClient(credentials: string) {
         const auth = this.getAuth(credentials);
         const authClient = await auth.getClient();
-        return google.sheets({ auth: authClient as any, version: 'v4' });
+        return google.sheets({ auth: authClient, version: 'v4' });
     }
 
     async appendData(
@@ -89,7 +89,7 @@ export class GoogleSheetsService {
             );
             return true;
         } catch (error) {
-            this.logger.error('Failed to write to Google Sheets:', error.message);
+            this.logger.error('Failed to write to Google Sheets:', error);
             return false;
         }
     }

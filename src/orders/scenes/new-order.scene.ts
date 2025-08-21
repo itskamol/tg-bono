@@ -4,13 +4,27 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { Context } from '../../interfaces/context.interface';
 import { PaymentType } from '@prisma/client';
 
+interface NewOrderSceneState {
+    products: any[];
+    currentProduct: any;
+    newProduct?: any;
+    clientName?: string;
+    clientPhone?: string | null;
+    clientBirthday?: Date | null;
+    birthdaySkipped?: boolean;
+    awaitingNewProductName?: boolean;
+    awaitingNewProductPrice?: boolean;
+    totalAmount?: number;
+    paymentType?: PaymentType;
+}
+
 @Scene('new-order-scene')
 export class NewOrderScene {
     constructor(private readonly prisma: PrismaService) {}
 
     @SceneEnter()
     async onSceneEnter(@Ctx() ctx: Context) {
-        const sceneState = ctx.scene.state as any;
+        const sceneState = ctx.scene.state as NewOrderSceneState;
         sceneState.products = [];
         sceneState.currentProduct = {};
 
@@ -22,14 +36,17 @@ export class NewOrderScene {
 
     @On('text')
     async onText(@Ctx() ctx: Context, @Message('text') text: string) {
-        const sceneState = ctx.scene.state as any;
+        const sceneState = ctx.scene.state as NewOrderSceneState;
 
         // Step 1: Client Name
         if (!sceneState.clientName) {
             sceneState.clientName = text;
             await ctx.reply(
                 `✅ Mijoz ismi: ${text}\n\n📞 Mijozning telefon raqamini kiriting:`,
-                Markup.inlineKeyboard([Markup.button.callback('❌ Bekor qilish', 'CANCEL_ORDER')]),
+                Markup.inlineKeyboard([
+                    Markup.button.callback("⏭️ O'tkazib yuborish", 'SKIP_PHONE'),
+                    Markup.button.callback('❌ Bekor qilish', 'CANCEL_ORDER'),
+                ]),
             );
             return;
         }
@@ -37,7 +54,7 @@ export class NewOrderScene {
         // Step 2: Client Phone
         if (!sceneState.clientPhone) {
             // Basic phone validation
-            if (!/^[\+]?[0-9\s\-\(\)]{9,}$/.test(text)) {
+            if (!/^[+]?[0-9\s-()]{9,}$/.test(text)) {
                 await ctx.reply("❌ Noto'g'ri telefon raqam formati. Qaytadan kiriting:");
                 return;
             }
@@ -72,46 +89,88 @@ export class NewOrderScene {
             return this.showProductTypes(ctx);
         }
 
-        // Step 4: Quantity input
-        if (sceneState.awaitingQuantity) {
-            const quantity = parseInt(text, 10);
-            if (isNaN(quantity) || quantity <= 0) {
-                await ctx.reply("❌ Noto'g'ri miqdor. Musbat son kiriting:");
+        // Step 4: New product name
+        if (sceneState.awaitingNewProductName) {
+            sceneState.newProduct.name = text;
+            sceneState.awaitingNewProductName = false;
+            sceneState.awaitingNewProductPrice = true;
+            await ctx.reply(`💰 Narxini kiriting:`);
+            return;
+        }
+
+        // Step 5: New product price
+        if (sceneState.awaitingNewProductPrice) {
+            const price = parseInt(text, 10);
+            if (isNaN(price) || price <= 0) {
+                await ctx.reply("❌ Noto'g'ri narx. Musbat son kiriting:");
                 return;
             }
+            sceneState.newProduct.price = price;
+            sceneState.awaitingNewProductPrice = false;
 
-            sceneState.currentProduct.quantity = quantity;
+            const newProduct = await this.prisma.product.create({
+                data: {
+                    name: sceneState.newProduct.name,
+                    price: sceneState.newProduct.price,
+                    type: sceneState.newProduct.type,
+                },
+            });
+
+            sceneState.currentProduct.productId = newProduct.id;
+            sceneState.currentProduct.productId = newProduct.id;
+            sceneState.currentProduct.name = newProduct.name;
+            sceneState.currentProduct.price = newProduct.price;
+            sceneState.currentProduct.side = 'N/A'; // Assuming new products don't have sides for now
+            sceneState.currentProduct.quantity = 1; // Default quantity
+
+            // Add to products list and show summary
             sceneState.products.push({ ...sceneState.currentProduct });
             sceneState.currentProduct = {};
-            sceneState.awaitingQuantity = false;
-
-            const total = sceneState.products.reduce((sum, p) => sum + p.price * p.quantity, 0);
-            const productsList = sceneState.products
-                .map(
-                    (p, i) =>
-                        `${i + 1}. ${p.quantity}x ${p.name} (${p.side}) - ${p.price * p.quantity} so'm`,
-                )
-                .join('\n');
-
-            await ctx.reply(
-                `✅ Mahsulot qo'shildi!\n\n📦 Joriy mahsulotlar:\n${productsList}\n\n💰 Jami: ${total} so'm\n\nYana mahsulot qo'shasizmi?`,
-                Markup.inlineKeyboard(
-                    [
-                        Markup.button.callback('➕ Yana', 'ADD_PRODUCT'),
-                        Markup.button.callback("💳 To'lov", 'PAYMENT'),
-                        Markup.button.callback('❌ Bekor', 'CANCEL_ORDER'),
-                    ],
-                    {
-                        columns: 2, // Har bir qatordagi tugmalar soni. 2 yoki 3 qilib o'zgartirishingiz mumkin.
-                    },
-                ),
-            );
+            await this.showOrderSummary(ctx);
         }
+    }
+
+    async showOrderSummary(@Ctx() ctx: Context) {
+        const sceneState = ctx.scene.state as NewOrderSceneState;
+        const total = sceneState.products.reduce((sum, p) => sum + p.price * p.quantity, 0);
+        const productsList = sceneState.products
+            .map(
+                (p, i) =>
+                    `${i + 1}. ${p.quantity}x ${p.name} (${p.side}) - ${p.price * p.quantity} so'm`,
+            )
+            .join('\n');
+
+        await ctx.reply(
+            `✅ Mahsulot qo'shildi!\n\n📦 Joriy mahsulotlar:\n${productsList}\n\n💰 Jami: ${total} so'm\n\nYana mahsulot qo'shasizmi?`,
+            Markup.inlineKeyboard(
+                [
+                    Markup.button.callback('➕ Yana', 'ADD_PRODUCT'),
+                    Markup.button.callback("💳 To'lov", 'PAYMENT'),
+                    Markup.button.callback('❌ Bekor qilish', 'CANCEL_ORDER'),
+                ],
+                {
+                    columns: 2,
+                },
+            ),
+        );
+    }
+
+    @Action('SKIP_PHONE')
+    async onSkipPhone(@Ctx() ctx: Context) {
+        const sceneState = ctx.scene.state as NewOrderSceneState;
+        sceneState.clientPhone = null;
+        await ctx.reply(
+            `⏭️ Telefon raqami o'tkazib yuborildi.\n\n🎂 Mijozning tug'ilgan kunini kiriting (YYYY-MM-DD):`,
+            Markup.inlineKeyboard([
+                Markup.button.callback("⏭️ O'tkazib yuborish", 'SKIP_BIRTHDAY'),
+                Markup.button.callback('❌ Bekor qilish', 'CANCEL_ORDER'),
+            ]),
+        );
     }
 
     @Action('SKIP_BIRTHDAY')
     async onSkipBirthday(@Ctx() ctx: Context) {
-        const sceneState = ctx.scene.state as any;
+        const sceneState = ctx.scene.state as NewOrderSceneState;
         sceneState.birthdaySkipped = true;
         sceneState.clientBirthday = null;
 
@@ -152,8 +211,11 @@ export class NewOrderScene {
 
     @Action(/^TYPE_(.+)$/)
     async onProductType(@Ctx() ctx: Context) {
-        const type = (ctx.callbackQuery as any).data.replace('TYPE_', '');
-        const sceneState = ctx.scene.state as any;
+        if (!('data' in ctx.callbackQuery)) {
+            return;
+        }
+        const type = ctx.callbackQuery.data.replace('TYPE_', '');
+        const sceneState = ctx.scene.state as NewOrderSceneState;
         sceneState.currentProduct.type = type;
 
         const products = await this.prisma.product.findMany({
@@ -166,24 +228,42 @@ export class NewOrderScene {
         );
 
         await ctx.editMessageText(
-            `${this.getTypeEmoji(type)} "${this.capitalizeFirst(type)}" tanlandi.\n\n📋 Mahsulotni tanlang:`,
+            `${this.getTypeEmoji(type)} "${this.capitalizeFirst(
+                type,
+            )}" tanlandi.\n\n📋 Mahsulotni tanlang:`,
             Markup.inlineKeyboard(
                 [
                     ...productButtons,
+                    Markup.button.callback('➕ Yangi mahsulot', `CREATE_PRODUCT_${type}`),
                     Markup.button.callback('🔙 Orqaga', 'BACK_TO_TYPES'),
                     Markup.button.callback('❌ Bekor qilish', 'CANCEL_ORDER'),
                 ],
                 {
-                    columns: 2, // Har bir qatordagi tugmalar soni. 2 yoki 3 qilib o'zgartirishingiz mumkin.
+                    columns: 2,
                 },
             ),
         );
     }
 
+    @Action(/^CREATE_PRODUCT_(.+)$/)
+    async onCreateProduct(@Ctx() ctx: Context) {
+        if (!('data' in ctx.callbackQuery)) {
+            return;
+        }
+        const type = ctx.callbackQuery.data.replace('CREATE_PRODUCT_', '');
+        const sceneState = ctx.scene.state as NewOrderSceneState;
+        sceneState.newProduct = { type };
+        await ctx.editMessageText(`🆕 Yangi mahsulot nomini kiriting:`);
+        sceneState.awaitingNewProductName = true;
+    }
+
     @Action(/^PRODUCT_(.+)$/)
     async onProduct(@Ctx() ctx: Context) {
-        const productId = (ctx.callbackQuery as any).data.replace('PRODUCT_', '');
-        const sceneState = ctx.scene.state as any;
+        if (!('data' in ctx.callbackQuery)) {
+            return;
+        }
+        const productId = ctx.callbackQuery.data.replace('PRODUCT_', '');
+        const sceneState = ctx.scene.state as NewOrderSceneState;
 
         const product = await this.prisma.product.findUnique({
             where: { id: productId },
@@ -223,24 +303,33 @@ export class NewOrderScene {
                 ),
             );
         } else {
+            // Product has no sides, add with quantity 1 and show summary
             sceneState.currentProduct.side = 'N/A';
-            await ctx.editMessageText(
-                `📦 "${product.name}" tanlandi (${product.price} so'm)\n\n🔢 Miqdorni kiriting:`,
-            );
-            sceneState.awaitingQuantity = true;
+            sceneState.currentProduct.quantity = 1;
+            sceneState.products.push({ ...sceneState.currentProduct });
+            sceneState.currentProduct = {};
+            await ctx.editMessageText(`✅ "${product.name}" qo'shildi.`);
+            await this.showOrderSummary(ctx);
         }
     }
 
     @Action(/^SIDE_(.+)$/)
     async onSide(@Ctx() ctx: Context) {
-        const side = (ctx.callbackQuery as any).data.replace('SIDE_', '');
-        const sceneState = ctx.scene.state as any;
+        if (!('data' in ctx.callbackQuery)) {
+            return;
+        }
+        const side = ctx.callbackQuery.data.replace('SIDE_', '');
+        const sceneState = ctx.scene.state as NewOrderSceneState;
         sceneState.currentProduct.side = side;
-
+        sceneState.currentProduct.quantity = 1;
+        sceneState.products.push({ ...sceneState.currentProduct });
         await ctx.editMessageText(
-            `✅ "${this.capitalizeFirst(side)}" tomoni tanlandi.\n\n🔢 Miqdorni kiriting:`,
+            `✅ "${sceneState.currentProduct.name}" (${this.capitalizeFirst(
+                side,
+            )}) qo'shildi.`,
         );
-        sceneState.awaitingQuantity = true;
+        sceneState.currentProduct = {};
+        await this.showOrderSummary(ctx);
     }
 
     @Action('BACK_TO_TYPES')
@@ -256,7 +345,7 @@ export class NewOrderScene {
 
     @Action('PAYMENT')
     async onPayment(@Ctx() ctx: Context) {
-        const sceneState = ctx.scene.state as any;
+        const sceneState = ctx.scene.state as NewOrderSceneState;
 
         if (!sceneState.products || sceneState.products.length === 0) {
             await ctx.editMessageText("❌ Buyurtmada mahsulot yo'q. Avval mahsulot qo'shing.");
@@ -292,9 +381,12 @@ export class NewOrderScene {
 
     @Action(/^PAYMENT_(.+)$/)
     async onPaymentType(@Ctx() ctx: Context) {
-        const paymentType = (ctx.callbackQuery as any).data.replace('PAYMENT_', '');
-        const sceneState = ctx.scene.state as any;
-        sceneState.paymentType = paymentType;
+        if (!('data' in ctx.callbackQuery)) {
+            return;
+        }
+        const paymentType = ctx.callbackQuery.data.replace('PAYMENT_', '');
+        const sceneState = ctx.scene.state as NewOrderSceneState;
+        sceneState.paymentType = paymentType as PaymentType;
 
         const productsList = sceneState.products
             .map(
@@ -348,7 +440,7 @@ ${paymentEmoji} To'lov: ${paymentText}
 
     @Action('CONFIRM_ORDER')
     async onConfirmOrder(@Ctx() ctx: Context) {
-        const sceneState = ctx.scene.state as any;
+        const sceneState = ctx.scene.state as NewOrderSceneState;
 
         try {
             // Get user from database since ctx.user might not be available in scenes
@@ -378,7 +470,7 @@ ${paymentEmoji} To'lov: ${paymentText}
 
             const orderNumber = `ORDER-${Date.now()}-${user.branch_id.slice(-4)}`;
 
-            const order = await this.prisma.order.create({
+            await this.prisma.order.create({
                 data: {
                     order_number: orderNumber,
                     client_name: sceneState.clientName,
