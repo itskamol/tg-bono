@@ -2,6 +2,7 @@ import { Scene, SceneEnter, On, Message, Action, Ctx } from 'nestjs-telegraf';
 import { Markup } from 'telegraf';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Context } from '../../interfaces/context.interface';
+import { PaymentType } from '@prisma/client';
 
 @Scene('new-order-scene')
 export class NewOrderScene {
@@ -255,9 +256,9 @@ export class NewOrderScene {
         await ctx.editMessageText(
             `💰 Buyurtma jami: ${total} so'm\n\n📦 Mahsulotlar:\n${productsList}\n\n💳 To'lov turini tanlang:`,
             Markup.inlineKeyboard([
-                Markup.button.callback('💵 Naqd', 'PAYMENT_cash'),
-                Markup.button.callback('💳 Karta', 'PAYMENT_card'),
-                Markup.button.callback('🏦 Kredit', 'PAYMENT_credit'),
+                Markup.button.callback('💵 Naqd', `PAYMENT_${PaymentType.CASH}`),
+                Markup.button.callback('💳 Karta', `PAYMENT_${PaymentType.CARD}`),
+                Markup.button.callback('🏦 Kredit', `PAYMENT_${PaymentType.CREDIT}`),
                 Markup.button.callback('🔙 Orqaga', 'ADD_PRODUCT'),
                 Markup.button.callback('❌ Bekor', 'CANCEL_ORDER'),
             ]),
@@ -279,10 +280,17 @@ export class NewOrderScene {
 
         const paymentEmoji =
             {
-                cash: '💵',
-                card: '💳',
-                credit: '🏦',
+                [PaymentType.CASH]: '💵',
+                [PaymentType.CARD]: '💳',
+                [PaymentType.CREDIT]: '🏦',
             }[paymentType] || '💰';
+
+        const paymentText =
+            {
+                [PaymentType.CASH]: "Naqd to'lov",
+                [PaymentType.CARD]: "Karta to'lov",
+                [PaymentType.CREDIT]: "Kredit to'lov",
+            }[paymentType] || "To'lov";
 
         const orderSummary = `
 📋 Buyurtmani tasdiqlang:
@@ -295,7 +303,7 @@ ${sceneState.clientBirthday ? `🎂 Tug'ilgan kun: ${sceneState.clientBirthday.t
 ${productsList}
 
 💰 Jami: ${sceneState.totalAmount} so'm
-${paymentEmoji} To'lov: ${this.capitalizeFirst(paymentType)}
+${paymentEmoji} To'lov: ${paymentText}
     `;
 
         await ctx.editMessageText(

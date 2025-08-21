@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { Start, Update, Ctx, Command } from 'nestjs-telegraf';
 import { Context } from '../interfaces/context.interface';
 import { PrismaService } from '../prisma/prisma.service';
+import { Role } from '@prisma/client';
 
 @Update()
 @Injectable()
@@ -38,9 +39,9 @@ Admin sizni tizimga qo'shishi kerak.
 
         const roleText =
             {
-                super_admin: 'Super Admin',
-                admin: 'Admin',
-                kassir: 'Kassir',
+                [Role.SUPER_ADMIN]: 'Super Admin',
+                [Role.ADMIN]: 'Admin',
+                [Role.CASHIER]: 'Kassir',
             }[user.role] || user.role;
 
         const startMessage = `
@@ -83,7 +84,7 @@ Admin sizni tizimga qo'shishi kerak.
 `;
 
         // Role-based commands
-        if (user.role === 'super_admin') {
+        if (user.role === Role.SUPER_ADMIN) {
             helpMessage += `
 🔧 Super Admin buyruqlari:
 /list_users - Foydalanuvchilar ro'yxati
@@ -110,7 +111,7 @@ Admin sizni tizimga qo'shishi kerak.
 📊 Hisobotlar:
 /reports - Batafsil hisobotlar
 `;
-        } else if (user.role === 'admin') {
+        } else if (user.role === Role.ADMIN) {
             helpMessage += `
 👨‍💼 Admin buyruqlari:
 /list_users - Filial foydalanuvchilari
@@ -131,7 +132,7 @@ Admin sizni tizimga qo'shishi kerak.
 📊 Hisobotlar:
 /reports - Batafsil hisobotlar
 `;
-        } else if (user.role === 'kassir') {
+        } else if (user.role === Role.CASHIER) {
             helpMessage += `
 💰 Kassir buyruqlari:
 /neworder - Yangi buyurtma yaratish

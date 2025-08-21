@@ -3,7 +3,7 @@ import { Reflector } from '@nestjs/core';
 import { TelegrafExecutionContext } from 'nestjs-telegraf';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ROLES_KEY } from '../decorators/roles.decorator';
-import { Role } from '../enums/role.enum';
+import { Role } from '@prisma/client';
 
 @Injectable()
 export class AuthGuard implements CanActivate {

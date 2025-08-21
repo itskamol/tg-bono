@@ -1,3 +1,5 @@
+import { PaymentType } from '@prisma/client';
+
 export class ReportHelpers {
     static getPeriodDates(period: string) {
         const today = new Date();
@@ -49,12 +51,13 @@ export class ReportHelpers {
     }
 
     static getPaymentEmoji(paymentType: string): string {
-        const emojis = {
-            cash: '💵',
-            card: '💳',
-            credit: '🏦',
-        };
-        return emojis[paymentType.toLowerCase()] || '💰';
+        const paymentEmoji =
+            {
+                [PaymentType.CASH]: '💵',
+                [PaymentType.CARD]: '💳',
+                [PaymentType.CREDIT]: '🏦',
+            }[paymentType] || '💰';
+        return paymentEmoji[paymentType.toLowerCase()] || '💰';
     }
 
     static getTypeEmoji(type: string): string {

@@ -75,13 +75,13 @@ model Setting {
 }
 
 enum Role {
-  super_admin
-  admin
-  kassir
+  SUPER_ADMIN
+  ADMIN
+  CASHIER
 }
 
 enum PaymentType {
-  cash
-  card
-  credit
+  CASH
+  CARD
+  CREDIT
 }

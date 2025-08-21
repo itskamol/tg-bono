@@ -13,7 +13,9 @@
         "start:debug": "nest start --debug --watch",
         "start:prod": "node dist/src/main",
         "lint": "eslint \"{src,apps,libs,test}/**/*.ts\" --fix",
-        "seed": "ts-node prisma/seed.ts"
+        "db:seed": "ts-node prisma/seed.ts",
+        "db:generate": "npx prisma generate",
+        "db:reset": "npx prisma db push --force-reset && npx prisma db seed"
     },
     "dependencies": {
         "@nestjs/common": "^11.1.6",

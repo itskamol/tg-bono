@@ -2,7 +2,7 @@ import { Scene, SceneEnter, Action, Ctx } from 'nestjs-telegraf';
 import { Markup } from 'telegraf';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Context } from '../../interfaces/context.interface';
-import { Role } from '../../auth/enums/role.enum';
+import { Role } from '@prisma/client';
 
 @Scene('delete-user-scene')
 export class DeleteUserScene {
@@ -44,7 +44,7 @@ export class DeleteUserScene {
             users = await this.prisma.user.findMany({
                 where: {
                     branch_id: currentUser.branch_id,
-                    role: Role.KASSIR, // Admin can only delete kassirs
+                    role: Role.CASHIER, // Admin can only delete cashiers
                 },
                 include: { branch: true },
             });
@@ -82,10 +82,17 @@ export class DeleteUserScene {
             return;
         }
 
+        const roleText =
+            {
+                [Role.SUPER_ADMIN]: 'Super Admin',
+                [Role.ADMIN]: 'Admin',
+                [Role.CASHIER]: 'Kassir',
+            }[user.role] || user.role;
+
         await ctx.editMessageText(
             `⚠️ Rostdan ham "${user.full_name}" foydalanuvchisini o'chirmoqchimisiz?\n\n` +
                 `👤 To'liq ism: ${user.full_name}\n` +
-                `🎭 Rol: ${user.role}\n` +
+                `🎭 Rol: ${roleText}\n` +
                 `🏪 Filial: ${user.branch?.name || 'N/A'}`,
             Markup.inlineKeyboard([
                 Markup.button.callback('✅ Ha', `CONFIRM_DELETE_${userId}`),

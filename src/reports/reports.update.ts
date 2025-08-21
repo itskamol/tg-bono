@@ -3,8 +3,8 @@ import { Update, Command, Ctx, Action } from 'nestjs-telegraf';
 import { Markup } from 'telegraf';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
-import { Role } from '../auth/enums/role.enum';
 import { Context } from '../interfaces/context.interface';
+import { Role } from '@prisma/client';
 
 @Update()
 @UseGuards(AuthGuard)

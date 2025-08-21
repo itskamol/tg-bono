@@ -3,9 +3,9 @@ import { Update, Command, Ctx, Action } from 'nestjs-telegraf';
 import { Markup } from 'telegraf';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
-import { Role } from '../auth/enums/role.enum';
 import { PrismaService } from '../prisma/prisma.service';
 import { Context } from '../interfaces/context.interface';
+import { Role } from '@prisma/client';
 
 @Update()
 @UseGuards(AuthGuard)
@@ -74,7 +74,7 @@ export class UsersUpdate {
             users = await this.prisma.user.findMany({
                 where: {
                     branch_id: user.branch_id,
-                    role: Role.KASSIR, // Admin can only edit kassirs
+                    role: Role.CASHIER, // Admin can only edit cashiers
                 },
                 include: { branch: true },
             });
@@ -110,10 +110,17 @@ export class UsersUpdate {
             return;
         }
 
+        const roleText =
+            {
+                [Role.SUPER_ADMIN]: 'Super Admin',
+                [Role.ADMIN]: 'Admin',
+                [Role.CASHIER]: 'Kassir',
+            }[user.role] || user.role;
+
         await ctx.editMessageText(
             `✏️ "${user.full_name}" foydalanuvchisini tahrirlash:\n\n` +
                 `👤 To'liq ism: ${user.full_name}\n` +
-                `🎭 Rol: ${user.role}\n` +
+                `🎭 Rol: ${roleText}\n` +
                 `🏪 Filial: ${user.branch?.name || 'N/A'}\n\n` +
                 `Nimani o'zgartirmoqchisiz?`,
             Markup.inlineKeyboard([

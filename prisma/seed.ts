@@ -131,7 +131,7 @@ async function main() {
     await safeCreateUser({
       telegram_id: process.env.SUPER_ADMIN_ID ? parseInt(process.env.SUPER_ADMIN_ID) : 1165097041,
       full_name: 'Super Administrator',
-      role: Role.super_admin,
+      role: Role.SUPER_ADMIN,
     });
 
     // Admins for each branch
@@ -139,7 +139,7 @@ async function main() {
       await safeCreateUser({
         telegram_id: 987654321,
         full_name: 'Admin Adminov',
-        role: Role.admin,
+        role: Role.ADMIN,
         branch_id: branch1.id,
       });
     }
@@ -148,7 +148,7 @@ async function main() {
       await safeCreateUser({
         telegram_id: 987654322,
         full_name: 'Admin Yunusobod',
-        role: Role.admin,
+        role: Role.ADMIN,
         branch_id: branch2.id,
       });
     }
@@ -158,7 +158,7 @@ async function main() {
       await safeCreateUser({
         telegram_id: 555666777,
         full_name: 'Kassir Kassirov',
-        role: Role.kassir,
+        role: Role.CASHIER,
         branch_id: branch1.id,
       });
     }
@@ -167,7 +167,7 @@ async function main() {
       await safeCreateUser({
         telegram_id: 555666778,
         full_name: 'Kassir Yunusobod',
-        role: Role.kassir,
+        role: Role.CASHIER,
         branch_id: branch2.id,
       });
     }
@@ -176,7 +176,7 @@ async function main() {
       await safeCreateUser({
         telegram_id: 555666779,
         full_name: 'Kassir Chilonzor',
-        role: Role.kassir,
+        role: Role.CASHIER,
         branch_id: branch3.id,
       });
     }

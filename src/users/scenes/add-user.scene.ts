@@ -1,8 +1,8 @@
 import { Scene, SceneEnter, On, Message, Action, Ctx } from 'nestjs-telegraf';
 import { Markup } from 'telegraf';
-import { Role } from '../../auth/enums/role.enum';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Context } from '../../interfaces/context.interface';
+import { Role } from '@prisma/client';
 
 @Scene('add-user-scene')
 export class AddUserScene {
@@ -35,17 +35,24 @@ export class AddUserScene {
             await ctx.reply(
                 '👤 Yangi foydalanuvchi uchun rolni tanlang:',
                 Markup.inlineKeyboard([
-                    Markup.button.callback('👨‍💼 Admin', 'ROLE_admin'),
-                    Markup.button.callback('💰 Kassir', 'ROLE_kassir'),
+                    Markup.button.callback('👨‍💼 Admin', `ROLE_${Role.ADMIN}`),
+                    Markup.button.callback('💰 Kassir', `ROLE_${Role.CASHIER}`),
+                    Markup.button.callback('🔙 Orqaga', 'BACK_TO_MAIN_MENU'),
                 ]),
             );
         } else if (user.role === Role.ADMIN) {
             // Admin can only create Kassir
-            sceneState.role = Role.KASSIR;
+            sceneState.role = Role.CASHIER;
             await ctx.reply(
                 '💰 Siz yangi Kassir yaratyapsiz.\n\n📱 Yangi foydalanuvchining Telegram ID raqamini kiriting:',
             );
         }
+    }
+
+    @Action('BACK_TO_MAIN_MENU')
+    async onBackToMainMenu(@Ctx() ctx: Context) {
+        await ctx.reply('🔙 Asosiy menyuga qaytdingiz.');
+        await ctx.scene.leave();
     }
 
     @Action(/ROLE_(.+)/)
@@ -54,9 +61,9 @@ export class AddUserScene {
         const role = roleData.split('_')[1];
         const sceneState = ctx.scene.state as any;
 
-        sceneState.role = role === 'admin' ? Role.ADMIN : Role.KASSIR;
+        sceneState.role = role === Role.ADMIN ? Role.ADMIN : Role.CASHIER;
 
-        const roleText = role === 'admin' ? '👨‍💼 Admin' : '💰 Kassir';
+        const roleText = role === Role.ADMIN ? '👨‍💼 Admin' : '💰 Kassir';
 
         await ctx.editMessageText(
             `✅ Rol tanlandi: ${roleText}\n\n📱 Yangi foydalanuvchining Telegram ID raqamini kiriting:`,

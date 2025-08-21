@@ -3,7 +3,7 @@ import { SchedulerRegistry } from '@nestjs/schedule';
 import { CronJob } from 'cron';
 import { ReportsService } from '../reports/reports.service';
 import { PrismaService } from 'src/prisma/prisma.service';
-import { Role } from 'src/auth/enums/role.enum';
+import { Role } from '@prisma/client';
 
 @Injectable()
 export class SchedulerService implements OnModuleInit {

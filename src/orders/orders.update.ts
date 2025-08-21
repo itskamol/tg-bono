@@ -3,9 +3,9 @@ import { Update, Command, Ctx, Action } from 'nestjs-telegraf';
 import { Markup } from 'telegraf';
 import { AuthGuard } from '../auth/guards/auth.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
-import { Role } from '../auth/enums/role.enum';
 import { PrismaService } from '../prisma/prisma.service';
 import { Context } from '../interfaces/context.interface';
+import { PaymentType, Role } from '@prisma/client';
 
 @Update()
 @UseGuards(AuthGuard)
@@ -13,7 +13,7 @@ export class OrdersUpdate {
     constructor(private readonly prisma: PrismaService) {}
 
     @Command('neworder')
-    @Roles(Role.KASSIR)
+    @Roles(Role.CASHIER)
     async onNewOrder(@Ctx() ctx: Context) {
         if (!ctx.user.branch_id) {
             await ctx.reply(
@@ -25,7 +25,7 @@ export class OrdersUpdate {
     }
 
     @Command('list_orders')
-    @Roles(Role.SUPER_ADMIN, Role.ADMIN, Role.KASSIR)
+    @Roles(Role.SUPER_ADMIN, Role.ADMIN, Role.CASHIER)
     async listOrders(@Ctx() ctx: Context) {
         const user = ctx.user;
         let orders;
@@ -42,7 +42,7 @@ export class OrdersUpdate {
                 orderBy: { created_at: 'desc' },
                 take: 10,
             });
-        } else if (user.role === Role.ADMIN || user.role === Role.KASSIR) {
+        } else if (user.role === Role.ADMIN || user.role === Role.CASHIER) {
             if (!user.branch_id) {
                 await ctx.reply('❌ Siz hech qanday filialga tayinlanmagansiz.');
                 return;
@@ -163,6 +163,13 @@ ${user.role === Role.ADMIN ? `🏪 Filial: ${user.branch?.name || 'N/A'}` : '�
             )
             .join('\n');
 
+        const paymentText =
+            {
+                [PaymentType.CASH]: "Naqd to'lov",
+                [PaymentType.CARD]: "Karta to'lov",
+                [PaymentType.CREDIT]: "Kredit to'lov",
+            }[order.payment_type] || "To'lov";
+
         const orderDetails = `
 📋 Buyurtma tafsilotlari:
 
@@ -173,7 +180,7 @@ ${user.role === Role.ADMIN ? `🏪 Filial: ${user.branch?.name || 'N/A'}` : '�
 
 🏪 Filial: ${order.branch.name}
 💰 Kassir: ${order.cashier.full_name}
-💳 To'lov turi: ${order.payment_type}
+💳 To'lov turi: ${paymentText}
 
 📦 Mahsulotlar:
 ${products}

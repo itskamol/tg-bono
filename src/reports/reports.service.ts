@@ -1,8 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { EncryptionService } from '../settings/encryption.service';
-import { Role } from '../auth/enums/role.enum';
-import { Prisma } from '@prisma/client';
+import { Prisma, Role } from '@prisma/client';
 import * as nodemailer from 'nodemailer';
 
 @Injectable()
@@ -77,7 +76,7 @@ export class ReportsService {
         if (user.role === Role.ADMIN) {
             if (!user.branch_id) return [];
             where.branch_id = user.branch_id;
-        } else if (user.role === Role.KASSIR) {
+        } else if (user.role === Role.CASHIER) {
             where.cashier_id = user.id;
         }
 

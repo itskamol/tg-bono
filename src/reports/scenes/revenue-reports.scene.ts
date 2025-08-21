@@ -2,9 +2,8 @@ import { Scene, SceneEnter, Action, Ctx } from 'nestjs-telegraf';
 import { Markup } from 'telegraf';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Context } from '../../interfaces/context.interface';
-import { Role } from '../../auth/enums/role.enum';
 import { ReportHelpers } from '../helpers/report.helpers';
-import { Prisma } from '@prisma/client';
+import { Prisma, Role } from '@prisma/client';
 
 @Scene('revenue-reports-scene')
 export class RevenueReportsScene {

@@ -3,6 +3,7 @@ import { Markup } from 'telegraf';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Context } from '../../interfaces/context.interface';
 import { ReportHelpers } from '../helpers/report.helpers';
+import { Role } from '@prisma/client';
 
 @Scene('user-reports-scene')
 export class UserReportsScene {
@@ -63,7 +64,7 @@ export class UserReportsScene {
             where: { telegram_id: telegramId },
         });
 
-        if (!user || user.role !== 'super_admin') {
+        if (!user || user.role !== Role.SUPER_ADMIN) {
             await ctx.editMessageText("❌ Sizda bu hisobotni ko'rish huquqi yo'q.");
             return;
         }
