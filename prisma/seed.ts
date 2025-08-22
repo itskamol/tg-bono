@@ -174,7 +174,7 @@ async function main() {
 
     if (branch3) {
       await safeCreateUser({
-        telegram_id: 555666779,
+        telegram_id: 7561078520,
         full_name: 'Kassir Chilonzor',
         role: Role.CASHIER,
         branch_id: branch3.id,

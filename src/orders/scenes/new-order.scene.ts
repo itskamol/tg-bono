@@ -282,7 +282,6 @@ Yana mahsulot qo'shasizmi?`;
                 )}" tanlandi.\n\n📋 Mahsulotni tanlang:`,
                 Markup.inlineKeyboard(
                     [
-                        ...productButtons,
                         Markup.button.callback('➕ Yangi mahsulot', `CREATE_PRODUCT_${type}`),
                         Markup.button.callback('🔙 Orqaga', 'BACK_TO_TYPES'),
                         Markup.button.callback('❌ Bekor qilish', 'CANCEL_ORDER'),
@@ -299,7 +298,6 @@ Yana mahsulot qo'shasizmi?`;
                 )}" tanlandi.\n\n📋 Mahsulotni tanlang:`,
                 Markup.inlineKeyboard(
                     [
-                        ...productButtons,
                         Markup.button.callback('➕ Yangi mahsulot', `CREATE_PRODUCT_${type}`),
                         Markup.button.callback('🔙 Orqaga', 'BACK_TO_TYPES'),
                         Markup.button.callback('❌ Bekor qilish', 'CANCEL_ORDER'),
