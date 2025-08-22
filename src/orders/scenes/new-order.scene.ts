@@ -266,15 +266,6 @@ Yana mahsulot qo'shasizmi?`;
         const sceneState = ctx.scene.state as NewOrderSceneState;
         sceneState.currentProduct.type = type;
 
-        const products = await this.prisma.product.findMany({
-            where: { type },
-            orderBy: { name: 'asc' },
-        });
-
-        const productButtons = products.map((p) =>
-            Markup.button.callback(`${p.name} - ${p.price} so'm`, `PRODUCT_${p.id}`),
-        );
-
         try {
             await ctx.editMessageText(
                 `${this.getTypeEmoji(type)} "${this.capitalizeFirst(

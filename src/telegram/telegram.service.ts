@@ -3,6 +3,7 @@ import { Start, Update, Ctx, Command } from 'nestjs-telegraf';
 import { Context } from '../interfaces/context.interface';
 import { PrismaService } from '../prisma/prisma.service';
 import { Role } from '@prisma/client';
+import { Markup } from 'telegraf';
 
 @Update()
 @Injectable()
@@ -54,7 +55,58 @@ Admin sizni tizimga qo'shishi kerak.
 📋 Mavjud buyruqlar uchun /help yuboring.
     `;
 
-        await ctx.reply(startMessage);
+        const commands = [
+            { command: '/start', description: 'Botni ishga tushirish' },
+            { command: '/help', description: 'Yordam' },
+            { command: '/profile', description: "Profil ma'lumotlari" },
+        ];
+
+        if (user.role === Role.SUPER_ADMIN) {
+            commands.push(
+                { command: '/list_users', description: "Foydalanuvchilar ro'yxati" },
+                { command: '/add_user', description: "Yangi foydalanuvchi qo'shish" },
+                { command: '/edit_user', description: 'Foydalanuvchini tahrirlash' },
+                { command: '/delete_user', description: "Foydalanuvchini o'chirish" },
+                { command: '/list_branches', description: "Filiallar ro'yxati" },
+                { command: '/add_branch', description: "Yangi filial qo'shish" },
+                { command: '/edit_branch', description: 'Filialni tahrirlash' },
+                { command: '/delete_branch', description: "Filialni o'chirish" },
+                { command: '/list_products', description: "Mahsulotlar ro'yxati" },
+                { command: '/add_product', description: "Yangi mahsulot qo'shish" },
+                { command: '/edit_product', description: 'Mahsulotni tahrirlash' },
+                { command: '/delete_product', description: "Mahsulotni o'chirish" },
+                { command: '/list_orders', description: "Buyurtmalar ro'yxati" },
+                { command: '/order_stats', description: 'Buyurtma statistikasi' },
+                { command: '/reports', description: 'Batafsil hisobotlar' },
+                { command: '/settings', description: 'Bot sozlamalari' },
+            );
+        } else if (user.role === Role.ADMIN) {
+            commands.push(
+                { command: '/list_users', description: 'Filial foydalanuvchilari' },
+                { command: '/add_user', description: "Yangi kassir qo'shish" },
+                { command: '/edit_user', description: 'Kassirni tahrirlash' },
+                { command: '/delete_user', description: "Kassirni o'chirish" },
+                { command: '/list_products', description: "Mahsulotlar ro'yxati" },
+                { command: '/add_product', description: "Yangi mahsulot qo'shish" },
+                { command: '/edit_product', description: 'Mahsulotni tahrirlash' },
+                { command: '/delete_product', description: "Mahsulotni o'chirish" },
+                { command: '/list_orders', description: "Buyurtmalar ro'yxati" },
+                { command: '/order_stats', description: 'Buyurtma statistikasi' },
+                { command: '/reports', description: 'Batafsil hisobotlar' },
+            );
+        } else if (user.role === Role.CASHIER) {
+            commands.push(
+                { command: '/neworder', description: 'Yangi buyurtma yaratish' },
+                { command: '/list_orders', description: "Buyurtmalar ro'yxati" },
+            );
+        }
+
+        await ctx.telegram.setMyCommands(commands);
+        const keyboardButtons = commands.map((cmd) => Markup.button.text(cmd.command));
+        await ctx.reply(
+            startMessage,
+            Markup.keyboard(keyboardButtons, { columns: 2 }).resize().persistent(),
+        );
     }
 
     @Command('help')

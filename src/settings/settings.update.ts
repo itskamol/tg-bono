@@ -68,6 +68,9 @@ export class EmailSettingsScene {
     async onText(@Ctx() ctx: Context, @Message('text') text: string) {
         const sceneState = ctx.scene.state as any;
 
+        sceneState.host = 'smtp.gmail.com'; // Default value
+        sceneState.port = 587; // Default value
+
         if (!sceneState.host) {
             sceneState.host = text;
             await ctx.reply(`Host set to "${text}". Now, please enter the SMTP port (e.g., 587).`);
@@ -96,13 +99,21 @@ export class EmailSettingsScene {
         if (!sceneState.pass) {
             sceneState.pass = text;
             await ctx.reply(
-                `Password has been received. Finally, please enter the recipient's email address.`,
+                `Password has been received. Finally, please enter the recipient's email address. Example: jone@gmail.com, `,
             );
             return;
         }
 
         if (!sceneState.recipient) {
-            sceneState.recipient = text;
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            const emails = text.split(',').map((e) => e.trim());
+            for (const email of emails) {
+                if (!emailRegex.test(email)) {
+                    await ctx.reply(`Invalid email address: ${email}. Please enter a valid email.`);
+                    return;
+                }
+            }
+            sceneState.recipient = emails.join(', ');
 
             const emailConfig = {
                 host: sceneState.host,
@@ -139,8 +150,47 @@ export class ScheduleSettingsScene {
     @SceneEnter()
     async onSceneEnter(@Ctx() ctx: Context) {
         await ctx.reply('Starting Scheduled Reports configuration...');
+
+        const existingSetting = await this.prisma.setting.findUnique({
+            where: { key: 'schedule_config' },
+        });
+
+        if (existingSetting) {
+            const config = JSON.parse(existingSetting.value);
+            const status = config.enabled ? 'enabled' : 'disabled';
+            await ctx.reply(`Current schedule: \`${config.cron}\`, Status: *${status}*`, {
+                parse_mode: 'Markdown',
+            });
+        }
+
+        const schedules = {
+            DAILY: '0 9 * * *',
+            WEEKLY: '0 9 * * 1',
+            MONTHLY: '0 9 1 * *',
+            YEARLY: '0 9 1 1 *',
+        };
+
+        const buttons = Object.entries(schedules).map(([label, cron]) =>
+            Markup.button.callback(label, `set_cron_${cron}`),
+        );
+
         await ctx.reply(
-            'Please provide a cron string for the schedule. For example, `0 9 * * *` for every day at 9 AM. You can use a tool like crontab.guru to generate one.',
+            'Please provide a cron string for the schedule',
+            Markup.inlineKeyboard(buttons, { columns: 2 }),
+        );
+    }
+
+    @Action(/set_cron_(.+)/)
+    async onSetCron(@Ctx() ctx: Context) {
+        const cron = (ctx.callbackQuery as any).data.replace('set_cron_', '');
+        const sceneState = ctx.scene.state as any;
+        sceneState.cron = cron;
+        await ctx.reply(
+            `Cron string set to \`${cron}\`. If you want a custom cron string, please type it now. Otherwise, do you want to enable or disable this schedule?`,
+            Markup.inlineKeyboard([
+                Markup.button.callback('Enable', 'schedule_enable'),
+                Markup.button.callback('Disable', 'schedule_disable'),
+            ]),
         );
     }
 
