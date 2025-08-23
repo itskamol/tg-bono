@@ -10,11 +10,11 @@ import { Role } from '@prisma/client';
 @Update()
 @UseGuards(AuthGuard)
 export class BranchesUpdate {
-    constructor(private readonly prisma: PrismaService) {}
+    constructor(private readonly prisma: PrismaService) { }
 
-    @Command('list_branches')
+    @Command('branches')
     @Roles(Role.SUPER_ADMIN)
-    async listBranches() {
+    async listBranches(@Ctx() ctx: Context) {
         const branches = await this.prisma.branch.findMany({
             include: {
                 _count: {
@@ -24,60 +24,53 @@ export class BranchesUpdate {
         });
 
         if (branches.length === 0) {
-            return 'Hech qanday filial topilmadi.';
+            await ctx.reply(
+                '❌ Hech qanday filial mavjud emas.',
+                Markup.inlineKeyboard([
+                    Markup.button.callback('➕ Filial qo\'shish', 'ADD_BRANCH'),
+                ])
+            );
+            return;
         }
 
-        const branchList = branches
-            .map(
-                (branch) =>
-                    `🏪 ${branch.name}\n📍 ${branch.address}\n👥 Foydalanuvchilar: ${branch._count.users}\n`,
-            )
-            .join('\n');
+        const branchButtons = branches.map((branch) =>
+            Markup.button.callback(
+                `🏪 ${branch.name}`,
+                `VIEW_BRANCH_${branch.id}`,
+            ),
+        );
 
-        return `Filiallar ro'yxati:\n\n${branchList}`;
+        await ctx.reply(
+            `🏪 Filiallar ro'yxati (${branches.length} ta):`,
+            Markup.inlineKeyboard([
+                ...branchButtons,
+                Markup.button.callback('➕ Yangi filial', 'ADD_BRANCH'),
+            ], { columns: 2 }),
+        );
     }
 
-    @Command('add_branch')
+    @Action('ADD_BRANCH')
     @Roles(Role.SUPER_ADMIN)
     async onAddBranch(@Ctx() ctx: Context) {
         await ctx.scene.enter('add-branch-scene');
     }
 
-    @Command('edit_branch')
+    @Action(/^VIEW_BRANCH_(.+)$/)
     @Roles(Role.SUPER_ADMIN)
-    async onEditBranch(@Ctx() ctx: Context) {
-        const branches = await this.prisma.branch.findMany();
-
-        if (branches.length === 0) {
-            await ctx.reply('❌ Tahrirlanadigan filiallar topilmadi.');
-            return;
-        }
-
-        const branchButtons = branches.map((branch) =>
-            Markup.button.callback(`${branch.name}`, `EDIT_BRANCH_${branch.id}`),
-        );
-
-        await ctx.reply(
-            '✏️ Qaysi filialni tahrirlashni xohlaysiz?',
-            Markup.inlineKeyboard(branchButtons, {
-                columns: 2, // Har bir qatordagi tugmalar soni. 2 yoki 3 qilib o'zgartirishingiz mumkin.
-            }),
-        );
-    }
-
-    @Command('delete_branch')
-    @Roles(Role.SUPER_ADMIN)
-    async onDeleteBranch(@Ctx() ctx: Context) {
-        await ctx.scene.enter('delete-branch-scene');
-    }
-
-    @Action(/^EDIT_BRANCH_[^_]+$/)
-    async onEditBranchSelect(@Ctx() ctx: Context) {
+    async onViewBranch(@Ctx() ctx: Context) {
         if (!('data' in ctx.callbackQuery)) {
             return;
         }
         const branchData = ctx.callbackQuery.data;
-        const branchId = branchData.replace('EDIT_BRANCH_', '');
+
+        // Regex orqali branchId'ni olish
+        const match = branchData.match(/^VIEW_BRANCH_(.+)$/);
+        if (!match) {
+            await ctx.editMessageText('❌ Noto\'g\'ri ma\'lumot.');
+            return;
+        }
+
+        const branchId = match[1];
 
         const branch = await this.prisma.branch.findUnique({
             where: { id: branchId },
@@ -93,44 +86,119 @@ export class BranchesUpdate {
             return;
         }
 
+        const branchDetails = `
+🏪 Filial ma'lumotlari:
+
+🏪 Nomi: ${branch.name}
+📍 Manzil: ${branch.address}
+👥 Foydalanuvchilar: ${branch._count.users} ta
+📅 Yaratilgan: ${branch.created_at.toLocaleDateString('uz-UZ')}
+
+Nima qilmoqchisiz?
+        `;
+
         await ctx.editMessageText(
-            `✏️ "${branch.name}" filialini tahrirlash:\n\n` +
-                `🏪 Nomi: ${branch.name}\n` +
-                `📍 Manzil: ${branch.address}\n` +
-                `👥 Foydalanuvchilar: ${branch._count.users}\n\n` +
-                `Nimani o'zgartirmoqchisiz?`,
+            branchDetails,
             Markup.inlineKeyboard([
-                Markup.button.callback('🏪 Nomi', `EDIT_BRANCH_NAME_${branchId}`),
-                Markup.button.callback('📍 Manzil', `EDIT_BRANCH_ADDRESS_${branchId}`),
-                Markup.button.callback('❌ Bekor', 'CANCEL_BRANCH_EDIT'),
-            ]),
+                Markup.button.callback('✏️ Tahrirlash', `EDIT_BRANCH_${branch.id}`),
+                Markup.button.callback('🗑️ O\'chirish', `DELETE_BRANCH_${branch.id}`),
+                Markup.button.callback('🔙 Orqaga', 'BACK_TO_BRANCHES'),
+            ], { columns: 2 })
         );
     }
 
-    @Action('CANCEL_BRANCH_EDIT')
-    async onCancelBranchEdit(@Ctx() ctx: Context) {
-        await ctx.editMessageText('❌ Tahrirlash bekor qilindi.');
-    }
-
-    @Action(/^EDIT_BRANCH_NAME_(.+)$/)
-    async onEditBranchName(@Ctx() ctx: Context) {
+    @Action(/^EDIT_BRANCH_(.+)$/)
+    @Roles(Role.SUPER_ADMIN)
+    async onEditBranch(@Ctx() ctx: Context) {
         if (!('data' in ctx.callbackQuery)) {
             return;
         }
         const branchData = ctx.callbackQuery.data;
-        const branchId = branchData.replace('EDIT_BRANCH_NAME_', '');
 
-        await ctx.scene.enter('edit-branch-name-scene', { branchId });
+        // Regex orqali branchId'ni olish
+        const match = branchData.match(/^EDIT_BRANCH_(.+)$/);
+        if (!match) {
+            await ctx.editMessageText('❌ Noto\'g\'ri ma\'lumot.');
+            return;
+        }
+
+        const branchId = match[1];
+
+        const branch = await this.prisma.branch.findUnique({
+            where: { id: branchId },
+        });
+
+        if (!branch) {
+            await ctx.editMessageText('❌ Filial topilmadi.');
+            return;
+        }
+
+        // Scene state'ga branch ma'lumotlarini saqlash
+        ctx.scene.state = {
+            branchId,
+            branchName: branch.name,
+            branchAddress: branch.address
+        };
+        await ctx.scene.enter('edit-branch-scene', ctx.scene.state);
     }
 
-    @Action(/^EDIT_BRANCH_ADDRESS_(.+)$/)
-    async onEditBranchAddress(@Ctx() ctx: Context) {
+    @Action(/^DELETE_BRANCH_(.+)$/)
+    @Roles(Role.SUPER_ADMIN)
+    async onDeleteBranch(@Ctx() ctx: Context) {
         if (!('data' in ctx.callbackQuery)) {
             return;
         }
         const branchData = ctx.callbackQuery.data;
-        const branchId = branchData.replace('EDIT_BRANCH_ADDRESS_', '');
 
-        await ctx.scene.enter('edit-branch-address-scene', { branchId });
+        // Regex orqali branchId'ni olish
+        const match = branchData.match(/^DELETE_BRANCH_(.+)$/);
+        if (!match) {
+            await ctx.editMessageText('❌ Noto\'g\'ri ma\'lumot.');
+            return;
+        }
+
+        const branchId = match[1];
+
+        // Scene state'ga branch ID'ni saqlash
+        ctx.scene.state = { branchId };
+        await ctx.scene.enter('delete-branch-scene', ctx.scene.state);
+    }
+
+    @Action('BACK_TO_BRANCHES')
+    @Roles(Role.SUPER_ADMIN)
+    async onBackToBranches(@Ctx() ctx: Context) {
+        // Filiallar ro'yxatini qayta ko'rsatish
+        const branches = await this.prisma.branch.findMany({
+            include: {
+                _count: {
+                    select: { users: true },
+                },
+            },
+        });
+
+        if (branches.length === 0) {
+            await ctx.editMessageText(
+                '❌ Hech qanday filial mavjud emas.',
+                Markup.inlineKeyboard([
+                    Markup.button.callback('➕ Filial qo\'shish', 'ADD_BRANCH'),
+                ])
+            );
+            return;
+        }
+
+        const branchButtons = branches.map((branch) =>
+            Markup.button.callback(
+                `🏪 ${branch.name}`,
+                `VIEW_BRANCH_${branch.id}`,
+            ),
+        );
+
+        await ctx.editMessageText(
+            `🏪 Filiallar ro'yxati (${branches.length} ta):`,
+            Markup.inlineKeyboard([
+                ...branchButtons,
+                Markup.button.callback('➕ Yangi filial', 'ADD_BRANCH'),
+            ], { columns: 2 }),
+        );
     }
 }

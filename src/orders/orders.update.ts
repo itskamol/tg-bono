@@ -24,7 +24,7 @@ export class OrdersUpdate {
         await ctx.scene.enter('new-order-scene');
     }
 
-    @Command('list_orders')
+    @Command('orders')
     @Roles(Role.SUPER_ADMIN, Role.ADMIN, Role.CASHIER)
     async listOrders(@Ctx() ctx: Context) {
         const user = ctx.user;
@@ -35,9 +35,8 @@ export class OrdersUpdate {
                 include: {
                     branch: true,
                     cashier: true,
-                    order_products: {
-                        include: { product: true },
-                    },
+                    order_products: true,
+                    payments: true,
                 },
                 orderBy: { created_at: 'desc' },
                 take: 10,
@@ -52,9 +51,8 @@ export class OrdersUpdate {
                 include: {
                     branch: true,
                     cashier: true,
-                    order_products: {
-                        include: { product: true },
-                    },
+                    order_products: true,
+                    payments: true,
                 },
                 orderBy: { created_at: 'desc' },
                 take: 10,
@@ -152,9 +150,7 @@ ${user.role === Role.ADMIN ? `🏪 Filial: ${user.branch?.name || 'N/A'}` : '�
                 branch: true,
                 cashier: true,
                 payments: true,
-                order_products: {
-                    include: { product: true },
-                },
+                order_products: true,
             },
         });
 
@@ -166,7 +162,7 @@ ${user.role === Role.ADMIN ? `🏪 Filial: ${user.branch?.name || 'N/A'}` : '�
         const products = order.order_products
             .map(
                 (op) =>
-                    `• ${op.quantity}x ${op.product.name} (${op.side}) - ${op.price * op.quantity} so'm`,
+                    `• ${op.quantity}x ${op.product_name} (${op.side_name}) - ${op.price * op.quantity} so'm`,
             )
             .join('\n');
 
@@ -176,13 +172,13 @@ ${user.role === Role.ADMIN ? `🏪 Filial: ${user.branch?.name || 'N/A'}` : '�
                 const emoji = {
                     [PaymentType.CASH]: '💵',
                     [PaymentType.CARD]: '💳',
-                    [PaymentType.CREDIT]: '🏦',
+                    [PaymentType.TRANSFER]: '📱',
                 }[payment.payment_type] || '💰';
                 
                 const typeName = {
                     [PaymentType.CASH]: 'Naqd',
                     [PaymentType.CARD]: 'Karta',
-                    [PaymentType.CREDIT]: 'Kredit',
+                    [PaymentType.TRANSFER]: "Nasiya",
                 }[payment.payment_type] || 'Noma\'lum';
                 
                 return `${index + 1}. ${emoji} ${typeName}: ${payment.amount} so'm`;

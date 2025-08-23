@@ -11,6 +11,7 @@ import { ConfigModule } from '@nestjs/config';
 import { SchedulerModule } from '../scheduler/scheduler.module';
 import { SchedulerService } from 'src/scheduler/scheduler.service';
 import { ReportsService } from 'src/reports/reports.service';
+import { GoogleSheetsService } from 'src/sheets/google-sheets.service';
 
 @Module({
     imports: [PrismaModule, ConfigModule, SchedulerModule],
@@ -22,6 +23,7 @@ import { ReportsService } from 'src/reports/reports.service';
         EncryptionService,
         SchedulerService,
         ReportsService,
+        GoogleSheetsService
     ],
 })
 export class SettingsModule {}

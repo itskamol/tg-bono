@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { EncryptionService } from '../settings/encryption.service';
+import { GoogleSheetsService } from '../sheets/google-sheets.service';
 import { Prisma, Role } from '@prisma/client';
 import * as nodemailer from 'nodemailer';
 
@@ -11,6 +12,7 @@ export class ReportsService {
     constructor(
         private readonly prisma: PrismaService,
         private readonly encryptionService: EncryptionService,
+        private readonly googleSheetsService: GoogleSheetsService,
     ) {}
 
     async sendReportByEmail(user: any, timeRange: string): Promise<boolean> {
@@ -124,5 +126,102 @@ export class ReportsService {
             return new Date(now.getFullYear(), now.getMonth(), 1);
         }
         return undefined;
+    }
+
+    // Google Sheets'ga report yuborish
+    async sendReportToGoogleSheets(user: any, timeRange: string, detailed: boolean = false): Promise<boolean> {
+        this.logger.log(
+            `Attempting to send report to Google Sheets for user ${user.id} and range ${timeRange}`,
+        );
+
+        const gSheetsConfigSetting = await this.prisma.setting.findUnique({
+            where: { key: 'g_sheets_config' },
+        });
+
+        if (!gSheetsConfigSetting) {
+            this.logger.warn('Google Sheets settings not configured. Cannot export to sheets.');
+            return false;
+        }
+
+        const configStr = this.encryptionService.decrypt(gSheetsConfigSetting.value);
+        const config = JSON.parse(configStr);
+
+        const orders = await this.getOrdersForReportWithDetails(user, timeRange);
+
+        if (orders.length === 0) {
+            this.logger.log('No data for the report. Skipping Google Sheets export.');
+            return true; // Not an error, just no data to send
+        }
+
+        try {
+            const worksheetName = `${timeRange}_${new Date().toISOString().split('T')[0]}`;
+            
+            const success = await this.googleSheetsService.appendOrdersToSheet(
+                config.sheetId,
+                config.credentials,
+                orders,
+                worksheetName,
+                detailed
+            );
+
+            if (success) {
+                this.logger.log(`Report successfully exported to Google Sheets worksheet: ${worksheetName}`);
+                return true;
+            } else {
+                this.logger.error('Failed to export report to Google Sheets');
+                return false;
+            }
+        } catch (error) {
+            this.logger.error('Google Sheets export failed:', error);
+            return false;
+        }
+    }
+
+    // To'liq ma'lumotlar bilan orderlarni olish
+    public async getOrdersForReportWithDetails(user: any, timeRange: string): Promise<any[]> {
+        const gte = this._getDateFilter(timeRange);
+        const where: Prisma.OrderWhereInput = { created_at: { gte } };
+
+        if (user.role === Role.ADMIN) {
+            if (!user.branch_id) return [];
+            where.branch_id = user.branch_id;
+        } else if (user.role === Role.CASHIER) {
+            where.cashier_id = user.id;
+        }
+
+        return this.prisma.order.findMany({
+            where,
+            include: { 
+                branch: true, 
+                cashier: true,
+                order_products: true,
+                payments: true,
+            },
+            orderBy: { created_at: 'desc' },
+        });
+    }
+
+    // Barcha export turlarini birdan bajarish
+    async sendReportToAllConfiguredDestinations(user: any, timeRange: string): Promise<{ email: boolean; sheets: boolean }> {
+        const results = {
+            email: false,
+            sheets: false,
+        };
+
+        // Email export
+        try {
+            results.email = await this.sendReportByEmail(user, timeRange);
+        } catch (error) {
+            this.logger.error('Email export failed:', error);
+        }
+
+        // Google Sheets export (detailed format)
+        try {
+            results.sheets = await this.sendReportToGoogleSheets(user, timeRange, true);
+        } catch (error) {
+            this.logger.error('Google Sheets export failed:', error);
+        }
+
+        return results;
     }
 }

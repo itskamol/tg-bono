@@ -6,6 +6,7 @@ import {
     EditBranchNameScene,
     EditBranchAddressScene,
 } from './scenes';
+import { EditBranchScene } from './scenes/edit-branch.scene';
 import { PrismaModule } from '../prisma/prisma.module';
 
 @Module({
@@ -16,6 +17,7 @@ import { PrismaModule } from '../prisma/prisma.module';
         DeleteBranchScene,
         EditBranchNameScene,
         EditBranchAddressScene,
+        EditBranchScene,
     ],
 })
 export class BranchesModule {}

@@ -31,14 +31,18 @@ model Branch {
   created_at DateTime @default(now())
 }
 
-model Product {
-  id             String          @id @default(auto()) @map("_id") @db.ObjectId
-  type           String
-  name           String
-  sides          String[] // Using String array for multiple values like ["oldi", "orqa"]
-  price          Float
-  order_products Order_Product[]
-  created_at     DateTime        @default(now())
+model Category {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  name       String   @unique // "Pizza", "Burger", etc.
+  emoji      String   // "🍕", "🍔", etc.
+  created_at DateTime @default(now())
+}
+
+model Side {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  name       String   @unique // "oldi", "orqa", "orqa + oldi", etc.
+  price      Float    // Har bir tomonning narxi
+  created_at DateTime @default(now())
 }
 
 model Order {
@@ -58,14 +62,14 @@ model Order {
 }
 
 model Order_Product {
-  id         String  @id @default(auto()) @map("_id") @db.ObjectId
-  order      Order   @relation(fields: [order_id], references: [id])
-  order_id   String  @db.ObjectId
-  product    Product @relation(fields: [product_id], references: [id])
-  product_id String  @db.ObjectId
-  side       String // "oldi" or "orqa"
-  quantity   Int
-  price      Float
+  id           String @id @default(auto()) @map("_id") @db.ObjectId
+  order        Order  @relation(fields: [order_id], references: [id])
+  order_id     String @db.ObjectId
+  product_name String // Mahsulot nomi (display uchun)
+  category     String // Kategoriya nomi
+  side_name    String // Tanlangan tomon nomi
+  quantity     Int
+  price        Float  // Har bir mahsulotning narxi (side price)
 }
 
 model Payment {
@@ -92,5 +96,5 @@ enum Role {
 enum PaymentType {
   CASH
   CARD
-  CREDIT
+  TRANSFER
 }

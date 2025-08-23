@@ -105,7 +105,7 @@ export class GeneralReportsScene {
                 _avg: { total_amount: true },
             }),
             this.prisma.order_Product.groupBy({
-                by: ['product_id'],
+                by: ['product_name'],
                 where: {
                     order: {
                         ...whereClause,
@@ -118,16 +118,10 @@ export class GeneralReportsScene {
             }),
         ]);
 
-        // Get product names for top products
-        const productIds = topProducts.map((p) => p.product_id);
-        const products = await this.prisma.product.findMany({
-            where: { id: { in: productIds } },
-        });
-
+        // Top products list - endi product_name bo'yicha
         const topProductsList = topProducts
             .map((tp) => {
-                const product = products.find((p) => p.id === tp.product_id);
-                return `• ${product?.name || 'N/A'}: ${tp._sum.quantity} ta`;
+                return `• ${tp.product_name}: ${tp._sum.quantity} ta`;
             })
             .join('\n');
 

@@ -55,9 +55,9 @@ export class ReportHelpers {
             {
                 [PaymentType.CASH]: '💵',
                 [PaymentType.CARD]: '💳',
-                [PaymentType.CREDIT]: '🏦',
+                [PaymentType.TRANSFER]: '📱',
             }[paymentType] || '💰';
-        return paymentEmoji[paymentType.toLowerCase()] || '💰';
+        return paymentEmoji[paymentType] || '💰';
     }
 
     static getTypeEmoji(type: string): string {
@@ -68,7 +68,7 @@ export class ReportHelpers {
             dessert: '🍰',
             salad: '🥗',
         };
-        return emojis[type.toLowerCase()] || '📦';
+        return emojis[type] || '📦';
     }
 
     static capitalizeFirst(str: string): string {

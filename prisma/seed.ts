@@ -64,51 +64,124 @@ async function safeCreateUser(userData: {
   }
 }
 
-async function safeCreateProduct(productData: {
-  type: string;
+async function safeCreateSide(sideData: {
   name: string;
-  sides: string[];
   price: number;
 }) {
   try {
-    // Check if product exists
-    const existingProduct = await prisma.product.findFirst({
-      where: { name: productData.name },
+    // Check if side exists
+    const existingSide = await prisma.side.findUnique({
+      where: { name: sideData.name },
     });
 
-    if (existingProduct) {
-      console.log(`✅ Product '${productData.name}' already exists`);
-      return existingProduct;
+    if (existingSide) {
+      console.log(`✅ Side '${sideData.name}' already exists`);
+      return existingSide;
     }
 
-    // Create new product
-    const newProduct = await prisma.product.create({
-      data: productData,
+    // Create new side
+    const newSide = await prisma.side.create({
+      data: sideData,
     });
 
     console.log(
-      `✨ Created product: ${productData.name} (${productData.price} so'm)`,
+      `✨ Created side: ${sideData.name} (+${sideData.price} so'm)`,
     );
-    return newProduct;
+    return newSide;
   } catch (error) {
     console.log(
-      `❌ Error creating product '${productData.name}':`,
+      `❌ Error creating side '${sideData.name}':`,
       error.message,
     );
     return null;
   }
 }
 
+async function safeCreateProduct(productData: {
+  type: string;
+  name: string;
+  base_price: number;
+}) {
+  // Product model olib tashlandi - bu funksiya endi ishlamaydi
+  console.log(`⚠️ Product creation skipped - Product model removed`);
+  return null;
+}
+
 async function main() {
   console.log('🌱 Starting database seeding...\n');
 
   try {
-    // 1. Create branches
-    console.log('📍 Creating branches...');
+    // 1. Create sides first
+    console.log('🍕 Creating sides...');
+    await safeCreateSide({
+      name: 'Oldi',
+      price: 0,
+    });
+
+    await safeCreateSide({
+      name: 'Orqa',
+      price: 5000,
+    });
+
+    await safeCreateSide({
+      name: 'Oldi + Orqa',
+      price: 8000,
+    });
+
+    await safeCreateSide({
+      name: 'Kichik',
+      price: -5000,
+    });
+
+    await safeCreateSide({
+      name: 'Katta',
+      price: 10000,
+    });
+
+    // 2. Create branches
+    console.log('\n📍 Creating branches...');
     const branch1 = await safeCreateBranch(
       'Markaziy filial',
       "Toshkent shahar, Amir Temur ko'chasi 1",
     );
+
+    // Categories qo'shish
+  const categories = [
+    { name: 'Pizza', emoji: '🍕' },
+    { name: 'Burger', emoji: '🍔' },
+    { name: 'Ichimlik', emoji: '🥤' },
+    { name: 'Desert', emoji: '🍰' },
+    { name: 'Salat', emoji: '🥗' },
+    { name: 'Boshqa', emoji: '📦' },
+  ];
+
+  for (const category of categories) {
+    await prisma.category.upsert({
+      where: { name: category.name },
+      update: {},
+      create: category,
+    });
+  }
+
+  // Sides qo'shish
+  const sides = [
+    { name: 'Oldi tomon', price: 25000 },
+    { name: 'Orqa tomon', price: 30000 },
+    { name: 'Yon tomon', price: 20000 },
+    { name: 'Hamma tomon', price: 45000 },
+    { name: 'Kamerasi', price: 35000 },
+    { name: 'Orqa + Oldi', price: 50000 },
+  ];
+
+  for (const side of sides) {
+    await prisma.side.upsert({
+      where: { name: side.name },
+      update: {},
+      create: side,
+    });
+  }
+
+  console.log('Categories va Sides muvaffaqiyatli qo\'shildi!');
 
     const branch2 = await safeCreateBranch(
       'Yunusobod filiali',
@@ -188,59 +261,51 @@ async function main() {
     await safeCreateProduct({
       type: 'pizza',
       name: 'Margarita',
-      sides: ['oldi', 'orqa'],
-      price: 45000,
+      base_price: 45000,
     });
 
     await safeCreateProduct({
       type: 'pizza',
       name: 'Pepperoni',
-      sides: ['oldi', 'orqa'],
-      price: 55000,
+      base_price: 55000,
     });
 
     await safeCreateProduct({
       type: 'pizza',
       name: 'Four Cheese',
-      sides: ['oldi', 'orqa'],
-      price: 60000,
+      base_price: 60000,
     });
 
     // Burgerlar
     await safeCreateProduct({
       type: 'burger',
       name: 'Cheeseburger',
-      sides: ['oldi'],
-      price: 25000,
+      base_price: 25000,
     });
 
     await safeCreateProduct({
       type: 'burger',
       name: 'Big Burger',
-      sides: ['oldi'],
-      price: 35000,
+      base_price: 35000,
     });
 
     // Ichimliklar
     await safeCreateProduct({
       type: 'drink',
       name: 'Cola',
-      sides: ['oldi'],
-      price: 8000,
+      base_price: 8000,
     });
 
     await safeCreateProduct({
       type: 'drink',
       name: 'Orange Juice',
-      sides: ['oldi'],
-      price: 12000,
+      base_price: 12000,
     });
 
     await safeCreateProduct({
       type: 'drink',
       name: 'Water',
-      sides: ['oldi'],
-      price: 5000,
+      base_price: 5000,
     });
 
     // Summary
@@ -249,7 +314,8 @@ async function main() {
 
     const branchCount = await prisma.branch.count();
     const userCount = await prisma.user.count();
-    const productCount = await prisma.product.count();
+    // Product model olib tashlandi
+    const productCount = 0;
 
     console.log(`✅ Branches: ${branchCount}`);
     console.log(`✅ Users: ${userCount}`);

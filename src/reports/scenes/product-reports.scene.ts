@@ -84,7 +84,7 @@ export class ProductReportsScene {
 
         const [productStats, productTypeStats] = await Promise.all([
             this.prisma.order_Product.groupBy({
-                by: ['product_id'],
+                by: ['product_name'],
                 where: {
                     order: {
                         ...whereClause,
@@ -102,15 +102,9 @@ export class ProductReportsScene {
             this.getProductTypeStats(startDate, endDate, user.branch_id),
         ]);
 
-        const productIds = productStats.map((p) => p.product_id);
-        const products = await this.prisma.product.findMany({
-            where: { id: { in: productIds } },
-        });
-
         const productList = productStats
             .map((ps, index) => {
-                const product = products.find((p) => p.id === ps.product_id);
-                return `${index + 1}. ${product?.name || 'N/A'}:
+                return `${index + 1}. ${ps.product_name}:
   • Sotildi: ${ps._sum.quantity} ta
   • Daromad: ${ps._sum.price} so'm
   • Buyurtmalar: ${ps._count} ta`;
@@ -157,20 +151,16 @@ ${user.role === Role.ADMIN ? `🏪 Filial: ${user.branch?.name || 'N/A'}` : '�
         const orders = await this.prisma.order.findMany({
             where: whereClause,
             include: {
-                order_products: {
-                    include: {
-                        product: true,
-                    },
-                },
+                order_products: true,
             },
         });
 
-        // Group by product type and calculate stats
+        // Group by category and calculate stats
         const typeStats: { [key: string]: { total_quantity: number; total_revenue: number; order_count: Set<string> } } = {};
 
         orders.forEach(order => {
             order.order_products.forEach(orderProduct => {
-                const type = orderProduct.product.type;
+                const type = orderProduct.category;
 
                 if (!typeStats[type]) {
                     typeStats[type] = {

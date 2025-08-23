@@ -12,7 +12,7 @@ import { Role } from '@prisma/client';
 export class UsersUpdate {
     constructor(private readonly prisma: PrismaService) {}
 
-    @Command('list_users')
+    @Command('users')
     @Roles(Role.SUPER_ADMIN, Role.ADMIN)
     async listUsers(@Ctx() ctx: Context) {
         const user = ctx.user;
@@ -21,50 +21,7 @@ export class UsersUpdate {
         if (user.role === Role.SUPER_ADMIN) {
             users = await this.prisma.user.findMany({
                 include: { branch: true },
-            });
-        } else if (user.role === Role.ADMIN) {
-            if (!user.branch_id) {
-                return 'You are not assigned to any branch.';
-            }
-            users = await this.prisma.user.findMany({
-                where: { branch_id: user.branch_id },
-                include: { branch: true },
-            });
-        }
-
-        if (users.length === 0) {
-            return 'No users found.';
-        }
-
-        const userList = users
-            .map((u) => `- ${u.full_name} - Role: ${u.role} - Branch: ${u.branch?.name || 'N/A'}`)
-            .join('\n');
-
-        return `Here are the users:\n${userList}`;
-    }
-
-    @Command('add_user')
-    @Roles(Role.SUPER_ADMIN, Role.ADMIN)
-    async onAddUser(@Ctx() ctx: Context) {
-        await ctx.scene.enter('add-user-scene');
-    }
-
-    @Command('delete_user')
-    @Roles(Role.SUPER_ADMIN, Role.ADMIN)
-    async onDeleteUser(@Ctx() ctx: Context) {
-        await ctx.scene.enter('delete-user-scene');
-    }
-
-    @Command('edit_user')
-    @Roles(Role.SUPER_ADMIN, Role.ADMIN)
-    async onEditUser(@Ctx() ctx: Context) {
-        const user = ctx.user;
-        let users;
-
-        if (user.role === Role.SUPER_ADMIN) {
-            users = await this.prisma.user.findMany({
-                where: { role: { not: Role.SUPER_ADMIN } }, // Don't show super admins
-                include: { branch: true },
+                orderBy: { full_name: 'asc' },
             });
         } else if (user.role === Role.ADMIN) {
             if (!user.branch_id) {
@@ -72,35 +29,148 @@ export class UsersUpdate {
                 return;
             }
             users = await this.prisma.user.findMany({
-                where: {
-                    branch_id: user.branch_id,
-                    role: Role.CASHIER, // Admin can only edit cashiers
-                },
+                where: { branch_id: user.branch_id },
                 include: { branch: true },
+                orderBy: { full_name: 'asc' },
             });
         }
 
         if (!users || users.length === 0) {
-            await ctx.reply('❌ Tahrirlanadigan foydalanuvchilar topilmadi.');
+            await ctx.reply(
+                '❌ Hech qanday foydalanuvchi mavjud emas.',
+                Markup.inlineKeyboard([
+                    Markup.button.callback('➕ Foydalanuvchi qo\'shish', 'ADD_USER'),
+                ])
+            );
             return;
         }
 
-        const userButtons = users.map((u) =>
-            Markup.button.callback(`${u.full_name} (${u.role})`, `EDIT_USER_${u.id}`),
-        );
+        const userButtons = users.map((u) => {
+            const roleEmoji = {
+                [Role.SUPER_ADMIN]: '👑',
+                [Role.ADMIN]: '👨‍💼',
+                [Role.CASHIER]: '💰',
+            }[u.role] || '👤';
+            
+            return Markup.button.callback(
+                `${roleEmoji} ${u.full_name}`,
+                `VIEW_USER_${u.id}`,
+            );
+        });
 
         await ctx.reply(
-            '✏️ Qaysi foydalanuvchini tahrirlashni xohlaysiz?',
-            Markup.inlineKeyboard(userButtons, {
-                columns: 2, // Har bir qatordagi tugmalar soni. 2 yoki 3 qilib o'zgartirishingiz mumkin.
-            }),
+            `👥 Foydalanuvchilar ro'yxati (${users.length} ta):`,
+            Markup.inlineKeyboard([
+                ...userButtons,
+                Markup.button.callback('➕ Yangi foydalanuvchi', 'ADD_USER'),
+            ], { columns: 2 }),
         );
     }
 
-    @Action(/EDIT_USER_(.+)/)
-    async onEditUserSelect(@Ctx() ctx: Context) {
-        const userData = (ctx.callbackQuery as any).data;
-        const userId = userData.split('_')[2];
+    @Action('ADD_USER')
+    @Roles(Role.SUPER_ADMIN, Role.ADMIN)
+    async onAddUser(@Ctx() ctx: Context) {
+        await ctx.scene.enter('add-user-scene');
+    }
+
+    @Action(/^VIEW_USER_(.+)$/)
+    @Roles(Role.SUPER_ADMIN, Role.ADMIN)
+    async onViewUser(@Ctx() ctx: Context) {
+        if (!('data' in ctx.callbackQuery)) {
+            return;
+        }
+        const userData = ctx.callbackQuery.data;
+        
+        // Regex orqali userId'ni olish
+        const match = userData.match(/^VIEW_USER_(.+)$/);
+        if (!match) {
+            await ctx.editMessageText('❌ Noto\'g\'ri ma\'lumot.');
+            return;
+        }
+        
+        const userId = match[1];
+        const currentUser = ctx.user;
+
+        const user = await this.prisma.user.findUnique({
+            where: { id: userId },
+            include: { 
+                branch: true,
+                _count: {
+                    select: { orders: true },
+                },
+            },
+        });
+
+        if (!user) {
+            await ctx.editMessageText('❌ Foydalanuvchi topilmadi.');
+            return;
+        }
+
+        // Ruxsatni tekshirish
+        if (currentUser.role === Role.ADMIN) {
+            if (user.branch_id !== currentUser.branch_id || user.role !== Role.CASHIER) {
+                await ctx.editMessageText('❌ Bu foydalanuvchini ko\'rish huquqingiz yo\'q.');
+                return;
+            }
+        }
+
+        const roleText = {
+            [Role.SUPER_ADMIN]: '👑 Super Admin',
+            [Role.ADMIN]: '👨‍💼 Admin',
+            [Role.CASHIER]: '💰 Kassir',
+        }[user.role] || user.role;
+
+        const userDetails = `
+👤 Foydalanuvchi ma'lumotlari:
+
+👤 To'liq ism: ${user.full_name}
+🎭 Rol: ${roleText}
+🏪 Filial: ${user.branch?.name || 'Tayinlanmagan'}
+📱 Telegram ID: ${user.telegram_id}
+📊 Buyurtmalar: ${user._count.orders} ta
+📅 Ro'yxatdan o'tgan: ${user.created_at.toLocaleDateString('uz-UZ')}
+
+Nima qilmoqchisiz?
+        `;
+
+        const buttons = [];
+        
+        // Tahrirlash tugmasi (faqat ruxsat bor bo'lsa)
+        if (currentUser.role === Role.SUPER_ADMIN || 
+            (currentUser.role === Role.ADMIN && user.role === Role.CASHIER && user.branch_id === currentUser.branch_id)) {
+            buttons.push(Markup.button.callback('✏️ Tahrirlash', `EDIT_USER_${user.id}`));
+        }
+        
+        // O'chirish tugmasi (faqat ruxsat bor bo'lsa)
+        if (currentUser.role === Role.SUPER_ADMIN || 
+            (currentUser.role === Role.ADMIN && user.role === Role.CASHIER && user.branch_id === currentUser.branch_id)) {
+            buttons.push(Markup.button.callback('🗑️ O\'chirish', `DELETE_USER_${user.id}`));
+        }
+        
+        buttons.push(Markup.button.callback('🔙 Orqaga', 'BACK_TO_USERS'));
+
+        await ctx.editMessageText(
+            userDetails,
+            Markup.inlineKeyboard(buttons, { columns: 2 })
+        );
+    }
+
+    @Action(/^EDIT_USER_(.+)$/)
+    @Roles(Role.SUPER_ADMIN, Role.ADMIN)
+    async onEditUser(@Ctx() ctx: Context) {
+        if (!('data' in ctx.callbackQuery)) {
+            return;
+        }
+        const userData = ctx.callbackQuery.data;
+        
+        // Regex orqali userId'ni olish
+        const match = userData.match(/^EDIT_USER_(.+)$/);
+        if (!match) {
+            await ctx.editMessageText('❌ Noto\'g\'ri ma\'lumot.');
+            return;
+        }
+        
+        const userId = match[1];
 
         const user = await this.prisma.user.findUnique({
             where: { id: userId },
@@ -112,93 +182,91 @@ export class UsersUpdate {
             return;
         }
 
-        const roleText =
-            {
-                [Role.SUPER_ADMIN]: 'Super Admin',
-                [Role.ADMIN]: 'Admin',
-                [Role.CASHIER]: 'Kassir',
-            }[user.role] || user.role;
-
-        await ctx.editMessageText(
-            `✏️ "${user.full_name}" foydalanuvchisini tahrirlash:\n\n` +
-                `👤 To'liq ism: ${user.full_name}\n` +
-                `🎭 Rol: ${roleText}\n` +
-                `🏪 Filial: ${user.branch?.name || 'N/A'}\n\n` +
-                `Nimani o'zgartirmoqchisiz?`,
-            Markup.inlineKeyboard(
-                [
-                    Markup.button.callback('👤 Ism', `EDIT_NAME_${userId}`),
-                    Markup.button.callback('🏪 Filial', `EDIT_BRANCH_${userId}`),
-                    Markup.button.callback('❌ Bekor', 'CANCEL_EDIT'),
-                ],
-                {
-                    columns: 2, // Har bir qatordagi tugmalar soni. 2 yoki 3 qilib o'zgartirishingiz mumkin.
-                },
-            ),
-        );
+        // Scene state'ga user ma'lumotlarini saqlash
+        ctx.scene.state = { 
+            userId, 
+            userName: user.full_name, 
+            userBranchId: user.branch_id,
+            userRole: user.role
+        };
+        await ctx.scene.enter('edit-user-scene', ctx.scene.state);
     }
 
-    @Action('CANCEL_EDIT')
-    async onCancelEdit(@Ctx() ctx: Context) {
-        await ctx.editMessageText('❌ Tahrirlash bekor qilindi.');
+    @Action(/^DELETE_USER_(.+)$/)
+    @Roles(Role.SUPER_ADMIN, Role.ADMIN)
+    async onDeleteUser(@Ctx() ctx: Context) {
+        if (!('data' in ctx.callbackQuery)) {
+            return;
+        }
+        const userData = ctx.callbackQuery.data;
+        
+        // Regex orqali userId'ni olish
+        const match = userData.match(/^DELETE_USER_(.+)$/);
+        if (!match) {
+            await ctx.editMessageText('❌ Noto\'g\'ri ma\'lumot.');
+            return;
+        }
+        
+        const userId = match[1];
+
+        // Scene state'ga user ID'ni saqlash
+        ctx.scene.state = { userId };
+        await ctx.scene.enter('delete-user-scene', ctx.scene.state);
     }
 
-    @Action(/EDIT_NAME_(.+)/)
-    async onEditName(@Ctx() ctx: Context) {
-        const userData = (ctx.callbackQuery as any).data;
-        const userId = userData.split('_')[2];
+    @Action('BACK_TO_USERS')
+    @Roles(Role.SUPER_ADMIN, Role.ADMIN)
+    async onBackToUsers(@Ctx() ctx: Context) {
+        // Foydalanuvchilar ro'yxatini qayta ko'rsatish
+        const currentUser = ctx.user;
+        let users;
 
-        await ctx.scene.enter('edit-name-scene', { userId });
-    }
+        if (currentUser.role === Role.SUPER_ADMIN) {
+            users = await this.prisma.user.findMany({
+                include: { branch: true },
+                orderBy: { full_name: 'asc' },
+            });
+        } else if (currentUser.role === Role.ADMIN) {
+            if (!currentUser.branch_id) {
+                await ctx.editMessageText('❌ Siz hech qanday filialga tayinlanmagansiz.');
+                return;
+            }
+            users = await this.prisma.user.findMany({
+                where: { branch_id: currentUser.branch_id },
+                include: { branch: true },
+                orderBy: { full_name: 'asc' },
+            });
+        }
 
-    @Action(/EDIT_BRANCH_(.+)/)
-    async onEditBranch(@Ctx() ctx: Context) {
-        const userData = (ctx.callbackQuery as any).data;
-        const userId = userData.split('_')[2];
-
-        const branches = await this.prisma.branch.findMany();
-        if (branches.length === 0) {
-            await ctx.editMessageText('❌ Hech qanday filial topilmadi.');
+        if (!users || users.length === 0) {
+            await ctx.editMessageText(
+                '❌ Hech qanday foydalanuvchi mavjud emas.',
+                Markup.inlineKeyboard([
+                    Markup.button.callback('➕ Foydalanuvchi qo\'shish', 'ADD_USER'),
+                ])
+            );
             return;
         }
 
-        const branchButtons = branches.map((branch) =>
-            Markup.button.callback(branch.name, `SET_BRANCH_${userId}_${branch.id}`),
-        );
+        const userButtons = users.map((u) => {
+            const roleEmoji = {
+                [Role.SUPER_ADMIN]: '👑',
+                [Role.ADMIN]: '👨‍💼',
+                [Role.CASHIER]: '💰',
+            }[u.role] || '👤';
+            
+            return Markup.button.callback(
+                `${roleEmoji} ${u.full_name}`,
+                `VIEW_USER_${u.id}`,
+            );
+        });
 
         await ctx.editMessageText(
-            '🏪 Yangi filialni tanlang:',
-            Markup.inlineKeyboard(branchButtons, {
-                columns: 2, // Har bir qatordagi tugmalar soni. 2 yoki 3 qilib o'zgartirishingiz mumkin.
-            }),
+            `👥 Foydalanuvchilar ro'yxati (${users.length} ta):`,
+            Markup.inlineKeyboard([
+                ...userButtons,
+                Markup.button.callback('➕ Yangi foydalanuvchi', 'ADD_USER'),
+            ], { columns: 2 }),
         );
-    }
-
-    @Action(/SET_BRANCH_(.+)_(.+)/)
-    async onSetBranch(@Ctx() ctx: Context) {
-        const actionData = (ctx.callbackQuery as any).data;
-        const parts = actionData.split('_');
-        const userId = parts[2];
-        const branchId = parts[3];
-
-        try {
-            const branch = await this.prisma.branch.findUnique({
-                where: { id: branchId },
-            });
-
-            if (!branch) {
-                await ctx.editMessageText('❌ Filial topilmadi.');
-                return;
-            }
-
-            await this.prisma.user.update({
-                where: { id: userId },
-                data: { branch_id: branchId },
-            });
-
-            await ctx.editMessageText(`✅ Filial "${branch.name}" ga o'zgartirildi.`);
-        } catch (error) {
-            await ctx.editMessageText("❌ Filialni o'zgartirishda xatolik yuz berdi.");
-        }
     }
 }

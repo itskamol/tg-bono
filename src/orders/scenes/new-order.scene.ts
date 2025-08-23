@@ -12,14 +12,14 @@ interface PaymentEntry {
 interface NewOrderSceneState {
     products: any[];
     currentProduct: any;
-    newProduct?: any;
     clientName?: string;
     clientPhone?: string | null;
     clientBirthday?: Date | null;
     birthdaySkipped?: boolean;
     phoneSkipped?: boolean;
-    awaitingNewProductName?: boolean;
-    awaitingNewProductPrice?: boolean;
+    awaitingProductName?: boolean;
+    awaitingProductPrice?: boolean;
+    isCustomProduct?: boolean; // Custom mahsulot uchun
     totalAmount?: number;
 
     // Yangi to'lov maydonlari
@@ -100,46 +100,51 @@ export class NewOrderScene {
             return this.showProductTypes(ctx);
         }
 
-        // Step 4: New product name
-        if (sceneState.awaitingNewProductName) {
-            sceneState.newProduct.name = text;
-            sceneState.awaitingNewProductName = false;
-            sceneState.awaitingNewProductPrice = true;
-            await ctx.reply(`💰 Narxini kiriting:`);
-            return;
+        // Step 4: Mahsulot nomi
+        if (sceneState.awaitingProductName) {
+            sceneState.currentProduct.name = text;
+            sceneState.awaitingProductName = false;
+
+            // Custom mahsulot uchun narx so'rash
+            if (sceneState.isCustomProduct) {
+                sceneState.awaitingProductPrice = true;
+                await ctx.reply(
+                    `✅ Mahsulot nomi: ${text}\n\n💰 Narxini kiriting (so'mda):`,
+                    Markup.inlineKeyboard([
+                        Markup.button.callback('🔙 Orqaga', 'BACK_TO_TYPES'),
+                        Markup.button.callback('❌ Bekor qilish', 'CANCEL_ORDER'),
+                    ])
+                );
+                return;
+            } else {
+                // Mavjud kategoriya uchun sides tanlash
+                return this.showSidesSelection(ctx);
+            }
         }
 
-        // Step 5: New product price
-        if (sceneState.awaitingNewProductPrice) {
-            const price = parseInt(text, 10);
+        // Step 5: Custom mahsulot narxi (faqat custom uchun)
+        if (sceneState.awaitingProductPrice && sceneState.isCustomProduct) {
+            const price = parseFloat(text);
             if (isNaN(price) || price <= 0) {
-                await ctx.reply("❌ Noto'g'ri narx. Musbat son kiriting:");
+                await ctx.reply("❌ Noto'g'ri narx. Faqat musbat raqam kiriting:");
                 return;
             }
-            sceneState.newProduct.price = price;
-            sceneState.awaitingNewProductPrice = false;
 
-            const newProduct = await this.prisma.product.create({
-                data: {
-                    name: sceneState.newProduct.name,
-                    price: sceneState.newProduct.price,
-                    type: sceneState.newProduct.type,
-                },
-            });
+            sceneState.currentProduct.price = price;
+            sceneState.currentProduct.quantity = 1;
+            sceneState.awaitingProductPrice = false;
 
-            sceneState.currentProduct.productId = newProduct.id;
-            sceneState.currentProduct.productId = newProduct.id;
-            sceneState.currentProduct.name = newProduct.name;
-            sceneState.currentProduct.price = newProduct.price;
-            sceneState.currentProduct.side = 'N/A'; // Assuming new products don't have sides for now
-            sceneState.currentProduct.quantity = 1; // Default quantity
-
-            // Add to products list and show summary
+            // Custom mahsulot uchun sides yo'q, to'g'ridan-to'g'ri qo'shish
+            const productName = sceneState.currentProduct.name;
             sceneState.products.push({ ...sceneState.currentProduct });
             sceneState.currentProduct = {};
-            await this.showOrderSummary(ctx);
-            return;
+            sceneState.isCustomProduct = false;
+
+            await ctx.reply(`✅ "${productName}" qo'shildi.\n💰 Narx: ${price} so'm`);
+            return this.showOrderSummary(ctx);
         }
+
+        // Mahsulot qidirish olib tashlandi - faqat dinamik kiritish
 
         // Step 6: Payment amount input
         if (sceneState.awaitingPaymentAmount && sceneState.currentPayment) {
@@ -171,10 +176,10 @@ export class NewOrderScene {
         const sceneState = ctx.scene.state as NewOrderSceneState;
         const total = sceneState.products.reduce((sum, p) => sum + p.price * p.quantity, 0);
         const productsList = sceneState.products
-            .map(
-                (p, i) =>
-                    `${i + 1}. ${p.quantity}x ${p.name} (${p.side}) - ${p.price * p.quantity} so'm`,
-            )
+            .map((p, i) => {
+                const sideInfo = p.sideName ? ` (${p.sideName})` : '';
+                return `${i + 1}. ${p.quantity}x ${p.name}${sideInfo} - ${p.price * p.quantity} so'm`;
+            })
             .join('\n');
 
         const messageText = `✅ Mahsulot qo'shildi!
@@ -229,32 +234,43 @@ Yana mahsulot qo'shasizmi?`;
     }
 
     async showProductTypes(ctx: Context) {
-        const productTypes = await this.prisma.product.findMany({
-            distinct: ['type'],
-            select: { type: true },
-        });
+        try {
+            // Database'dan kategoriyalarni olish
+            const categories = await this.prisma.category.findMany({
+                orderBy: { name: 'asc' }
+            });
 
-        if (productTypes.length === 0) {
-            await ctx.reply('❌ Hozirda buyurtma berish uchun mahsulotlar mavjud emas.');
-            return ctx.scene.leave();
+            const typeButtons = categories.map((category) =>
+                Markup.button.callback(
+                    `${category.emoji} ${category.name}`,
+                    `TYPE_${category.id}`,
+                ),
+            );
+
+            // Custom mahsulot tugmasini qo'shish
+            typeButtons.push(
+                Markup.button.callback('🔧 Custom mahsulot', 'TYPE_CUSTOM')
+            );
+
+            await ctx.reply(
+                '📦 Mahsulot kategoriyasini tanlang:',
+                Markup.inlineKeyboard(
+                    [...typeButtons, Markup.button.callback('❌ Bekor qilish', 'CANCEL_ORDER')],
+                    {
+                        columns: 2,
+                    },
+                ),
+            );
+        } catch (error) {
+            console.error('Categories loading error:', error);
+            await ctx.reply(
+                '❌ Kategoriyalarni yuklashda xatolik. Qaytadan urinib ko\'ring.',
+                Markup.inlineKeyboard([
+                    Markup.button.callback('🔄 Qaytadan', 'RETRY_CATEGORIES'),
+                    Markup.button.callback('❌ Bekor qilish', 'CANCEL_ORDER'),
+                ])
+            );
         }
-
-        const typeButtons = productTypes.map((pt) =>
-            Markup.button.callback(
-                this.getTypeEmoji(pt.type) + ' ' + this.capitalizeFirst(pt.type),
-                `TYPE_${pt.type}`,
-            ),
-        );
-
-        await ctx.reply(
-            '📦 Mahsulot turini tanlang:',
-            Markup.inlineKeyboard(
-                [...typeButtons, Markup.button.callback('❌ Bekor qilish', 'CANCEL_ORDER')],
-                {
-                    columns: 2, // Har bir qatordagi tugmalar soni. 2 yoki 3 qilib o'zgartirishingiz mumkin.
-                },
-            ),
-        );
     }
 
     @Action(/^TYPE_(.+)$/)
@@ -262,130 +278,93 @@ Yana mahsulot qo'shasizmi?`;
         if (!('data' in ctx.callbackQuery)) {
             return;
         }
-        const type = ctx.callbackQuery.data.replace('TYPE_', '');
+        const typeData = ctx.callbackQuery.data.replace('TYPE_', '');
         const sceneState = ctx.scene.state as NewOrderSceneState;
-        sceneState.currentProduct.type = type;
 
+        // Custom mahsulot uchun
+        if (typeData === 'CUSTOM') {
+            sceneState.isCustomProduct = true;
+            sceneState.currentProduct.category = 'Custom';
+            
+            await this.safeEditOrReply(
+                ctx,
+                '🔧 Custom mahsulot tanlandi.\n\n📝 Mahsulot nomini kiriting:',
+                Markup.inlineKeyboard([
+                    Markup.button.callback('🔙 Orqaga', 'BACK_TO_TYPES'),
+                    Markup.button.callback('❌ Bekor qilish', 'CANCEL_ORDER'),
+                ])
+            );
+            sceneState.awaitingProductName = true;
+            return;
+        }
+
+        // Mavjud kategoriya uchun
         try {
-            await ctx.editMessageText(
-                `${this.getTypeEmoji(type)} "${this.capitalizeFirst(
-                    type,
-                )}" tanlandi.\n\n📋 Mahsulotni tanlang:`,
-                Markup.inlineKeyboard(
-                    [
-                        Markup.button.callback('➕ Yangi mahsulot', `CREATE_PRODUCT_${type}`),
-                        Markup.button.callback('🔙 Orqaga', 'BACK_TO_TYPES'),
-                        Markup.button.callback('❌ Bekor qilish', 'CANCEL_ORDER'),
-                    ],
-                    {
-                        columns: 2,
-                    },
-                ),
-            );
-        } catch (error) {
-            await ctx.reply(
-                `${this.getTypeEmoji(type)} "${this.capitalizeFirst(
-                    type,
-                )}" tanlandi.\n\n📋 Mahsulotni tanlang:`,
-                Markup.inlineKeyboard(
-                    [
-                        Markup.button.callback('➕ Yangi mahsulot', `CREATE_PRODUCT_${type}`),
-                        Markup.button.callback('🔙 Orqaga', 'BACK_TO_TYPES'),
-                        Markup.button.callback('❌ Bekor qilish', 'CANCEL_ORDER'),
-                    ],
-                    {
-                        columns: 2,
-                    },
-                ),
-            );
-        }
-    }
+            const category = await this.prisma.category.findUnique({
+                where: { id: typeData }
+            });
 
-    @Action(/^CREATE_PRODUCT_(.+)$/)
-    async onCreateProduct(@Ctx() ctx: Context) {
-        if (!('data' in ctx.callbackQuery)) {
-            return;
-        }
-        const type = ctx.callbackQuery.data.replace('CREATE_PRODUCT_', '');
-        const sceneState = ctx.scene.state as NewOrderSceneState;
-        sceneState.newProduct = { type };
-        await this.safeEditOrReply(ctx, `🆕 Yangi mahsulot nomini kiriting:`);
-        sceneState.awaitingNewProductName = true;
-    }
+            if (!category) {
+                await this.safeEditOrReply(ctx, '❌ Kategoriya topilmadi.');
+                return this.showProductTypes(ctx);
+            }
 
-    @Action(/^PRODUCT_(.+)$/)
-    async onProduct(@Ctx() ctx: Context) {
-        if (!('data' in ctx.callbackQuery)) {
-            return;
-        }
-        const productId = ctx.callbackQuery.data.replace('PRODUCT_', '');
-        const sceneState = ctx.scene.state as NewOrderSceneState;
-
-        const product = await this.prisma.product.findUnique({
-            where: { id: productId },
-        });
-
-        if (!product) {
-            await this.safeEditOrReply(ctx, '❌ Mahsulot topilmadi.');
-            return;
-        }
-
-        sceneState.currentProduct.productId = product.id;
-        sceneState.currentProduct.name = product.name;
-        sceneState.currentProduct.price = product.price;
-
-        if (product.sides && product.sides.length > 0) {
-            const sideButtons = product.sides.map((side) =>
-                Markup.button.callback(
-                    this.getSideEmoji(side) + ' ' + this.capitalizeFirst(side),
-                    `SIDE_${side}`,
-                ),
-            );
+            sceneState.currentProduct.category = category.name;
+            sceneState.currentProduct.categoryId = category.id;
+            sceneState.isCustomProduct = false;
 
             await this.safeEditOrReply(
                 ctx,
-                `📦 "${product.name}" tanlandi (${product.price} so'm)\n\n🍕 Tomonni tanlang:`,
-                Markup.inlineKeyboard(
-                    [
-                        ...sideButtons,
-                        Markup.button.callback(
-                            '🔙 Orqaga',
-                            `TYPE_${sceneState.currentProduct.type}`,
-                        ),
-                        Markup.button.callback('❌ Bekor qilish', 'CANCEL_ORDER'),
-                    ],
-                    {
-                        columns: 2, // Har bir qatordagi tugmalar soni. 2 yoki 3 qilib o'zgartirishingiz mumkin.
-                    },
-                ),
+                `${category.emoji} "${category.name}" kategoriyasi tanlandi.\n\n📝 Mahsulot nomini kiriting:`,
+                Markup.inlineKeyboard([
+                    Markup.button.callback('🔙 Orqaga', 'BACK_TO_TYPES'),
+                    Markup.button.callback('❌ Bekor qilish', 'CANCEL_ORDER'),
+                ])
             );
-        } else {
-            // Product has no sides, add with quantity 1 and show summary
-            sceneState.currentProduct.side = 'N/A';
-            sceneState.currentProduct.quantity = 1;
-            sceneState.products.push({ ...sceneState.currentProduct });
-            sceneState.currentProduct = {};
-            await this.safeEditOrReply(ctx, `✅ "${product.name}" qo'shildi.`);
-            await this.showOrderSummary(ctx);
+            sceneState.awaitingProductName = true;
+        } catch (error) {
+            console.error('Category loading error:', error);
+            await this.safeEditOrReply(ctx, '❌ Kategoriya yuklashda xatolik.');
+            return this.showProductTypes(ctx);
         }
     }
 
-    @Action(/^SIDE_(.+)$/)
-    async onSide(@Ctx() ctx: Context) {
+    // CREATE_NEW_PRODUCT action olib tashlandi - endi kerak emas
+
+    // SELECT_PRODUCT action olib tashlandi - mahsulot qidirish yo'q
+
+    // PRODUCT action olib tashlandi - mahsulot qidirish yo'q
+
+    @Action(/^SELECT_SIDE_(.+)$/)
+    async onSelectSide(@Ctx() ctx: Context) {
         if (!('data' in ctx.callbackQuery)) {
             return;
         }
-        const side = ctx.callbackQuery.data.replace('SIDE_', '');
+        const sideId = ctx.callbackQuery.data.replace('SELECT_SIDE_', '');
         const sceneState = ctx.scene.state as NewOrderSceneState;
-        sceneState.currentProduct.side = side;
+
+        const side = await this.prisma.side.findUnique({
+            where: { id: sideId }
+        });
+
+        if (!side) {
+            await this.safeEditOrReply(ctx, '❌ Tomon topilmadi.');
+            return;
+        }
+
+        // Side price = total price (base price yo'q)
+        sceneState.currentProduct.sideName = side.name;
+        sceneState.currentProduct.price = side.price; // Side narxi = mahsulot narxi
         sceneState.currentProduct.quantity = 1;
+
+        // Mahsulotni ro'yxatga qo'shish
         sceneState.products.push({ ...sceneState.currentProduct });
+
         await this.safeEditOrReply(
             ctx,
-            `✅ "${sceneState.currentProduct.name}" (${this.capitalizeFirst(
-                side,
-            )}) qo'shildi.`
+            `✅ "${sceneState.currentProduct.name}" (${side.name}) qo'shildi.\n💰 Narx: ${side.price} so'm`
         );
+
         sceneState.currentProduct = {};
         await this.showOrderSummary(ctx);
     }
@@ -432,10 +411,10 @@ Yana mahsulot qo'shasizmi?`;
 
         // Show final confirmation with all details
         const productsList = sceneState.products
-            .map(
-                (p, i) =>
-                    `${i + 1}. ${p.quantity}x ${p.name} (${p.side}) - ${p.price * p.quantity} so'm`,
-            )
+            .map((p, i) => {
+                const sideInfo = p.sideName ? ` (${p.sideName})` : '';
+                return `${i + 1}. ${p.quantity}x ${p.name}${sideInfo} - ${p.price * p.quantity} so'm`;
+            })
             .join('\n');
 
         const paymentsText = this.formatPaymentsList(sceneState.payments || []);
@@ -528,10 +507,9 @@ ${paymentsText}
                         total_amount: sceneState.totalAmount,
                         order_products: {
                             create: sceneState.products.map((p) => ({
-                                product: {
-                                    connect: { id: p.productId }
-                                },
-                                side: p.side,
+                                product_name: p.name,
+                                category: p.category || 'custom',
+                                side_name: p.sideName || 'custom',
                                 quantity: p.quantity,
                                 price: p.price,
                             })),
@@ -617,36 +595,63 @@ ${paymentsText}
     }
 
     // Helper methods
-    private getTypeEmoji(type: string): string {
-        const emojis = {
-            pizza: '🍕',
-            burger: '🍔',
-            drink: '🥤',
-            dessert: '🍰',
-            salad: '🥗',
-        };
-        return emojis[type.toLowerCase()] || '📦';
-    }
-
-    private getSideEmoji(side: string): string {
-        const emojis = {
-            oldi: '⬆️',
-            orqa: '⬇️',
-            left: '⬅️',
-            right: '➡️',
-        };
-        return emojis[side.toLowerCase()] || '📍';
-    }
-
-    private capitalizeFirst(str: string): string {
-        return str.charAt(0).toUpperCase() + str.slice(1);
-    }
 
     private async safeEditOrReply(ctx: Context, text: string, extra?: any) {
         try {
             await ctx.editMessageText(text, extra);
         } catch (error) {
             await ctx.reply(text, extra);
+        }
+    }
+
+    async showSidesSelection(@Ctx() ctx: Context) {
+        const sceneState = ctx.scene.state as NewOrderSceneState;
+
+        try {
+            // Barcha sides'larni olish
+            const sides = await this.prisma.side.findMany({
+                orderBy: { price: 'asc' }
+            });
+
+            if (sides.length === 0) {
+                await this.safeEditOrReply(
+                    ctx,
+                    '❌ Hech qanday tomon mavjud emas. Administratorga murojaat qiling.',
+                    Markup.inlineKeyboard([
+                        Markup.button.callback('🔙 Orqaga', 'BACK_TO_TYPES'),
+                        Markup.button.callback('❌ Bekor qilish', 'CANCEL_ORDER'),
+                    ])
+                );
+                return;
+            }
+
+            const sideButtons = sides.map((side) =>
+                Markup.button.callback(
+                    `${side.name} - ${side.price} so'm`,
+                    `SELECT_SIDE_${side.id}`
+                )
+            );
+
+            await this.safeEditOrReply(
+                ctx,
+                `📦 "${sceneState.currentProduct.name}" tanlandi\n\n🍕 Tomonni tanlang (narx = tomon narxi):`,
+                Markup.inlineKeyboard([
+                    ...sideButtons,
+                    Markup.button.callback('🔙 Orqaga', 'BACK_TO_TYPES'),
+                    Markup.button.callback('❌ Bekor qilish', 'CANCEL_ORDER'),
+                ], { columns: 1 })
+            );
+        } catch (error) {
+            console.error('Sides loading error:', error);
+            await this.safeEditOrReply(
+                ctx,
+                '❌ Tomonlarni yuklashda xatolik.',
+                Markup.inlineKeyboard([
+                    Markup.button.callback('🔄 Qaytadan', 'RETRY_SIDES'),
+                    Markup.button.callback('🔙 Orqaga', 'BACK_TO_TYPES'),
+                    Markup.button.callback('❌ Bekor qilish', 'CANCEL_ORDER'),
+                ])
+            );
         }
     }
 
@@ -714,7 +719,7 @@ ${paymentsText}
         const emojis = {
             [PaymentType.CASH]: '💵',
             [PaymentType.CARD]: '💳',
-            [PaymentType.CREDIT]: '🏦',
+            [PaymentType.TRANSFER]: '📱',
         };
         return emojis[paymentType] || '💰';
     }
@@ -723,198 +728,142 @@ ${paymentsText}
         const names = {
             [PaymentType.CASH]: 'Naqd',
             [PaymentType.CARD]: 'Karta',
-            [PaymentType.CREDIT]: 'Kredit',
+            [PaymentType.TRANSFER]: "Nasiya",
         };
-        return names[paymentType] || 'Noma\'lum';
+        return names[paymentType] || paymentType;
     }
 
     async showPaymentTypeSelection(@Ctx() ctx: Context) {
         const sceneState = ctx.scene.state as NewOrderSceneState;
+        const remainingAmount = sceneState.remainingAmount || 0;
 
-        const productsList = sceneState.products
-            .map(
-                (p, i) =>
-                    `${i + 1}. ${p.quantity}x ${p.name} (${p.side}) - ${p.price * p.quantity} so'm`,
-            )
-            .join('\n');
-
-        const paymentsText = sceneState.payments && sceneState.payments.length > 0
-            ? `\n\n📋 Joriy to'lovlar:\n${this.formatPaymentsList(sceneState.payments)}\n`
-            : '';
-
-        const messageText = `💰 Buyurtma jami: ${sceneState.totalAmount} so'm
-📦 Mahsulotlar:
-${productsList}${paymentsText}
-💰 Qolgan summa: ${sceneState.remainingAmount} so'm
-
-💳 To'lov turini tanlang:`;
+        if (remainingAmount <= 0) {
+            return this.showPaymentSummary(ctx);
+        }
 
         await this.safeEditOrReply(
             ctx,
-            messageText,
-            Markup.inlineKeyboard(
-                [
-                    Markup.button.callback('� Naaqd', 'PAYMENT_TYPE_CASH'),
-                    Markup.button.callback('💳 Karta', 'PAYMENT_TYPE_CARD'),
-                    Markup.button.callback('🏦 Kredit', 'PAYMENT_TYPE_CREDIT'),
-                    Markup.button.callback('🔙 Orqaga', 'ADD_PRODUCT'),
-                    Markup.button.callback('❌ Bekor', 'CANCEL_ORDER'),
-                ],
-                {
-                    columns: 2,
-                },
-            ),
+            `💳 To'lov turi tanlang\n\n💰 Qolgan summa: ${remainingAmount} so'm`,
+            Markup.inlineKeyboard([
+                Markup.button.callback('💵 Naqd', 'PAYMENT_TYPE_CASH'),
+                Markup.button.callback('💳 Karta', 'PAYMENT_TYPE_CARD'),
+                Markup.button.callback('📱 O\'tkazma', 'PAYMENT_TYPE_TRANSFER'),
+                Markup.button.callback('🔙 Orqaga', 'BACK_TO_ORDER_SUMMARY'),
+                Markup.button.callback('❌ Bekor qilish', 'CANCEL_ORDER'),
+            ], { columns: 2 })
         );
     }
 
-    @Action('PAYMENT_TYPE_CASH')
-    async onPaymentTypeCash(@Ctx() ctx: Context) {
-        const sceneState = ctx.scene.state as NewOrderSceneState;
-        sceneState.currentPayment = { type: PaymentType.CASH, amount: 0 };
-        return this.showPaymentAmountSelection(ctx);
-    }
-
-    @Action('PAYMENT_TYPE_CARD')
-    async onPaymentTypeCard(@Ctx() ctx: Context) {
-        const sceneState = ctx.scene.state as NewOrderSceneState;
-        sceneState.currentPayment = { type: PaymentType.CARD, amount: 0 };
-        return this.showPaymentAmountSelection(ctx);
-    }
-
-    @Action('PAYMENT_TYPE_CREDIT')
-    async onPaymentTypeCredit(@Ctx() ctx: Context) {
-        const sceneState = ctx.scene.state as NewOrderSceneState;
-        sceneState.currentPayment = { type: PaymentType.CREDIT, amount: 0 };
-        return this.showPaymentAmountSelection(ctx);
-    }
-
-    async showPaymentAmountSelection(@Ctx() ctx: Context) {
-        const sceneState = ctx.scene.state as NewOrderSceneState;
-
-        if (!sceneState.currentPayment) {
-            return this.showPaymentTypeSelection(ctx);
+    @Action(/^PAYMENT_TYPE_(.+)$/)
+    async onPaymentType(@Ctx() ctx: Context) {
+        if (!('data' in ctx.callbackQuery)) {
+            return;
         }
+        const paymentType = ctx.callbackQuery.data.replace('PAYMENT_TYPE_', '') as PaymentType;
+        const sceneState = ctx.scene.state as NewOrderSceneState;
 
-        const paymentEmoji = this.getPaymentTypeEmoji(sceneState.currentPayment.type);
-        const paymentName = this.getPaymentTypeName(sceneState.currentPayment.type);
+        sceneState.currentPayment = {
+            type: paymentType,
+            amount: 0
+        };
 
-        const messageText = `${paymentEmoji} ${paymentName} to'lov tanlandi
-💰 Jami: ${sceneState.totalAmount} so'm
-💰 Qolgan: ${sceneState.remainingAmount} so'm
-
-Miqdorni tanlang:`;
+        const remainingAmount = sceneState.remainingAmount || 0;
+        const typeName = this.getPaymentTypeName(paymentType);
+        const emoji = this.getPaymentTypeEmoji(paymentType);
 
         await this.safeEditOrReply(
             ctx,
-            messageText,
-            Markup.inlineKeyboard(
-                [
-                    Markup.button.callback(`💯 Hammasini (${sceneState.remainingAmount} so'm)`, 'PAYMENT_AMOUNT_ALL'),
-                    Markup.button.callback('✏️ Boshqa miqdor', 'PAYMENT_AMOUNT_CUSTOM'),
-                    Markup.button.callback('🔙 Orqaga', 'PAYMENT_BACK_TO_TYPE'),
-                    Markup.button.callback('❌ Bekor', 'CANCEL_ORDER'),
-                ],
-                {
-                    columns: 1,
-                },
-            ),
+            `${emoji} ${typeName} to'lov tanlandi\n\n💰 Qolgan summa: ${remainingAmount} so'm\n\n💵 To'lov miqdorini kiriting:`,
+            Markup.inlineKeyboard([
+                Markup.button.callback(`💯 Barcha (${remainingAmount} so'm)`, 'PAY_ALL_REMAINING'),
+                Markup.button.callback('🔙 Orqaga', 'BACK_TO_PAYMENT_TYPE'),
+                Markup.button.callback('❌ Bekor qilish', 'CANCEL_ORDER'),
+            ])
         );
+
+        sceneState.awaitingPaymentAmount = true;
     }
 
-    @Action('PAYMENT_AMOUNT_ALL')
-    async onPaymentAmountAll(@Ctx() ctx: Context) {
+    @Action('PAY_ALL_REMAINING')
+    async onPayAllRemaining(@Ctx() ctx: Context) {
         const sceneState = ctx.scene.state as NewOrderSceneState;
+        const remainingAmount = sceneState.remainingAmount || 0;
 
         if (!sceneState.currentPayment) {
+            await this.safeEditOrReply(ctx, "❌ To'lov turi tanlanmagan.");
             return this.showPaymentTypeSelection(ctx);
         }
 
-        sceneState.currentPayment.amount = sceneState.remainingAmount || 0;
+        sceneState.currentPayment.amount = remainingAmount;
 
         if (!sceneState.payments) {
             sceneState.payments = [];
         }
 
         sceneState.payments.push({ ...sceneState.currentPayment });
-        sceneState.remainingAmount = this.calculateRemainingAmount(sceneState.totalAmount || 0, sceneState.payments);
+        sceneState.remainingAmount = 0;
         sceneState.currentPayment = undefined;
+        sceneState.awaitingPaymentAmount = false;
 
         return this.showPaymentSummary(ctx);
     }
 
-    @Action('PAYMENT_AMOUNT_CUSTOM')
-    async onPaymentAmountCustom(@Ctx() ctx: Context) {
-        const sceneState = ctx.scene.state as NewOrderSceneState;
-
-        if (!sceneState.currentPayment) {
-            return this.showPaymentTypeSelection(ctx);
-        }
-
-        const paymentEmoji = this.getPaymentTypeEmoji(sceneState.currentPayment.type);
-        const paymentName = this.getPaymentTypeName(sceneState.currentPayment.type);
-
-        sceneState.awaitingPaymentAmount = true;
-
-        await this.safeEditOrReply(
-            ctx,
-            `${paymentEmoji} ${paymentName} to'lov
-💰 Qolgan summa: ${sceneState.remainingAmount} so'm
-
-Miqdorni kiriting (1-${sceneState.remainingAmount}):`
-        );
-    }
-
-    @Action('PAYMENT_BACK_TO_TYPE')
-    async onPaymentBackToType(@Ctx() ctx: Context) {
+    @Action('BACK_TO_PAYMENT_TYPE')
+    async onBackToPaymentType(@Ctx() ctx: Context) {
         const sceneState = ctx.scene.state as NewOrderSceneState;
         sceneState.currentPayment = undefined;
         sceneState.awaitingPaymentAmount = false;
         return this.showPaymentTypeSelection(ctx);
     }
 
+    @Action('BACK_TO_ORDER_SUMMARY')
+    async onBackToOrderSummary(@Ctx() ctx: Context) {
+        return this.showOrderSummary(ctx);
+    }
+
     async showPaymentSummary(@Ctx() ctx: Context) {
         const sceneState = ctx.scene.state as NewOrderSceneState;
+        const totalAmount = sceneState.totalAmount || 0;
+        const payments = sceneState.payments || [];
+        const remainingAmount = this.calculateRemainingAmount(totalAmount, payments);
 
-        const isComplete = this.isPaymentComplete(sceneState.totalAmount || 0, sceneState.payments || []);
-        const remainingAmount = sceneState.remainingAmount || 0;
+        const paymentsText = this.formatPaymentsList(payments);
+        const isComplete = remainingAmount === 0;
 
-        const paymentsText = this.formatPaymentsList(sceneState.payments || []);
+        let messageText = `💳 To'lov xulosasi:\n\n${paymentsText}\n\n💰 Jami: ${totalAmount} so'm`;
 
-        let messageText = `✅ To'lov qo'shildi!\n\n📋 Joriy to'lovlar:\n${paymentsText}\n\n💰 Jami: ${sceneState.totalAmount} so'm`;
-
-        if (!isComplete) {
-            messageText += `\n💰 Qolgan: ${remainingAmount} so'm\n\nYana to'lov qo'shasizmi?`;
+        if (remainingAmount > 0) {
+            messageText += `\n🔴 Qolgan: ${remainingAmount} so'm`;
         } else {
-            messageText += `\n✅ Barcha summa to'landi!\n\nBuyurtmani tasdiqlaysizmi?`;
+            messageText += `\n✅ To'lov to'liq amalga oshirildi`;
         }
 
         const buttons = [];
 
-        if (!isComplete) {
-            buttons.push(
-                Markup.button.callback('➕ Yana to\'lov', 'ADD_ANOTHER_PAYMENT'),
-                Markup.button.callback('🗑️ Oxirgi to\'lovni o\'chirish', 'REMOVE_LAST_PAYMENT')
-            );
+        if (remainingAmount > 0) {
+            buttons.push(Markup.button.callback('➕ Yana to\'lov qo\'shish', 'ADD_PAYMENT'));
+        }
+
+        if (payments.length > 0) {
+            buttons.push(Markup.button.callback('🗑️ Oxirgi to\'lovni o\'chirish', 'REMOVE_LAST_PAYMENT'));
         }
 
         if (isComplete) {
-            buttons.push(Markup.button.callback('✅ Tasdiqlash', 'CONFIRM_ORDER'));
+            buttons.push(Markup.button.callback('✅ Buyurtmani tasdiqlash', 'CONFIRM_ORDER'));
         }
 
-        buttons.push(
-            Markup.button.callback('🔙 Orqaga', 'PAYMENT_BACK_TO_TYPE'),
-            Markup.button.callback('❌ Bekor', 'CANCEL_ORDER')
-        );
+        buttons.push(Markup.button.callback('🔙 Orqaga', 'BACK_TO_ORDER_SUMMARY'));
+        buttons.push(Markup.button.callback('❌ Bekor qilish', 'CANCEL_ORDER'));
 
         await this.safeEditOrReply(
             ctx,
             messageText,
-            Markup.inlineKeyboard(buttons, { columns: 2 })
+            Markup.inlineKeyboard(buttons, { columns: 1 })
         );
     }
 
-    @Action('ADD_ANOTHER_PAYMENT')
-    async onAddAnotherPayment(@Ctx() ctx: Context) {
+    @Action('ADD_PAYMENT')
+    async onAddPayment(@Ctx() ctx: Context) {
         return this.showPaymentTypeSelection(ctx);
     }
 
@@ -923,17 +872,31 @@ Miqdorni kiriting (1-${sceneState.remainingAmount}):`
         const sceneState = ctx.scene.state as NewOrderSceneState;
 
         if (!sceneState.payments || sceneState.payments.length === 0) {
-            await ctx.reply("❌ Hech qanday to'lov mavjud emas.");
-            return this.showPaymentTypeSelection(ctx);
-        }
-
-        sceneState.payments.pop();
-        sceneState.remainingAmount = this.calculateRemainingAmount(sceneState.totalAmount || 0, sceneState.payments);
-
-        if (sceneState.payments.length === 0) {
-            return this.showPaymentTypeSelection(ctx);
-        } else {
+            await this.safeEditOrReply(ctx, "❌ Hech qanday to'lov mavjud emas.");
             return this.showPaymentSummary(ctx);
         }
+
+        const removedPayment = sceneState.payments.pop();
+        sceneState.remainingAmount = this.calculateRemainingAmount(sceneState.totalAmount || 0, sceneState.payments);
+
+        const emoji = this.getPaymentTypeEmoji(removedPayment!.type);
+        const typeName = this.getPaymentTypeName(removedPayment!.type);
+
+        await this.safeEditOrReply(
+            ctx,
+            `🗑️ To'lov o'chirildi: ${emoji} ${typeName} - ${removedPayment!.amount} so'm`
+        );
+
+        return this.showPaymentSummary(ctx);
+    }
+
+    @Action('RETRY_CATEGORIES')
+    async onRetryCategories(@Ctx() ctx: Context) {
+        return this.showProductTypes(ctx);
+    }
+
+    @Action('RETRY_SIDES')
+    async onRetrySides(@Ctx() ctx: Context) {
+        return this.showSidesSelection(ctx);
     }
 }
