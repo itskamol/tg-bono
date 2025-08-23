@@ -20,8 +20,6 @@ export class EditSideScene {
     @SceneEnter()
     async onSceneEnter(@Ctx() ctx: Context) {
         const sceneState = ctx.scene.state as EditSideSceneState;
-        console.log(ctx);
-        console.log(sceneState);
         if (!sceneState.sideId) {
             await ctx.reply('❌ Tomon ma\'lumotlari topilmadi.');
             await ctx.scene.leave();

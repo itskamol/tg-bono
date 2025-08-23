@@ -1,14 +1,12 @@
-import { UseGuards } from '@nestjs/common';
 import { Update, Command, Ctx, Action } from 'nestjs-telegraf';
 import { Markup } from 'telegraf';
-import { AuthGuard } from '../auth/guards/auth.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { PrismaService } from '../prisma/prisma.service';
 import { Context } from '../interfaces/context.interface';
 import { Role } from '@prisma/client';
 
 @Update()
-@UseGuards(AuthGuard)
+
 export class SidesUpdate {
     constructor(private readonly prisma: PrismaService) {}
 
@@ -104,7 +102,6 @@ Nima qilmoqchisiz?
             return;
         }
         const sideData = ctx.callbackQuery.data;
-        console.log('sideData', sideData);
         
         // Regex orqali sideId'ni olish
         const match = sideData.match(/^EDIT_SIDE_(.+)$/);
@@ -114,14 +111,12 @@ Nima qilmoqchisiz?
         }
         
         const sideId = match[1];
-        console.log('sideId', sideId);
         
         const side = await this.prisma.side.findUnique({
             where: { id: sideId },
         });
 
         if (!side) {
-            console.log('Side not found with ID:', sideId);
             await ctx.editMessageText('❌ Tomon topilmadi.');
             return;
         }
@@ -148,7 +143,6 @@ Nima qilmoqchisiz?
         }
         
         const sideId = match[1];
-        console.log('Delete sideId', sideId);
 
         // Scene state'ga side ID'ni saqlash
         ctx.scene.state = { sideId };

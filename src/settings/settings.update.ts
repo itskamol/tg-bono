@@ -1,6 +1,4 @@
-import { UseGuards } from '@nestjs/common';
 import { Update, Command, Ctx, Action, Scene, SceneEnter, On, Message } from 'nestjs-telegraf';
-import { AuthGuard } from '../auth/guards/auth.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { PrismaService } from '../prisma/prisma.service';
 import { Context } from '../interfaces/context.interface';
@@ -10,7 +8,6 @@ import { SchedulerService } from '../scheduler/scheduler.service';
 import { Role } from '@prisma/client';
 
 @Update()
-@UseGuards(AuthGuard)
 export class SettingsUpdate {
     constructor(private readonly prisma: PrismaService) {}
 

@@ -8,7 +8,7 @@ import { Context } from '../interfaces/context.interface';
 import { Order, PaymentType, Role } from '@prisma/client';
 
 @Update()
-@UseGuards(AuthGuard)
+
 export class OrdersUpdate {
     constructor(private readonly prisma: PrismaService) {}
 

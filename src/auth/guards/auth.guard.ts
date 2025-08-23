@@ -25,6 +25,7 @@ export class AuthGuard implements CanActivate {
         }
 
         const ctx = TelegrafExecutionContext.create(context);
+
         const telegramContext = ctx.getContext<Context>();
         const { from } = telegramContext;
 
@@ -45,7 +46,6 @@ export class AuthGuard implements CanActivate {
 
         // Attach user to context for use in handlers
         telegramContext.user = user;
-
         const hasRole = () => requiredRoles.some((role: Role) => user.role === role);
 
         if (!hasRole()) {

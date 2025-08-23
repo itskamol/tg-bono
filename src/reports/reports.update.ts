@@ -1,13 +1,11 @@
-import { UseGuards } from '@nestjs/common';
 import { Update, Command, Ctx, Action } from 'nestjs-telegraf';
 import { Markup } from 'telegraf';
-import { AuthGuard } from '../auth/guards/auth.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { Context } from '../interfaces/context.interface';
 import { Role } from '@prisma/client';
 
 @Update()
-@UseGuards(AuthGuard)
+
 export class ReportsUpdate {
     @Command('reports')
     @Roles(Role.SUPER_ADMIN, Role.ADMIN)

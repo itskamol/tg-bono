@@ -146,9 +146,6 @@ export class TelegramService {
             this.buttonTextMap[buttonText] = cmd.command;
             return buttonText;
         });
-
-        console.log(this.buttonTextMap);
-
         await ctx.reply(
             startMessage,
             Markup.keyboard(keyboardButtons, { columns: 2 }).resize().persistent(),
@@ -255,7 +252,6 @@ export class TelegramService {
     async onText(@Ctx() ctx: Context) {
         const text = (ctx.message as any).text;
         const command = this.buttonTextMap[text];
-        console.log(ctx);
         if (command) {
             switch (command) {
                 case 'start':
@@ -277,7 +273,6 @@ export class TelegramService {
                     await this.ordersUpdate.listOrders(ctx);
                     break;
                 case 'reports':
-                    console.log(ctx);
                     await this.reportsUpdate.showReports(ctx);
                     break;
                 case 'settings':

@@ -15,6 +15,11 @@ import { TelegramModule } from './telegram/telegram.module';
 import { UsersModule } from './users/users.module';
 import { CategoriesModule } from './categories/categories.module';
 import { GoogleSheetsModule } from './sheets/google-sheets.module';
+import { AuthGuard } from './auth/guards/auth.guard';
+import { APP_GUARD } from '@nestjs/core';
+import { PrismaService } from './prisma/prisma.service';
+import { authMiddleware } from './auth/middlewares/auth.middleware';
+import { Role } from '@prisma/client';
 
 @Module({
     imports: [
@@ -23,11 +28,16 @@ import { GoogleSheetsModule } from './sheets/google-sheets.module';
         }),
         TelegrafModule.forRootAsync({
             imports: [ConfigModule],
-            useFactory: (configService: ConfigService) => ({
+            useFactory: (configService: ConfigService, prismaService: PrismaService) => ({
                 token: configService.get<string>('TELEGRAM_BOT_TOKEN'),
-                middlewares: [session()],
+                // Global middleware'ni shu yerga qo'shing.
+                // Bu barcha so'rovlar uchun ishlaydi.
+                middlewares: [
+                    session(),
+                    authMiddleware([Role.ADMIN, Role.SUPER_ADMIN, Role.CASHIER], prismaService),
+                ],
             }),
-            inject: [ConfigService],
+            inject: [ConfigService, PrismaService], // <-- PrismaService'ni inject qiling
         }),
         UsersModule,
         BranchesModule,
@@ -40,7 +50,7 @@ import { GoogleSheetsModule } from './sheets/google-sheets.module';
         SettingsModule,
         SchedulerModule,
         CategoriesModule,
-        GoogleSheetsModule
+        GoogleSheetsModule,
     ],
 })
 export class AppModule {}
