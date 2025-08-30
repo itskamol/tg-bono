@@ -24,6 +24,12 @@ export class OrdersUpdate {
         await ctx.scene.enter('new-order-scene');
     }
 
+    @Command('search_orders')
+    @Roles(Role.SUPER_ADMIN, Role.ADMIN, Role.CASHIER)
+    async searchOrders(@Ctx() ctx: Context) {
+        await ctx.scene.enter('order-search-scene');
+    }
+
     @Command('orders')
     @Roles(Role.SUPER_ADMIN, Role.ADMIN, Role.CASHIER)
     async listOrders(@Ctx() ctx: Context) {
@@ -71,9 +77,12 @@ export class OrdersUpdate {
             ),
         );
 
+        // Add search button at the end
+        orderButtons.push(Markup.button.callback('🔍 Qidirish', 'SEARCH_ORDERS'));
+
         await ctx.reply(
-            `📋 Buyurtmalar ${orderButtons.length ? `(${orderButtons.length})` : ''}:`,
-            Markup.inlineKeyboard(orderButtons),
+            `📋 Buyurtmalar ${orderButtons.length - 1 ? `(${orderButtons.length - 1})` : ''}:`,
+            Markup.inlineKeyboard(orderButtons, { columns: 1 }),
         );
     }
 
@@ -134,6 +143,11 @@ ${user.role === Role.ADMIN ? `🏪 Filial: ${user.branch?.name || 'N/A'}` : '�
     `;
 
         await ctx.reply(statsMessage);
+    }
+
+    @Action('SEARCH_ORDERS')
+    async onSearchOrdersAction(@Ctx() ctx: Context) {
+        await ctx.scene.enter('order-search-scene');
     }
 
     @Action(/^VIEW_ORDER_(.+)$/)

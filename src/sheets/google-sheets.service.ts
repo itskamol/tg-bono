@@ -35,17 +35,25 @@ export class GoogleSheetsService {
         }
 
         try {
+            this.logger.log(`Starting Google Sheets append operation. Sheet ID: ${sheetId}, Worksheet: ${worksheetName}, Data count: ${dataObjects.length}`);
+            
             const sheets = await this.getSheetsClient(credentials);
+            this.logger.log('Google Sheets client created successfully');
 
             // 1. Check if the worksheet exists
+            this.logger.log('Checking if spreadsheet exists...');
             const spreadsheet = await sheets.spreadsheets.get({
                 spreadsheetId: sheetId,
             });
+            
+            this.logger.log(`Spreadsheet found. Available sheets: ${spreadsheet.data.sheets.map(s => s.properties.title).join(', ')}`);
+            
             const sheetExists = spreadsheet.data.sheets.some(
                 (s) => s.properties.title === worksheetName,
             );
 
             const headers = Object.keys(dataObjects[0]);
+            this.logger.log(`Data headers: ${headers.join(', ')}`);
 
             // 2. Create it if it doesn't exist, and add headers
             if (!sheetExists) {
@@ -62,7 +70,9 @@ export class GoogleSheetsService {
                         ],
                     },
                 });
+                this.logger.log(`Worksheet "${worksheetName}" created successfully`);
 
+                this.logger.log('Adding headers to new worksheet...');
                 await sheets.spreadsheets.values.append({
                     spreadsheetId: sheetId,
                     range: `${worksheetName}!A1`,
@@ -71,11 +81,17 @@ export class GoogleSheetsService {
                         values: [headers],
                     },
                 });
+                this.logger.log('Headers added successfully');
+            } else {
+                this.logger.log(`Worksheet "${worksheetName}" already exists`);
             }
 
             // 3. Convert data and append
-            const values = dataObjects.map((obj) => headers.map((header) => obj[header]));
+            this.logger.log('Converting data for append...');
+            const values = dataObjects.map((obj) => headers.map((header) => obj[header] || ''));
+            this.logger.log(`Converted ${values.length} rows of data`);
 
+            this.logger.log('Appending data to worksheet...');
             const result = await sheets.spreadsheets.values.append({
                 spreadsheetId: sheetId,
                 range: `${worksheetName}!A1`,
@@ -91,6 +107,16 @@ export class GoogleSheetsService {
             return true;
         } catch (error) {
             this.logger.error('Failed to write to Google Sheets:', error);
+            this.logger.error('Error details:', error.message);
+            this.logger.error('Error stack:', error.stack);
+            
+            // Log specific error for debugging
+            if (error.code === 403 && error.message?.includes('Google Sheets API has not been used')) {
+                this.logger.error('Google Sheets API is disabled. User needs to enable it in Google Cloud Console.');
+            } else if (error.code === 403 && error.message?.includes('does not have permission')) {
+                this.logger.error('Google Sheets permission denied. Service Account needs access to the sheet.');
+            }
+            
             return false;
         }
     }
@@ -247,16 +273,99 @@ export class GoogleSheetsService {
         })[],
         worksheetName: string = 'Orders',
         detailed: boolean = false
-    ): Promise<boolean> {
+    ): Promise<{ success: boolean; error?: string }> {
         try {
             const formattedData = detailed 
                 ? this.formatOrdersDetailedForSheets(orders)
                 : this.formatOrdersForSheets(orders);
 
-            return await this.appendData(sheetId, credentials, formattedData, worksheetName);
+            const success = await this.appendData(sheetId, credentials, formattedData, worksheetName);
+            
+            if (success) {
+                return { success: true };
+            } else {
+                return { success: false, error: 'Ma\'lumotlarni Google Sheets ga yozishda xatolik yuz berdi.' };
+            }
         } catch (error) {
             this.logger.error('Failed to append orders to Google Sheets:', error);
-            return false;
+            
+            // API disabled error
+            if (error.code === 403 && error.message?.includes('Google Sheets API has not been used')) {
+                const projectId = error.message.match(/project (\d+)/)?.[1];
+                return {
+                    success: false,
+                    error: `Google Sheets API o'chirilgan.\n\nLoyiha ID: ${projectId}\n\nYechim: https://console.developers.google.com/apis/api/sheets.googleapis.com/overview?project=${projectId} ga kirib API ni yoqing.`
+                };
+            }
+            
+            // Permission denied
+            if (error.code === 403 && error.message?.includes('does not have permission')) {
+                return {
+                    success: false,
+                    error: `Google Sheet ga kirish ruxsati yo'q.\n\n🔧 Yechim:\n1. Google Sheet ni oching: https://docs.google.com/spreadsheets/d/${sheetId}\n\n2. "Share" tugmasini bosing\n\n3. Service Account email ni qo'shing va "Editor" ruxsati bering\n\n4. Yoki Sheet ni "Anyone with the link can edit" qilib ochiq qiling\n\n💡 Service Account email odatda "...@....iam.gserviceaccount.com" ko'rinishida bo'ladi`
+                };
+            }
+            
+            return { 
+                success: false, 
+                error: `Google Sheets xatosi: ${error.message || 'Noma\'lum xatolik'}` 
+            };
+        }
+    }
+
+    // Google Sheets ulanishini tekshirish
+    async testConnection(sheetId: string, credentials: string): Promise<{ success: boolean; error?: string }> {
+        try {
+            const sheets = await this.getSheetsClient(credentials);
+            
+            // Try to get spreadsheet info to test connection
+            await sheets.spreadsheets.get({
+                spreadsheetId: sheetId,
+            });
+            
+            this.logger.log('Google Sheets connection test successful');
+            return { success: true };
+        } catch (error) {
+            this.logger.error('Google Sheets connection test failed:', error);
+            
+            // API disabled error
+            if (error.code === 403 && error.message?.includes('Google Sheets API has not been used')) {
+                const projectId = error.message.match(/project (\d+)/)?.[1];
+                return {
+                    success: false,
+                    error: `Google Sheets API o'chirilgan yoki yoqilmagan.\n\n📋 Loyiha ID: ${projectId}\n\n🔧 Yechim:\n1. Quyidagi havolaga kiring:\nhttps://console.developers.google.com/apis/api/sheets.googleapis.com/overview?project=${projectId}\n\n2. "Enable" tugmasini bosing\n\n3. Bir necha daqiqa kuting\n\n4. Qaytadan urinib ko'ring`
+                };
+            }
+            
+            // Invalid credentials
+            if (error.code === 401 || error.message?.includes('invalid_grant')) {
+                return {
+                    success: false,
+                    error: 'Service Account JSON noto\'g\'ri yoki muddati tugagan. Yangi Service Account yarating va qaytadan urinib ko\'ring.'
+                };
+            }
+            
+            // Sheet not found
+            if (error.code === 404) {
+                return {
+                    success: false,
+                    error: 'Google Sheet topilmadi. Sheet ID ni tekshiring yoki Sheet ni ochiq (public) qiling.'
+                };
+            }
+            
+            // Permission denied
+            if (error.code === 403 && !error.message?.includes('API has not been used')) {
+                return {
+                    success: false,
+                    error: `Google Sheet ga kirish ruxsati yo'q.\n\n🔧 Yechim:\n1. Google Sheet ni oching: https://docs.google.com/spreadsheets/d/${sheetId}\n\n2. "Share" tugmasini bosing\n\n3. Service Account email ni qo'shing va "Editor" ruxsati bering\n\n4. Yoki Sheet ni "Anyone with the link can edit" qilib ochiq qiling\n\n💡 Service Account email odatda "...@....iam.gserviceaccount.com" ko'rinishida bo'ladi`
+                };
+            }
+            
+            // Generic error
+            return {
+                success: false,
+                error: `Ulanish xatosi: ${error.message || 'Noma\'lum xatolik'}`
+            };
         }
     }
 }

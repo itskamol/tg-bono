@@ -2,8 +2,8 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { EncryptionService } from '../settings/encryption.service';
 import { GoogleSheetsService } from '../sheets/google-sheets.service';
+import { EmailService } from '../email/email.service';
 import { Prisma, Role } from '@prisma/client';
-import * as nodemailer from 'nodemailer';
 
 @Injectable()
 export class ReportsService {
@@ -13,9 +13,10 @@ export class ReportsService {
         private readonly prisma: PrismaService,
         private readonly encryptionService: EncryptionService,
         private readonly googleSheetsService: GoogleSheetsService,
-    ) {}
+        private readonly emailService: EmailService,
+    ) { }
 
-    async sendReportByEmail(user: any, timeRange: string): Promise<boolean> {
+    async sendReportByEmail(user: any, timeRange: string, detailed: boolean = false): Promise<boolean> {
         this.logger.log(
             `Attempting to send report via email for user ${user.id} and range ${timeRange}`,
         );
@@ -32,39 +33,36 @@ export class ReportsService {
         const configStr = this.encryptionService.decrypt(emailConfigSetting.value);
         const config = JSON.parse(configStr);
 
-        const orders = await this.getOrdersForReport(user, timeRange);
+        const orders = await this.getOrdersForReportWithDetails(user, timeRange);
 
         if (orders.length === 0) {
             this.logger.log('No data for the report. Skipping email.');
             return true; // Not an error, just no data to send
         }
 
-        const csvData = this.convertToCsv(orders);
-        const fileName = `report_${timeRange.toLowerCase()}_${new Date().toISOString().split('T')[0]}.csv`;
-
         try {
-            const transporter = nodemailer.createTransport({
-                host: config.host,
-                port: config.port,
-                secure: config.secure,
-                auth: config.auth,
-            });
+            const timeRangeNames = {
+                'DAILY': 'Kunlik',
+                'WEEKLY': 'Haftalik',
+                'MONTHLY': 'Oylik'
+            };
 
-            await transporter.sendMail({
-                from: `Bot <${config.auth.user}>`,
-                to: config.recipient,
-                subject: `Report: ${timeRange}`,
-                text: `Here is your ${timeRange} report, attached as a CSV file.`,
-                attachments: [
-                    {
-                        filename: fileName,
-                        content: csvData,
-                        contentType: 'text/csv',
-                    },
-                ],
-            });
-            this.logger.log(`Report sent to ${config.recipient}`);
-            return true;
+            const subject = `${timeRangeNames[timeRange] || timeRange} Buyurtmalar Hisoboti - ${new Date().toLocaleDateString('uz-UZ')}`;
+
+            const success = await this.emailService.sendOrdersReport(
+                config,
+                orders,
+                subject,
+                detailed
+            );
+
+            if (success) {
+                this.logger.log(`Report sent to ${config.recipient}`);
+                return true;
+            } else {
+                this.logger.error('Failed to send email report');
+                return false;
+            }
         } catch (error) {
             this.logger.error('Email sending failed:', error);
             return false;
@@ -97,12 +95,12 @@ export class ReportsService {
                 const clientName = o.client_name.includes(',')
                     ? `"${o.client_name}"`
                     : o.client_name;
-                
+
                 // Format payment types from payments array
                 const paymentTypes = o.payments && o.payments.length > 0
                     ? o.payments.map(p => `${p.payment_type}:${p.amount}`).join(';')
                     : 'N/A';
-                
+
                 return `${o.order_number},${o.created_at.toISOString()},${clientName},"${o.client_phone}",${o.branch.name},${o.cashier.full_name},"${paymentTypes}",${o.total_amount}`;
             })
             .join('\n');
@@ -143,20 +141,24 @@ export class ReportsService {
             return false;
         }
 
-        const configStr = this.encryptionService.decrypt(gSheetsConfigSetting.value);
-        const config = JSON.parse(configStr);
-
-        const orders = await this.getOrdersForReportWithDetails(user, timeRange);
-
-        if (orders.length === 0) {
-            this.logger.log('No data for the report. Skipping Google Sheets export.');
-            return true; // Not an error, just no data to send
-        }
-
         try {
-            const worksheetName = `${timeRange}_${new Date().toISOString().split('T')[0]}`;
+            const configStr = this.encryptionService.decrypt(gSheetsConfigSetting.value);
+            const config = JSON.parse(configStr);
             
-            const success = await this.googleSheetsService.appendOrdersToSheet(
+            this.logger.log(`Google Sheets config loaded. Sheet ID: ${config.sheetId}`);
+
+            const orders = await this.getOrdersForReportWithDetails(user, timeRange);
+            this.logger.log(`Found ${orders.length} orders for export`);
+
+            if (orders.length === 0) {
+                this.logger.log('No data for the report. Skipping Google Sheets export.');
+                return true; // Not an error, just no data to send
+            }
+
+            const worksheetName = `${timeRange}_${new Date().toISOString().split('T')[0]}`;
+            this.logger.log(`Attempting to write to worksheet: ${worksheetName}`);
+
+            const result = await this.googleSheetsService.appendOrdersToSheet(
                 config.sheetId,
                 config.credentials,
                 orders,
@@ -164,15 +166,16 @@ export class ReportsService {
                 detailed
             );
 
-            if (success) {
+            if (result.success) {
                 this.logger.log(`Report successfully exported to Google Sheets worksheet: ${worksheetName}`);
                 return true;
             } else {
-                this.logger.error('Failed to export report to Google Sheets');
+                this.logger.error(`Failed to export report to Google Sheets: ${result.error}`);
                 return false;
             }
         } catch (error) {
-            this.logger.error('Google Sheets export failed:', error);
+            this.logger.error('Google Sheets export failed with error:', error);
+            this.logger.error('Error stack:', error.stack);
             return false;
         }
     }
@@ -191,8 +194,8 @@ export class ReportsService {
 
         return this.prisma.order.findMany({
             where,
-            include: { 
-                branch: true, 
+            include: {
+                branch: true,
                 cashier: true,
                 order_products: true,
                 payments: true,
@@ -208,9 +211,9 @@ export class ReportsService {
             sheets: false,
         };
 
-        // Email export
+        // Email export (detailed format)
         try {
-            results.email = await this.sendReportByEmail(user, timeRange);
+            results.email = await this.sendReportByEmail(user, timeRange, true);
         } catch (error) {
             this.logger.error('Email export failed:', error);
         }
