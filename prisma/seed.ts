@@ -72,12 +72,12 @@ async function main() {
             "Toshkent shahar, Amir Temur ko'chasi 1",
         );
         const categories = [
-            { name: 'Pizza', emoji: '🍕' },
-            { name: 'Burger', emoji: '🍔' },
-            { name: 'Ichimlik', emoji: '🥤' },
-            { name: 'Desert', emoji: '🍰' },
-            { name: 'Salat', emoji: '🥗' },
-            { name: 'Boshqa', emoji: '📦' },
+            { name: 'Pizza' },
+            { name: 'Burger' },
+            { name: 'Ichimlik' },
+            { name: 'Desert' },
+            { name: 'Salat' },
+            { name: 'Boshqa' },
         ];
         const sides = [
             { name: 'Oldi tomon', price: 25000 },

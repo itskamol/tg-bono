@@ -2,6 +2,7 @@ import { Scene, SceneEnter, On, Message, Action, Ctx } from 'nestjs-telegraf';
 import { Markup } from 'telegraf';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Context } from '../../interfaces/context.interface';
+import { safeEditMessageText } from '../../utils/telegram.utils';
 
 interface AddBranchSceneState {
     name?: string;
@@ -10,15 +11,17 @@ interface AddBranchSceneState {
 
 @Scene('add-branch-scene')
 export class AddBranchScene {
-    constructor(private readonly prisma: PrismaService) {}
+    constructor(private readonly prisma: PrismaService) { }
 
     @SceneEnter()
     async onSceneEnter(@Ctx() ctx: Context) {
-        await ctx.reply(
+        await safeEditMessageText(
+            ctx,
             '🏪 Yangi filial yaratish\n\nFilial nomini kiriting:',
             Markup.inlineKeyboard([
                 Markup.button.callback('❌ Bekor qilish', 'CANCEL_ADD_BRANCH'),
-            ])
+            ]),
+            'Yangi filial'
         );
     }
 
@@ -34,16 +37,19 @@ export class AddBranchScene {
             });
 
             if (existingBranch) {
-                await ctx.reply('❌ Bu nom bilan filial allaqachon mavjud. Boshqa nom kiriting:');
+                await safeEditMessageText(ctx, '❌ Bu nom bilan filial allaqachon mavjud. Boshqa nom kiriting:', undefined, 'Xatolik');
                 return;
             }
 
             sceneState.name = text;
-            await ctx.reply(
+            await safeEditMessageText(
+                ctx,
                 '✅ Filial nomi saqlandi.\n\n📍 Filial manzilini kiriting:',
                 Markup.inlineKeyboard([
+                    Markup.button.callback('⏭️ Skip', 'SKIP_ADDRESS'),
                     Markup.button.callback('❌ Bekor qilish', 'CANCEL_ADD_BRANCH'),
-                ])
+                ]),
+                'Filial nomi saqlandi'
             );
             return;
         }
@@ -60,23 +66,59 @@ export class AddBranchScene {
                     },
                 });
 
-                await ctx.reply(
+                await safeEditMessageText(
+                    ctx,
                     `✅ Filial muvaffaqiyatli yaratildi!\n\n` +
-                        `🏪 Nomi: ${newBranch.name}\n` +
-                        `📍 Manzil: ${newBranch.address}`,
+                    `🏪 Nomi: ${newBranch.name}\n` +
+                    `📍 Manzil: ${newBranch.address}`,
+                    undefined,
+                    'Filial yaratildi'
                 );
                 await ctx.scene.leave();
             } catch {
-                await ctx.reply('❌ Filial yaratishda xatolik yuz berdi.');
+                await safeEditMessageText(ctx, '❌ Filial yaratishda xatolik yuz berdi.', undefined, 'Xatolik');
                 await ctx.scene.leave();
             }
             return;
         }
     }
 
+    @Action('SKIP_ADDRESS')
+    async onSkipAddress(@Ctx() ctx: Context) {
+        const sceneState = ctx.scene.state as AddBranchSceneState;
+
+        if (!sceneState.name) {
+            await safeEditMessageText(ctx, '❌ Filial nomi kiritilmagan.', undefined, 'Xatolik');
+            await ctx.scene.leave();
+            return;
+        }
+
+        try {
+            const newBranch = await this.prisma.branch.create({
+                data: {
+                    name: sceneState.name,
+                    address: 'Manzil kiritilmagan',
+                },
+            });
+
+            await safeEditMessageText(
+                ctx,
+                `✅ Filial muvaffaqiyatli yaratildi!\n\n` +
+                `🏪 Nomi: ${newBranch.name}\n` +
+                `📍 Manzil: ${newBranch.address}`,
+                undefined,
+                'Filial yaratildi'
+            );
+            await ctx.scene.leave();
+        } catch {
+            await safeEditMessageText(ctx, '❌ Filial yaratishda xatolik yuz berdi.', undefined, 'Xatolik');
+            await ctx.scene.leave();
+        }
+    }
+
     @Action('CANCEL_ADD_BRANCH')
     async onCancelAddBranch(@Ctx() ctx: Context) {
-        await ctx.editMessageText('❌ Filial qo\'shish bekor qilindi.');
+        await safeEditMessageText(ctx, '❌ Filial qo\'shish bekor qilindi.', undefined, 'Bekor qilindi');
         await ctx.scene.leave();
     }
 }

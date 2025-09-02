@@ -4,6 +4,7 @@ import { EncryptionService } from '../encryption.service';
 import { EmailService } from '../../email/email.service';
 import { Context } from '../../interfaces/context.interface';
 import { Markup } from 'telegraf';
+import { safeReplyOrEdit } from '../../utils/telegram.utils';
 
 @Scene('email-settings-scene')
 export class EmailSettingsScene {
@@ -15,13 +16,14 @@ export class EmailSettingsScene {
 
     @SceneEnter()
     async onSceneEnter(@Ctx() ctx: Context) {
-        await ctx.reply(
-            'Email eksport sozlamalarini boshlash...',
+        await safeReplyOrEdit(
+            ctx,
+            '📧 Email eksport sozlamalarini boshlash...\n\nSMTP host manzilini kiriting (masalan: smtp.gmail.com).',
             Markup.inlineKeyboard([
                 Markup.button.callback('❌ Bekor qilish', 'cancel_email_config')
-            ])
+            ]),
+            'Email sozlamalari'
         );
-        await ctx.reply('SMTP host manzilini kiriting (masalan: smtp.gmail.com).');
     }
 
     @On('text')
@@ -30,12 +32,14 @@ export class EmailSettingsScene {
 
         if (!sceneState.host) {
             sceneState.host = text;
-            await ctx.reply(
-                `Host "${text}" ga o'rnatildi. Endi SMTP portini kiriting (masalan: 587).`,
+            await safeReplyOrEdit(
+                ctx,
+                `✅ Host "${text}" ga o'rnatildi.\n\nEndi SMTP portini kiriting (masalan: 587).`,
                 Markup.inlineKeyboard([
                     Markup.button.callback('⬅️ Orqaga', 'back_to_host'),
                     Markup.button.callback('❌ Bekor qilish', 'cancel_email_config')
-                ])
+                ]),
+                'Host saqlandi'
             );
             return;
         }
@@ -43,40 +47,46 @@ export class EmailSettingsScene {
         if (!sceneState.port) {
             const port = parseInt(text, 10);
             if (isNaN(port)) {
-                await ctx.reply('Noto\'g\'ri port. Iltimos, raqam kiriting.');
+                await safeReplyOrEdit(ctx, '❌ Noto\'g\'ri port. Iltimos, raqam kiriting.', undefined, 'Noto\'g\'ri port');
                 return;
             }
             sceneState.port = port;
-            await ctx.reply(
-                `Port ${port} ga o'rnatildi. Endi foydalanuvchi nomini kiriting (jo'natuvchi email manzili).`,
+            await safeReplyOrEdit(
+                ctx,
+                `✅ Port ${port} ga o'rnatildi.\n\nEndi foydalanuvchi nomini kiriting (jo'natuvchi email manzili).`,
                 Markup.inlineKeyboard([
                     Markup.button.callback('⬅️ Orqaga', 'back_to_port'),
                     Markup.button.callback('❌ Bekor qilish', 'cancel_email_config')
-                ])
+                ]),
+                'Port saqlandi'
             );
             return;
         }
 
         if (!sceneState.user) {
             sceneState.user = text;
-            await ctx.reply(
-                `Foydalanuvchi nomi "${text}" ga o'rnatildi. Endi parolni kiriting.`,
+            await safeReplyOrEdit(
+                ctx,
+                `✅ Foydalanuvchi nomi "${text}" ga o'rnatildi.\n\nEndi parolni kiriting.`,
                 Markup.inlineKeyboard([
                     Markup.button.callback('⬅️ Orqaga', 'back_to_user'),
                     Markup.button.callback('❌ Bekor qilish', 'cancel_email_config')
-                ])
+                ]),
+                'Foydalanuvchi saqlandi'
             );
             return;
         }
 
         if (!sceneState.pass) {
             sceneState.pass = text;
-            await ctx.reply(
-                `Parol qabul qilindi. Nihoyat, qabul qiluvchining email manzilini kiriting. Masalan: john@gmail.com`,
+            await safeReplyOrEdit(
+                ctx,
+                `✅ Parol qabul qilindi.\n\nNihoyat, qabul qiluvchining email manzilini kiriting.\nMasalan: john@gmail.com`,
                 Markup.inlineKeyboard([
                     Markup.button.callback('⬅️ Orqaga', 'back_to_pass'),
                     Markup.button.callback('❌ Bekor qilish', 'cancel_email_config')
-                ])
+                ]),
+                'Parol saqlandi'
             );
             return;
         }
@@ -86,7 +96,7 @@ export class EmailSettingsScene {
             const emails = text.split(',').map((e) => e.trim());
             for (const email of emails) {
                 if (!emailRegex.test(email)) {
-                    await ctx.reply(`Noto'g'ri email manzil: ${email}. Iltimos, to'g'ri email kiriting.`);
+                    await safeReplyOrEdit(ctx, `❌ Noto'g'ri email manzil: ${email}.\nIltimos, to'g'ri email kiriting.`, undefined, 'Noto\'g\'ri email');
                     return;
                 }
             }
@@ -109,7 +119,7 @@ export class EmailSettingsScene {
             const testResult = await this.emailService.testConnection(emailConfig);
             
             if (!testResult) {
-                await ctx.reply('❌ Email ulanishini tekshirishda xatolik yuz berdi. Sozlamalarni tekshiring va qayta urinib ko\'ring.');
+                await safeReplyOrEdit(ctx, '❌ Email ulanishini tekshirishda xatolik yuz berdi.\nSozlamalarni tekshiring va qayta urinib ko\'ring.', undefined, 'Ulanish xatosi');
                 return;
             }
 
@@ -119,7 +129,7 @@ export class EmailSettingsScene {
                 create: { key: 'email_config', value: encryptedConfig },
             });
 
-            await ctx.reply('✅ Email eksport sozlamalari muvaffaqiyatli saqlandi va ulanish tekshirildi!');
+            await safeReplyOrEdit(ctx, '✅ Email eksport sozlamalari muvaffaqiyatli saqlandi va ulanish tekshirildi!', undefined, 'Sozlamalar saqlandi');
             await ctx.scene.leave();
         }
     }
@@ -128,33 +138,64 @@ export class EmailSettingsScene {
     async onBackToHost(@Ctx() ctx: Context) {
         const sceneState = ctx.scene.state as any;
         delete sceneState.host;
-        await ctx.editMessageText('SMTP host manzilini kiriting (masalan: smtp.gmail.com).');
+        await safeReplyOrEdit(
+            ctx,
+            '📧 Email eksport sozlamalarini boshlash...\n\nSMTP host manzilini kiriting (masalan: smtp.gmail.com).',
+            Markup.inlineKeyboard([
+                Markup.button.callback('❌ Bekor qilish', 'cancel_email_config')
+            ]),
+            'Host qaytarish'
+        );
     }
 
     @Action('back_to_port')
     async onBackToPort(@Ctx() ctx: Context) {
         const sceneState = ctx.scene.state as any;
         delete sceneState.port;
-        await ctx.editMessageText(`Host: "${sceneState.host}". SMTP portini kiriting (masalan: 587).`);
+        await safeReplyOrEdit(
+            ctx,
+            `✅ Host: "${sceneState.host}"\n\nSMTP portini kiriting (masalan: 587).`,
+            Markup.inlineKeyboard([
+                Markup.button.callback('⬅️ Orqaga', 'back_to_host'),
+                Markup.button.callback('❌ Bekor qilish', 'cancel_email_config')
+            ]),
+            'Port qaytarish'
+        );
     }
 
     @Action('back_to_user')
     async onBackToUser(@Ctx() ctx: Context) {
         const sceneState = ctx.scene.state as any;
         delete sceneState.user;
-        await ctx.editMessageText(`Port: ${sceneState.port}. Foydalanuvchi nomini kiriting (jo'natuvchi email manzili).`);
+        await safeReplyOrEdit(
+            ctx,
+            `✅ Port: ${sceneState.port}\n\nFoydalanuvchi nomini kiriting (jo'natuvchi email manzili).`,
+            Markup.inlineKeyboard([
+                Markup.button.callback('⬅️ Orqaga', 'back_to_port'),
+                Markup.button.callback('❌ Bekor qilish', 'cancel_email_config')
+            ]),
+            'User qaytarish'
+        );
     }
 
     @Action('back_to_pass')
     async onBackToPass(@Ctx() ctx: Context) {
         const sceneState = ctx.scene.state as any;
         delete sceneState.pass;
-        await ctx.editMessageText(`Foydalanuvchi nomi: "${sceneState.user}". Parolni kiriting.`);
+        await safeReplyOrEdit(
+            ctx,
+            `✅ Foydalanuvchi nomi: "${sceneState.user}"\n\nParolni kiriting.`,
+            Markup.inlineKeyboard([
+                Markup.button.callback('⬅️ Orqaga', 'back_to_user'),
+                Markup.button.callback('❌ Bekor qilish', 'cancel_email_config')
+            ]),
+            'Parol qaytarish'
+        );
     }
 
     @Action('cancel_email_config')
     async onCancel(@Ctx() ctx: Context) {
-        await ctx.editMessageText('❌ Email sozlamalari bekor qilindi.');
+        await safeReplyOrEdit(ctx, '❌ Email sozlamalari bekor qilindi.', undefined, 'Bekor qilindi');
         await ctx.scene.leave();
     }
 }

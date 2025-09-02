@@ -36,7 +36,7 @@ export class GoogleSheetsService {
 
         try {
             this.logger.log(`Starting Google Sheets append operation. Sheet ID: ${sheetId}, Worksheet: ${worksheetName}, Data count: ${dataObjects.length}`);
-            
+
             const sheets = await this.getSheetsClient(credentials);
             this.logger.log('Google Sheets client created successfully');
 
@@ -45,9 +45,9 @@ export class GoogleSheetsService {
             const spreadsheet = await sheets.spreadsheets.get({
                 spreadsheetId: sheetId,
             });
-            
+
             this.logger.log(`Spreadsheet found. Available sheets: ${spreadsheet.data.sheets.map(s => s.properties.title).join(', ')}`);
-            
+
             const sheetExists = spreadsheet.data.sheets.some(
                 (s) => s.properties.title === worksheetName,
             );
@@ -109,14 +109,14 @@ export class GoogleSheetsService {
             this.logger.error('Failed to write to Google Sheets:', error);
             this.logger.error('Error details:', error.message);
             this.logger.error('Error stack:', error.stack);
-            
+
             // Log specific error for debugging
             if (error.code === 403 && error.message?.includes('Google Sheets API has not been used')) {
                 this.logger.error('Google Sheets API is disabled. User needs to enable it in Google Cloud Console.');
             } else if (error.code === 403 && error.message?.includes('does not have permission')) {
                 this.logger.error('Google Sheets permission denied. Service Account needs access to the sheet.');
             }
-            
+
             return false;
         }
     }
@@ -136,8 +136,8 @@ export class GoogleSheetsService {
                 'Order Number': order.order_number,
                 'Client Name': order.client_name,
                 'Client Phone': order.client_phone || 'N/A',
-                'Client Birthday': order.client_birthday 
-                    ? order.client_birthday.toLocaleDateString('uz-UZ') 
+                'Client Birthday': order.client_birthday
+                    ? order.client_birthday.toLocaleDateString('uz-UZ')
                     : 'N/A',
                 'Branch': order.branch.name,
                 'Cashier': order.cashier.full_name,
@@ -146,7 +146,7 @@ export class GoogleSheetsService {
             };
 
             // Mahsulotlar ma'lumotlari
-            const productsInfo = order.order_products.map((product, index) => 
+            const productsInfo = order.order_products.map((product, index) =>
                 `${index + 1}. ${product.product_name} (${product.category}) - ${product.side_name} - ${product.quantity}x${product.price} = ${product.quantity * product.price} so'm`
             ).join(' | ');
 
@@ -182,14 +182,14 @@ export class GoogleSheetsService {
             // Har bir mahsulot uchun alohida qator
             for (let i = 0; i < order.order_products.length; i++) {
                 const product = order.order_products[i];
-                
+
                 // Faqat birinchi mahsulot uchun order ma'lumotlarini ko'rsatish
                 const orderInfo = i === 0 ? {
                     'Order Number': order.order_number,
                     'Client Name': order.client_name,
                     'Client Phone': order.client_phone || 'N/A',
-                    'Client Birthday': order.client_birthday 
-                        ? order.client_birthday.toLocaleDateString('uz-UZ') 
+                    'Client Birthday': order.client_birthday
+                        ? order.client_birthday.toLocaleDateString('uz-UZ')
                         : 'N/A',
                     'Branch': order.branch.name,
                     'Cashier': order.cashier.full_name,
@@ -228,8 +228,8 @@ export class GoogleSheetsService {
                     'Order Number': order.order_number,
                     'Client Name': order.client_name,
                     'Client Phone': order.client_phone || 'N/A',
-                    'Client Birthday': order.client_birthday 
-                        ? order.client_birthday.toLocaleDateString('uz-UZ') 
+                    'Client Birthday': order.client_birthday
+                        ? order.client_birthday.toLocaleDateString('uz-UZ')
                         : 'N/A',
                     'Branch': order.branch.name,
                     'Cashier': order.cashier.full_name,
@@ -275,12 +275,12 @@ export class GoogleSheetsService {
         detailed: boolean = false
     ): Promise<{ success: boolean; error?: string }> {
         try {
-            const formattedData = detailed 
+            const formattedData = detailed
                 ? this.formatOrdersDetailedForSheets(orders)
                 : this.formatOrdersForSheets(orders);
 
             const success = await this.appendData(sheetId, credentials, formattedData, worksheetName);
-            
+
             if (success) {
                 return { success: true };
             } else {
@@ -288,7 +288,7 @@ export class GoogleSheetsService {
             }
         } catch (error) {
             this.logger.error('Failed to append orders to Google Sheets:', error);
-            
+
             // API disabled error
             if (error.code === 403 && error.message?.includes('Google Sheets API has not been used')) {
                 const projectId = error.message.match(/project (\d+)/)?.[1];
@@ -297,7 +297,7 @@ export class GoogleSheetsService {
                     error: `Google Sheets API o'chirilgan.\n\nLoyiha ID: ${projectId}\n\nYechim: https://console.developers.google.com/apis/api/sheets.googleapis.com/overview?project=${projectId} ga kirib API ni yoqing.`
                 };
             }
-            
+
             // Permission denied
             if (error.code === 403 && error.message?.includes('does not have permission')) {
                 return {
@@ -305,10 +305,10 @@ export class GoogleSheetsService {
                     error: `Google Sheet ga kirish ruxsati yo'q.\n\n🔧 Yechim:\n1. Google Sheet ni oching: https://docs.google.com/spreadsheets/d/${sheetId}\n\n2. "Share" tugmasini bosing\n\n3. Service Account email ni qo'shing va "Editor" ruxsati bering\n\n4. Yoki Sheet ni "Anyone with the link can edit" qilib ochiq qiling\n\n💡 Service Account email odatda "...@....iam.gserviceaccount.com" ko'rinishida bo'ladi`
                 };
             }
-            
-            return { 
-                success: false, 
-                error: `Google Sheets xatosi: ${error.message || 'Noma\'lum xatolik'}` 
+
+            return {
+                success: false,
+                error: `Google Sheets xatosi: ${error.message || 'Noma\'lum xatolik'}`
             };
         }
     }
@@ -317,17 +317,17 @@ export class GoogleSheetsService {
     async testConnection(sheetId: string, credentials: string): Promise<{ success: boolean; error?: string }> {
         try {
             const sheets = await this.getSheetsClient(credentials);
-            
+
             // Try to get spreadsheet info to test connection
             await sheets.spreadsheets.get({
                 spreadsheetId: sheetId,
             });
-            
+
             this.logger.log('Google Sheets connection test successful');
             return { success: true };
         } catch (error) {
             this.logger.error('Google Sheets connection test failed:', error);
-            
+
             // API disabled error
             if (error.code === 403 && error.message?.includes('Google Sheets API has not been used')) {
                 const projectId = error.message.match(/project (\d+)/)?.[1];
@@ -336,7 +336,7 @@ export class GoogleSheetsService {
                     error: `Google Sheets API o'chirilgan yoki yoqilmagan.\n\n📋 Loyiha ID: ${projectId}\n\n🔧 Yechim:\n1. Quyidagi havolaga kiring:\nhttps://console.developers.google.com/apis/api/sheets.googleapis.com/overview?project=${projectId}\n\n2. "Enable" tugmasini bosing\n\n3. Bir necha daqiqa kuting\n\n4. Qaytadan urinib ko'ring`
                 };
             }
-            
+
             // Invalid credentials
             if (error.code === 401 || error.message?.includes('invalid_grant')) {
                 return {
@@ -344,7 +344,7 @@ export class GoogleSheetsService {
                     error: 'Service Account JSON noto\'g\'ri yoki muddati tugagan. Yangi Service Account yarating va qaytadan urinib ko\'ring.'
                 };
             }
-            
+
             // Sheet not found
             if (error.code === 404) {
                 return {
@@ -352,7 +352,7 @@ export class GoogleSheetsService {
                     error: 'Google Sheet topilmadi. Sheet ID ni tekshiring yoki Sheet ni ochiq (public) qiling.'
                 };
             }
-            
+
             // Permission denied
             if (error.code === 403 && !error.message?.includes('API has not been used')) {
                 return {
@@ -360,7 +360,7 @@ export class GoogleSheetsService {
                     error: `Google Sheet ga kirish ruxsati yo'q.\n\n🔧 Yechim:\n1. Google Sheet ni oching: https://docs.google.com/spreadsheets/d/${sheetId}\n\n2. "Share" tugmasini bosing\n\n3. Service Account email ni qo'shing va "Editor" ruxsati bering\n\n4. Yoki Sheet ni "Anyone with the link can edit" qilib ochiq qiling\n\n💡 Service Account email odatda "...@....iam.gserviceaccount.com" ko'rinishida bo'ladi`
                 };
             }
-            
+
             // Generic error
             return {
                 success: false,

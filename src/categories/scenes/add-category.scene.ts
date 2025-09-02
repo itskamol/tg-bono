@@ -107,8 +107,6 @@ export class AddCategoryScene {
             );
             await ctx.scene.leave();
         } catch (error) {
-            console.error('Category creation error:', error);
-            
             let errorMessage = '❌ Kategoriya qo\'shishda xatolik yuz berdi.';
             
             if (error instanceof Error) {

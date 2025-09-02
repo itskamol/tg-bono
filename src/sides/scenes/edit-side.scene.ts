@@ -198,7 +198,6 @@ export class EditSideScene {
             );
             await ctx.scene.leave();
         } catch (error) {
-            console.error('Side name update error:', error);
             await ctx.editMessageText('❌ Nom o\'zgartirishda xatolik yuz berdi.');
             await ctx.scene.leave();
         }
@@ -225,7 +224,6 @@ export class EditSideScene {
             );
             await ctx.scene.leave();
         } catch (error) {
-            console.error('Side price update error:', error);
             await ctx.editMessageText('❌ Narx o\'zgartirishda xatolik yuz berdi.');
             await ctx.scene.leave();
         }

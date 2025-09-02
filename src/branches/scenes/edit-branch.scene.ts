@@ -186,7 +186,7 @@ export class EditBranchScene {
             );
             await ctx.scene.leave();
         } catch (error) {
-            console.error('Branch name update error:', error);
+
             await ctx.editMessageText('❌ Nom o\'zgartirishda xatolik yuz berdi.');
             await ctx.scene.leave();
         }
@@ -213,7 +213,7 @@ export class EditBranchScene {
             );
             await ctx.scene.leave();
         } catch (error) {
-            console.error('Branch address update error:', error);
+
             await ctx.editMessageText('❌ Manzil o\'zgartirishda xatolik yuz berdi.');
             await ctx.scene.leave();
         }

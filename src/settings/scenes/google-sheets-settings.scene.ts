@@ -4,6 +4,7 @@ import { EncryptionService } from '../encryption.service';
 import { GoogleSheetsService } from '../../sheets/google-sheets.service';
 import { Context } from '../../interfaces/context.interface';
 import { Markup } from 'telegraf';
+import { safeReplyOrEdit } from '../../utils/telegram.utils';
 
 @Scene('g-sheets-settings-scene')
 export class GoogleSheetsSettingsScene {
@@ -15,13 +16,14 @@ export class GoogleSheetsSettingsScene {
 
     @SceneEnter()
     async onSceneEnter(@Ctx() ctx: Context) {
-        await ctx.reply(
-            'Google Sheets eksport sozlamalarini boshlash...',
+        await safeReplyOrEdit(
+            ctx,
+            '📊 Google Sheets eksport sozlamalarini boshlash...\n\nGoogle Sheet ID sini kiriting.',
             Markup.inlineKeyboard([
                 Markup.button.callback('❌ Bekor qilish', 'cancel_sheets_config')
-            ])
+            ]),
+            'Google Sheets sozlamalari'
         );
-        await ctx.reply('Google Sheet ID sini kiriting.');
     }
 
     @On('text')
@@ -30,12 +32,14 @@ export class GoogleSheetsSettingsScene {
 
         if (!sceneState.sheetId) {
             sceneState.sheetId = text;
-            await ctx.reply(
-                `Sheet ID o'rnatildi. Endi Service Account JSON faylining to'liq mazmunini joylashtiring.`,
+            await safeReplyOrEdit(
+                ctx,
+                `✅ Sheet ID o'rnatildi.\n\nEndi Service Account JSON faylining to'liq mazmunini joylashtiring.`,
                 Markup.inlineKeyboard([
                     Markup.button.callback('⬅️ Orqaga', 'back_to_sheet_id'),
                     Markup.button.callback('❌ Bekor qilish', 'cancel_sheets_config')
-                ])
+                ]),
+                'Sheet ID saqlandi'
             );
             return;
         }
@@ -45,8 +49,11 @@ export class GoogleSheetsSettingsScene {
                 // Validate that the input is a valid JSON
                 const parsedJson = JSON.parse(text);
                 if (parsedJson.type !== 'service_account' || !parsedJson.private_key) {
-                    await ctx.reply(
-                        'Noto\'g\'ri Service Account JSON. Unda "type": "service_account" va "private_key" bo\'lishi kerak. Iltimos, qayta urinib ko\'ring.',
+                    await safeReplyOrEdit(
+                        ctx,
+                        '❌ Noto\'g\'ri Service Account JSON.\nUnda "type": "service_account" va "private_key" bo\'lishi kerak.\nIltimos, qayta urinib ko\'ring.',
+                        undefined,
+                        'Noto\'g\'ri JSON'
                     );
                     return;
                 }
@@ -58,7 +65,7 @@ export class GoogleSheetsSettingsScene {
                 };
 
                 // Test connection before saving
-                await ctx.reply('🔄 Google Sheets ulanishini tekshiryapman...');
+                await safeReplyOrEdit(ctx, '🔄 Google Sheets ulanishini tekshiryapman...', undefined, 'Tekshirilmoqda');
                 
                 const testResult = await this.googleSheetsService.testConnection(
                     sceneState.sheetId,
@@ -66,9 +73,7 @@ export class GoogleSheetsSettingsScene {
                 );
                 
                 if (!testResult.success) {
-                    await ctx.reply(`❌ Google Sheets ulanish xatosi:\n\n${testResult.error}`, {
-                        parse_mode: 'HTML'
-                    });
+                    await safeReplyOrEdit(ctx, `❌ Google Sheets ulanish xatosi:\n\n${testResult.error}`, undefined, 'Ulanish xatosi');
                     return;
                 }
 
@@ -82,15 +87,17 @@ export class GoogleSheetsSettingsScene {
                     create: { key: 'g_sheets_config', value: encryptedConfig },
                 });
 
-                await ctx.reply('✅ Google Sheets eksport sozlamalari muvaffaqiyatli saqlandi va ulanish tekshirildi!');
+                await safeReplyOrEdit(ctx, '✅ Google Sheets eksport sozlamalari muvaffaqiyatli saqlandi va ulanish tekshirildi!', undefined, 'Sozlamalar saqlandi');
                 await ctx.scene.leave();
             } catch (e) {
-                await ctx.reply(
-                    'Siz kiritgan matn to\'g\'ri JSON obyekt emas. Iltimos, JSON faylining aniq mazmunini joylashtiring.',
+                await safeReplyOrEdit(
+                    ctx,
+                    '❌ Siz kiritgan matn to\'g\'ri JSON obyekt emas.\nIltimos, JSON faylining aniq mazmunini joylashtiring.',
                     Markup.inlineKeyboard([
                         Markup.button.callback('⬅️ Orqaga', 'back_to_sheet_id'),
                         Markup.button.callback('❌ Bekor qilish', 'cancel_sheets_config')
-                    ])
+                    ]),
+                    'Noto\'g\'ri JSON'
                 );
                 return;
             }
@@ -102,12 +109,19 @@ export class GoogleSheetsSettingsScene {
         const sceneState = ctx.scene.state as any;
         delete sceneState.sheetId;
         delete sceneState.serviceAccountJson;
-        await ctx.editMessageText('Google Sheet ID sini kiriting.');
+        await safeReplyOrEdit(
+            ctx,
+            '📊 Google Sheets eksport sozlamalarini boshlash...\n\nGoogle Sheet ID sini kiriting.',
+            Markup.inlineKeyboard([
+                Markup.button.callback('❌ Bekor qilish', 'cancel_sheets_config')
+            ]),
+            'Sheet ID qaytarish'
+        );
     }
 
     @Action('cancel_sheets_config')
     async onCancel(@Ctx() ctx: Context) {
-        await ctx.editMessageText('❌ Google Sheets sozlamalari bekor qilindi.');
+        await safeReplyOrEdit(ctx, '❌ Google Sheets sozlamalari bekor qilindi.', undefined, 'Bekor qilindi');
         await ctx.scene.leave();
     }
 }

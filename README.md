@@ -23,12 +23,22 @@
 
 ## Description
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+Telegram Bot for Bono project, built with [Nest](https://github.com/nestjs/nest) framework.
+
+## Environment Variables
+
+To run this project, you will need to add the following environment variables to your `.env` file:
+
+`DATABASE_URL="mongodb+srv://..."`
+`BOT_TOKEN="..."`
+`ENCRYPTION_KEY="..."`
+`...and other necessary variables`
 
 ## Project setup
 
 ```bash
-$ npm install
+# Using pnpm (recommended)
+$ pnpm install
 ```
 
 ## Compile and run the project

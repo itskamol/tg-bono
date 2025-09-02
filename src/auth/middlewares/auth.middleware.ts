@@ -19,7 +19,6 @@ export const authMiddleware = (
         const { from } = ctx;
 
         if (!from) {
-            console.error('Telegram user not found in context.');
             ctx.reply("Siz tizimga kirmagansiz. Iltimos, 'start' buyrug'ini bering.");
             return;
         }
@@ -33,7 +32,6 @@ export const authMiddleware = (
         });
 
         if (!user) {
-            console.error(`User with Telegram ID ${from.id} not found in the system.`);
             ctx.reply("Sizning ma'lumotlaringiz tizimda topilmadi.");
             return;
         }
@@ -45,7 +43,6 @@ export const authMiddleware = (
         const hasRole = requiredRoles.some((role: Role) => user.role === role);
 
         if (!hasRole) {
-            console.warn(`User ${user.telegram_id} tried to access a protected resource. Role: ${user.role}, Required: ${requiredRoles.join(', ')}`);
             ctx.reply("Sizda bu harakatni bajarish uchun ruxsat yo'q.");
             return;
         }

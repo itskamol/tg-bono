@@ -169,7 +169,7 @@ export class AddSideScene {
             await ctx.scene.leave();
             return;
         }
-        console.log('Creating side with data:', sceneState);
+
         try {
             const newSide = await this.prisma.side.create({
                 data: {
@@ -184,7 +184,7 @@ export class AddSideScene {
             );
             await ctx.scene.leave();
         } catch (error) {
-            console.error('Side creation error:', error);
+
             
             let errorMessage = '❌ Tomon qo\'shishda xatolik yuz berdi.';
             

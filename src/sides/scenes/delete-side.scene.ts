@@ -74,8 +74,6 @@ export class DeleteSideScene {
             );
             await ctx.scene.leave();
         } catch (error) {
-            console.error('Side deletion error:', error);
-            
             let errorMessage = '❌ Tomon o\'chirishda xatolik yuz berdi.';
             
             if (error instanceof Error) {

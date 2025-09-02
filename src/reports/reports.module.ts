@@ -3,8 +3,6 @@ import { ReportsUpdate } from './reports.update';
 import {
     GeneralReportsScene,
     PaymentReportsScene,
-    ProductReportsScene,
-    RevenueReportsScene,
     BranchReportsScene,
     UserReportsScene,
 } from './scenes';
@@ -20,12 +18,11 @@ import { EmailModule } from 'src/email/email.module';
         ReportsUpdate,
         GeneralReportsScene,
         PaymentReportsScene,
-        ProductReportsScene,
-        RevenueReportsScene,
         BranchReportsScene,
         UserReportsScene,
         ReportsService,
         EncryptionService,
     ],
+    exports: [ReportsService]
 })
 export class ReportsModule {}

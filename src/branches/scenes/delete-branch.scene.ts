@@ -9,43 +9,16 @@ export class DeleteBranchScene {
 
     @SceneEnter()
     async onSceneEnter(@Ctx() ctx: Context) {
-        const branches = await this.prisma.branch.findMany({
-            include: {
-                _count: {
-                    select: { users: true },
-                },
-            },
-        });
-
-        if (branches.length === 0) {
-            await ctx.reply("❌ O'chiriladigan filiallar topilmadi.");
+        const sceneState = ctx.scene.state as { branchId: string };
+        
+        if (!sceneState?.branchId) {
+            await ctx.reply("❌ Filial ma'lumotlari topilmadi.");
             await ctx.scene.leave();
             return;
         }
 
-        const branchButtons = branches.map((branch) =>
-            Markup.button.callback(
-                `${branch.name} (${branch._count.users} foydalanuvchi)`,
-                `DELETE_BRANCH_${branch.id}`,
-            ),
-        );
-
-        await ctx.reply(
-            "🗑️ Qaysi filialni o'chirmoqchisiz?\n\n⚠️ Diqqat: Filial o'chirilganda unga tegishli barcha foydalanuvchilar ham o'chiriladi!",
-            Markup.inlineKeyboard(branchButtons),
-        );
-    }
-
-    @Action(/^DELETE_BRANCH_(.+)$/)
-    async onDeleteBranchConfirm(@Ctx() ctx: Context) {
-        if (!('data' in ctx.callbackQuery)) {
-            return;
-        }
-        const branchData = ctx.callbackQuery.data;
-        const branchId = branchData.replace('DELETE_BRANCH_', '');
-
         const branch = await this.prisma.branch.findUnique({
-            where: { id: branchId },
+            where: { id: sceneState.branchId },
             include: {
                 _count: {
                     select: { users: true },
@@ -54,7 +27,7 @@ export class DeleteBranchScene {
         });
 
         if (!branch) {
-            await ctx.editMessageText('❌ Filial topilmadi.');
+            await ctx.reply('❌ Filial topilmadi.');
             await ctx.scene.leave();
             return;
         }
@@ -66,11 +39,13 @@ export class DeleteBranchScene {
                 `👥 Foydalanuvchilar: ${branch._count.users}\n\n` +
                 `❗️ Bu amal qaytarib bo'lmaydi va barcha bog'liq foydalanuvchilar ham o'chiriladi!`,
             Markup.inlineKeyboard([
-                Markup.button.callback('✅ Ha', `CONFIRM_DELETE_BRANCH_${branchId}`),
+                Markup.button.callback('✅ Ha', `CONFIRM_DELETE_BRANCH_${sceneState.branchId}`),
                 Markup.button.callback("❌ Yo'q", 'CANCEL_DELETE_BRANCH'),
             ]),
         );
     }
+
+
 
     @Action(/^CONFIRM_DELETE_BRANCH_(.+)$/)
     async onConfirmDelete(@Ctx() ctx: Context) {

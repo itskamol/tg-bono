@@ -15,8 +15,35 @@ export async function safeEditMessageText(
         if (error.message?.includes('message is not modified')) {
             // Message content is the same, just acknowledge the callback query
             await ctx.answerCbQuery(fallbackCbQueryText || "Ma'lumot");
-        } else if (error.message.includes("message can't be edited")) {
+        } else if (error.message?.includes("message can't be edited")) {
+            await ctx.reply(text, extra);
+        } else {
+            throw error;
+        }
+    }
+}
 
+/**
+ * Safely reply or edit message - tries to edit first, falls back to reply
+ */
+export async function safeReplyOrEdit(
+    ctx: Context,
+    text: string,
+    extra?: any,
+    fallbackCbQueryText?: string,
+): Promise<void> {
+    try {
+        // Try to edit if there's a callback query (button press)
+        if (ctx.callbackQuery) {
+            await ctx.editMessageText(text, extra);
+        } else {
+            await ctx.reply(text, extra);
+        }
+    } catch (error) {
+        if (error.message?.includes('message is not modified')) {
+            // Message content is the same, just acknowledge the callback query
+            await ctx.answerCbQuery(fallbackCbQueryText || "Ma'lumot");
+        } else if (error.message?.includes("message can't be edited")) {
             await ctx.reply(text, extra);
         } else {
             throw error;

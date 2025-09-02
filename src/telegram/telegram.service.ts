@@ -11,6 +11,7 @@ import { SidesUpdate } from '../sides/sides.update';
 import { OrdersUpdate } from '../orders/orders.update';
 import { ReportsUpdate } from '../reports/reports.update';
 import { SettingsUpdate } from '../settings/settings.update';
+import { safeEditMessageText } from '../utils/telegram.utils';
 
 @Update()
 @Injectable()
@@ -24,31 +25,11 @@ export class TelegramService {
         private readonly ordersUpdate: OrdersUpdate,
         private readonly reportsUpdate: ReportsUpdate,
         private readonly settingsUpdate: SettingsUpdate,
-    ) {}
+    ) { }
 
-    // Emoji va buyruq matnlarini bog'laydigan xarita
-    emojiMap: { [key: string]: string } = {
-        profile: '👤',
-        users: '👥',
-        branches: '🏢',
-        orders: '📋',
-        reports: '📊',
-        settings: '⚙️',
-        categories: '📦',
-        products: '🍔',
-        neworder: '➕',
-    };
 
-    private buttonTextMap: { [key: string]: string } = {
-        "👤 Profil ma'lumotlari": 'profile',
-        "👥 Foydalanuvchilar ro'yxati": 'users',
-        "🏢 Filiallar ro'yxati": 'branches',
-        "📋 Buyurtmalar ro'yxati": 'orders',
-        '📊 Batafsil hisobotlar': 'reports',
-        '⚙️ Bot sozlamalari': 'settings',
-        "📦 Kategoriyalar ro'yxati": 'categories',
-        "🍕 Xizmatlar ro'yxati": 'sides',
-    };
+
+    private buttonTextMap: { [key: string]: string } = {};
 
     @Start()
     async start(@Ctx() ctx: Context) {
@@ -92,108 +73,64 @@ Admin sizni tizimga qo'shishi kerak.
 • Filial: ${user.branch?.name || 'Tayinlanmagan'}
         `;
 
-        const commands = [
-            { command: 'start', description: 'Botni ishga tushirish' },
-            { command: 'profile', description: "Profil ma'lumotlari" },
-        ];
+        // Rolga qarab tugmalarni tashkil qilamiz
+        let keyboardButtons: string[][] = [];
 
         if (user.role === Role.SUPER_ADMIN) {
-            commands.push(
-                { command: 'users', description: "Foydalanuvchilar ro'yxati" },
-                { command: 'branches', description: "Filiallar ro'yxati" },
-                { command: 'orders', description: "Buyurtmalar ro'yxati" },
-                { command: 'reports', description: 'Batafsil hisobotlar' },
-                { command: 'settings', description: 'Bot sozlamalari' },
-                { command: 'categories', description: "Kategoriyalar ro'yxati" },
-            );
+            keyboardButtons = [
+                ['👥 Foydalanuvchilar', '🏢 Filiallar'],
+                ['📦 Kategoriyalar', '🍕 Xizmatlar'],
+                ['📋 Buyurtmalar', '📊 Hisobotlar'],
+                ['👤 Profil', '⚙️ Sozlamalar']
+            ];
+
+            // Button mapping for Super Admin
+            this.buttonTextMap = {
+                '👥 Foydalanuvchilar': 'users',
+                '🏢 Filiallar': 'branches',
+                '📦 Kategoriyalar': 'categories',
+                '🍕 Xizmatlar': 'sides',
+                '📋 Buyurtmalar': 'orders',
+                '📊 Hisobotlar': 'reports',
+                '👤 Profil': 'profile',
+                '⚙️ Sozlamalar': 'settings'
+            };
         } else if (user.role === Role.ADMIN) {
-            commands.push(
-                { command: 'users', description: 'Filial foydalanuvchilari' },
-                { command: 'products', description: "Mahsulotlar ro'yxati" },
-                { command: 'orders', description: "Buyurtmalar ro'yxati" },
-                { command: 'reports', description: 'Batafsil hisobotlar' },
-            );
+            keyboardButtons = [
+                ['👥 Xodimlar', '🍕 Mahsulotlar'],
+                ['📋 Buyurtmalar', '📊 Hisobotlar'],
+                ['👤 Profil']
+            ];
+
+            // Button mapping for Admin
+            this.buttonTextMap = {
+                '👥 Xodimlar': 'users',
+                '🍕 Mahsulotlar': 'sides',
+                '📋 Buyurtmalar': 'orders',
+                '📊 Hisobotlar': 'reports',
+                '👤 Profil': 'profile'
+            };
         } else if (user.role === Role.CASHIER) {
-            commands.push(
-                { command: 'neworder', description: 'Yangi buyurtma yaratish' },
-                { command: 'orders', description: "Buyurtmalar ro'yxati" },
-            );
+            keyboardButtons = [
+                ['➕ Yangi buyurtma'],
+                ['📋 Buyurtmalar', '👤 Profil']
+            ];
+
+            // Button mapping for Cashier
+            this.buttonTextMap = {
+                '➕ Yangi buyurtma': 'neworder',
+                '📋 Buyurtmalar': 'orders',
+                '👤 Profil': 'profile'
+            };
         }
 
-        // setMyCommands metodiga `command` va `description` obyekti to'g'ri formatda uzatiladi
-        const setCommands = commands.map((cmd) => ({
-            command: cmd.command,
-            description: cmd.description,
-        }));
-        await ctx.telegram.setMyCommands(setCommands);
-
-        // Klaviatura uchun tugma matnlarini emojilar bilan birgalikda yaratamiz
-        const keyboardButtons = commands.map((cmd) => {
-            const emoji = this.emojiMap[cmd.command] || '➡️';
-            const buttonText = `${emoji} ${cmd.description}`;
-            this.buttonTextMap[buttonText] = cmd.command;
-            return buttonText;
-        });
         await ctx.reply(
             startMessage,
-            Markup.keyboard(keyboardButtons, { columns: 2 }).resize().persistent(),
+            Markup.keyboard(keyboardButtons).resize().persistent(),
         );
     }
 
-    @Command('help')
-    async help(@Ctx() ctx: Context) {
-        const telegramId = ctx.from?.id;
 
-        if (!telegramId) {
-            await ctx.reply('❌ Telegram ID topilmadi.');
-            return;
-        }
-
-        const user = await this.prisma.user.findUnique({
-            where: { telegram_id: telegramId },
-        });
-
-        if (!user) {
-            await ctx.reply("❌ Siz tizimda ro'yxatdan o'tmagansiz. Admin bilan bog'laning.");
-            return;
-        }
-
-        // Rolga qarab buyruqlar ro'yxatini yaratamiz
-        const commandsList = [
-            { command: 'start', description: 'Botni ishga tushirish' },
-            { command: 'profile', description: "Profil ma'lumotlari" },
-        ];
-
-        if (user.role === Role.SUPER_ADMIN) {
-            commandsList.push(
-                { command: 'users', description: 'Foydalanuvchilar boshqaruvi' },
-                { command: 'branches', description: 'Filiallar boshqaruvi' },
-                { command: 'categories', description: 'Kategoriyalar boshqaruvi' },
-                { command: 'orders', description: "Buyurtmalar ro'yxati" },
-                { command: 'reports', description: 'Batafsil hisobotlar' },
-            );
-        } else if (user.role === Role.ADMIN) {
-            commandsList.push(
-                { command: 'users', description: 'Filial foydalanuvchilari' },
-                { command: 'products', description: "Mahsulotlar ro'yxati" },
-                { command: 'orders', description: "Buyurtmalar ro'yxati" },
-                { command: 'reports', description: 'Batafsil hisobotlar' },
-            );
-        } else if (user.role === Role.CASHIER) {
-            commandsList.push(
-                { command: 'neworder', description: 'Yangi buyurtma yaratish' },
-                { command: 'orders', description: "Buyurtmalar ro'yxati" },
-            );
-        }
-
-        let helpMessage = '📋 Mavjud buyruqlar:\n\n';
-        for (const cmd of commandsList) {
-            const emoji = this.emojiMap[cmd.command] || '➡️';
-            helpMessage += `${emoji} /${cmd.command} - ${cmd.description}\n`;
-        }
-
-        await ctx.reply(helpMessage);
-    }
 
     @Command('profile')
     async profile(@Ctx() ctx: Context) {
@@ -240,12 +177,6 @@ Admin sizni tizimga qo'shishi kerak.
         const command = this.buttonTextMap[text];
         if (command) {
             switch (command) {
-                case 'start':
-                    await this.start(ctx);
-                    break;
-                case 'help':
-                    await this.help(ctx);
-                    break;
                 case 'profile':
                     await this.profile(ctx);
                     break;
@@ -274,12 +205,12 @@ Admin sizni tizimga qo'shishi kerak.
                     await this.ordersUpdate.onNewOrder(ctx);
                     break;
                 default:
-                    await ctx.reply('Kechirasiz, bu buyruqqa mos funksiya hali yaratilmagan.');
+                    await ctx.reply('Kechirasiz, bu tugmaga mos funksiya hali yaratilmagan.');
                     break;
             }
         } else {
             await ctx.reply(
-                "Kechirasiz, siz yuborgan xabar tushunarsiz.",
+                "Kechirasiz, siz yuborgan xabar tushunarsiz. Iltimos, tugmalardan foydalaning.",
             );
         }
     }

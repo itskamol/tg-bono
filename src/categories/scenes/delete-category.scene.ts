@@ -74,8 +74,6 @@ export class DeleteCategoryScene {
             );
             await ctx.scene.leave();
         } catch (error) {
-            console.error('Category deletion error:', error);
-            
             let errorMessage = '❌ Kategoriya o\'chirishda xatolik yuz berdi.';
             
             if (error instanceof Error) {

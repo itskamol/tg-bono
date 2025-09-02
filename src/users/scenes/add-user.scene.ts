@@ -2,11 +2,12 @@ import { Scene, SceneEnter, On, Message, Action, Ctx } from 'nestjs-telegraf';
 import { Markup } from 'telegraf';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Context } from '../../interfaces/context.interface';
+import { safeEditMessageText } from '../../utils/telegram.utils'
 import { Role } from '@prisma/client';
 
 @Scene('add-user-scene')
 export class AddUserScene {
-    constructor(private readonly prisma: PrismaService) {}
+    constructor(private readonly prisma: PrismaService) { }
 
     @SceneEnter()
     async onSceneEnter(@Ctx() ctx: Context) {
@@ -32,7 +33,8 @@ export class AddUserScene {
 
         if (user.role === Role.SUPER_ADMIN) {
             // Super Admin can choose role with inline keyboard
-            await ctx.reply(
+            await safeEditMessageText(
+                ctx,
                 '👤 Yangi foydalanuvchi uchun rolni tanlang:',
                 Markup.inlineKeyboard(
                     [

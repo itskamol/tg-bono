@@ -286,7 +286,6 @@ Yana mahsulot qo'shasizmi?`;
                 ),
             );
         } catch (error) {
-            console.error('Categories loading error:', error);
             await this.safeEditOrReply(
                 ctx,
                 "❌ Kategoriyalarni yuklashda xatolik. Qaytadan urinib ko'ring.",
@@ -348,7 +347,6 @@ Yana mahsulot qo'shasizmi?`;
             );
             sceneState.awaitingProductName = true;
         } catch (error) {
-            console.error('Category loading error:', error);
             await this.safeEditOrReply(ctx, '❌ Kategoriya yuklashda xatolik.');
             return this.showProductTypes(ctx);
         }
@@ -563,8 +561,6 @@ ${paymentsText}
             );
             await ctx.scene.leave();
         } catch (error) {
-            console.error('Order creation error:', error);
-
             let errorMessage = '❌ Buyurtma yaratishda xatolik yuz berdi.';
 
             if (error instanceof Error) {
@@ -673,7 +669,6 @@ ${paymentsText}
                 ),
             );
         } catch (error) {
-            console.error('Sides loading error:', error);
             await this.safeEditOrReply(
                 ctx,
                 '❌ Tomonlarni yuklashda xatolik.',

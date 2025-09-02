@@ -118,7 +118,6 @@ export class EditCategoryScene {
             );
             await ctx.scene.leave();
         } catch (error) {
-            console.error('Category name update error:', error);
             await ctx.editMessageText('❌ Nom o\'zgartirishda xatolik yuz berdi.');
             await ctx.scene.leave();
         }

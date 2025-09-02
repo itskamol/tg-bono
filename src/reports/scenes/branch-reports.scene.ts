@@ -4,6 +4,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { Context } from '../../interfaces/context.interface';
 import { ReportHelpers } from '../helpers/report.helpers';
 import { Role } from '@prisma/client';
+import { safeEditMessageText } from '../../utils/telegram.utils';
 
 @Scene('branch-reports-scene')
 export class BranchReportsScene {
@@ -11,7 +12,8 @@ export class BranchReportsScene {
 
     @SceneEnter()
     async onSceneEnter(@Ctx() ctx: Context) {
-        await ctx.reply(
+        await safeEditMessageText(
+            ctx,
             '🏪 Filiallar hisoboti\n\nDavrni tanlang:',
             Markup.inlineKeyboard(
                 [
@@ -25,43 +27,63 @@ export class BranchReportsScene {
                     columns: 2, // Har bir qatordagi tugmalar soni. 2 yoki 3 qilib o'zgartirishingiz mumkin.
                 },
             ),
+            'Filiallar hisoboti'
         );
     }
 
     @Action('BRANCH_TODAY')
     async generateTodayReport(@Ctx() ctx: Context) {
         await this.generateBranchReport(ctx, 'today');
-        await ctx.scene.leave();
     }
 
     @Action('BRANCH_WEEK')
     async generateWeekReport(@Ctx() ctx: Context) {
         await this.generateBranchReport(ctx, 'week');
-        await ctx.scene.leave();
     }
 
     @Action('BRANCH_MONTH')
     async generateMonthReport(@Ctx() ctx: Context) {
         await this.generateBranchReport(ctx, 'month');
-        await ctx.scene.leave();
     }
 
     @Action('BRANCH_QUARTER')
     async generateQuarterReport(@Ctx() ctx: Context) {
         await this.generateBranchReport(ctx, 'quarter');
-        await ctx.scene.leave();
     }
 
     @Action('BACK_TO_REPORTS')
     async backToReports(@Ctx() ctx: Context) {
         await ctx.scene.leave();
+        
+        // Show the main reports menu
+        const user = ctx.user;
+        const reportButtons = [
+            Markup.button.callback('📊 Umumiy', 'GENERAL_REPORTS'),
+            Markup.button.callback("💳 To'lovlar", 'PAYMENT_REPORTS')
+        ];
+
+        if (user.role === Role.SUPER_ADMIN) {
+            reportButtons.push(
+                Markup.button.callback('🏪 Filiallar', 'BRANCH_REPORTS'),
+                Markup.button.callback('👥 Xodimlar', 'USER_REPORTS'),
+            );
+        }
+
+        await safeEditMessageText(
+            ctx,
+            "📊 Hisobotlar bo'limi\n\nQaysi turdagi hisobotni ko'rmoqchisiz?",
+            Markup.inlineKeyboard(reportButtons, {
+                columns: 2,
+            }),
+            'Hisobotlar'
+        );
     }
 
     private async generateBranchReport(ctx: Context, period: string) {
         // Get user from database to verify permissions
         const telegramId = ctx.from?.id;
         if (!telegramId) {
-            await ctx.editMessageText('❌ Telegram ID topilmadi.');
+            await safeEditMessageText(ctx, '❌ Telegram ID topilmadi.', undefined, 'Xatolik');
             return;
         }
 
@@ -70,7 +92,7 @@ export class BranchReportsScene {
         });
 
         if (!user || user.role !== Role.SUPER_ADMIN) {
-            await ctx.editMessageText("❌ Sizda bu hisobotni ko'rish huquqi yo'q.");
+            await safeEditMessageText(ctx, "❌ Sizda bu hisobotni ko'rish huquqi yo'q.", undefined, 'Ruxsat yo\'q');
             return;
         }
 
@@ -125,6 +147,13 @@ export class BranchReportsScene {
 ${branchList || "Ma'lumot yo'q"}
     `;
 
-        await ctx.editMessageText(report);
+        await safeEditMessageText(
+            ctx, 
+            report, 
+            Markup.inlineKeyboard([
+                Markup.button.callback('🔙 Orqaga', 'BACK_TO_REPORTS')
+            ]),
+            'Hisobot'
+        );
     }
 }

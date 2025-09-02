@@ -158,6 +158,24 @@ ${user.role === Role.ADMIN ? `🏪 Filial: ${user.branch?.name || 'N/A'}` : '�
         return this.listOrders(ctx);
     }
 
+    @Action('START_NEW_ORDER')
+    @Roles(Role.CASHIER)
+    async onStartNewOrderAction(@Ctx() ctx: Context) {
+        await ctx.answerCbQuery();
+        
+        if (!ctx.user.branch_id) {
+            await safeEditMessageText(
+                ctx,
+                '❌ Siz hech qanday filialga tayinlanmagansiz. Buyurtma yarata olmaysiz.',
+                undefined,
+                'Xatolik'
+            );
+            return;
+        }
+        
+        await ctx.scene.enter('new-order-scene');
+    }
+
     @Action(/^VIEW_ORDER_(.+)$/)
     async onViewOrder(@Ctx() ctx: Context) {
         if (!('data' in ctx.callbackQuery)) {

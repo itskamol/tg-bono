@@ -4,6 +4,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { Context } from '../interfaces/context.interface';
 import { Markup } from 'telegraf';
 import { Role } from '@prisma/client';
+import { safeEditMessageText } from '../utils/telegram.utils';
 
 @Update()
 export class SettingsUpdate {
@@ -12,18 +13,20 @@ export class SettingsUpdate {
     @Command('settings')
     @Roles(Role.SUPER_ADMIN)
     async onSettings(@Ctx() ctx: Context) {
-        await ctx.reply(
-            'Sozlamalar:',
+        await safeEditMessageText(
+            ctx,
+            '⚙️ Sozlamalar:',
             Markup.inlineKeyboard(
                 [
-                    Markup.button.callback('Email', 'configure_email_export'),
-                    Markup.button.callback('Sheets', 'configure_g_sheets_export'),
-                    Markup.button.callback('Rejalashtirish', 'configure_schedule'),
+                    Markup.button.callback('📧 Email', 'configure_email_export'),
+                    Markup.button.callback('📊 Sheets', 'configure_g_sheets_export'),
+                    Markup.button.callback('⏰ Rejalashtirish', 'configure_schedule'),
                 ],
                 {
                     columns: 2,
                 },
             ),
+            'Sozlamalar'
         );
     }
 

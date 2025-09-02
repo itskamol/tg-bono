@@ -3,6 +3,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { SchedulerService } from '../../scheduler/scheduler.service';
 import { Context } from '../../interfaces/context.interface';
 import { Markup } from 'telegraf';
+import { safeReplyOrEdit } from '../../utils/telegram.utils';
 
 @Scene('schedule-settings-scene')
 export class ScheduleSettingsScene {
@@ -28,18 +29,17 @@ export class ScheduleSettingsScene {
 
     @SceneEnter()
     async onSceneEnter(@Ctx() ctx: Context) {
-        await ctx.reply('Rejalashtirilgan hisobotlar sozlamalarini boshlash...');
-
         const existingSetting = await this.prisma.setting.findUnique({
             where: { key: 'schedule_config' },
         });
 
+        let statusText = '⏰ Rejalashtirilgan hisobotlar sozlamalarini boshlash...\n\n';
+        
         if (existingSetting) {
             const config = JSON.parse(existingSetting.value);
             const status = config.enabled ? 'yoqilgan' : 'o\'chirilgan';
-            await ctx.reply(`Joriy jadval: \`${config.cron}\`, Holat: *${status}*`, {
-                parse_mode: 'Markdown',
-            });
+            const destName = this.getDestinationName(config.destination || 'email');
+            statusText += `📊 Joriy jadval: \`${config.cron}\`\n🔘 Holat: *${status}*\n📤 Jo'natish: ${destName}\n\n`;
         }
 
         const buttons = Object.entries(this.schedules).map(([label, { cron }]) =>
@@ -48,9 +48,11 @@ export class ScheduleSettingsScene {
 
         buttons.push(Markup.button.callback('❌ Bekor qilish', 'cancel_schedule_config'));
 
-        await ctx.reply(
-            'Jadvalni tanlang yoki maxsus cron qatorini kiriting:',
+        await safeReplyOrEdit(
+            ctx,
+            statusText + 'Jadvalni tanlang yoki maxsus cron qatorini kiriting:',
             Markup.inlineKeyboard(buttons, { columns: 2 }),
+            'Jadval sozlamalari'
         );
     }
 
@@ -60,8 +62,9 @@ export class ScheduleSettingsScene {
         const sceneState = ctx.scene.state as any;
         sceneState.cron = cron;
         
-        await ctx.editMessageText(
-            `Cron qatori \`${cron}\` ga o'rnatildi. Agar maxsus cron qatori kerak bo'lsa, uni hozir yozing. Aks holda, bu jadvalni yoqishni yoki o'chirishni xohlaysizmi?`,
+        await safeReplyOrEdit(
+            ctx,
+            `✅ Cron qatori \`${cron}\` ga o'rnatildi.\n\nAgar maxsus cron qatori kerak bo'lsa, uni hozir yozing.\nAks holda, bu jadvalni yoqishni yoki o'chirishni xohlaysizmi?`,
             {
                 parse_mode: 'Markdown',
                 reply_markup: {
@@ -76,7 +79,8 @@ export class ScheduleSettingsScene {
                         ]
                     ]
                 }
-            }
+            },
+            'Cron saqlandi'
         );
     }
 

@@ -4,10 +4,11 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { Context } from '../interfaces/context.interface';
 import { Role } from '@prisma/client';
 import { ReportsService } from './reports.service';
+import { safeEditMessageText } from '../utils/telegram.utils';
 
 @Update()
 export class ReportsUpdate {
-    constructor(private readonly reportsService: ReportsService) {}
+    constructor(private readonly reportsService: ReportsService) { }
     @Command('reports')
     @Roles(Role.SUPER_ADMIN, Role.ADMIN)
     async showReports(@Ctx() ctx: Context) {
@@ -25,11 +26,13 @@ export class ReportsUpdate {
             );
         }
 
-        await ctx.reply(
+        await safeEditMessageText(
+            ctx,
             "📊 Hisobotlar bo'limi\n\nQaysi turdagi hisobotni ko'rmoqchisiz?",
             Markup.inlineKeyboard(reportButtons, {
                 columns: 2,
             }),
+            'Hisobotlar'
         );
     }
 
@@ -41,16 +44,6 @@ export class ReportsUpdate {
     @Action('PAYMENT_REPORTS')
     async showPaymentReports(@Ctx() ctx: Context) {
         await ctx.scene.enter('payment-reports-scene');
-    }
-
-    @Action('PRODUCT_REPORTS')
-    async showProductReports(@Ctx() ctx: Context) {
-        await ctx.scene.enter('product-reports-scene');
-    }
-
-    @Action('REVENUE_REPORTS')
-    async showRevenueReports(@Ctx() ctx: Context) {
-        await ctx.scene.enter('revenue-reports-scene');
     }
 
     @Action('BRANCH_REPORTS')
@@ -73,38 +66,38 @@ export class ReportsUpdate {
     @Command('test_sheets')
     @Roles(Role.SUPER_ADMIN)
     async testGoogleSheets(@Ctx() ctx: Context) {
-        await ctx.reply('🔄 Google Sheets ulanishini tekshiryapman...');
-        
+        await safeEditMessageText(ctx, '🔄 Google Sheets ulanishini tekshiryapman...', undefined, 'Test');
+
         try {
             const user = ctx.user;
             const result = await this.reportsService.sendReportToGoogleSheets(user, 'DAILY', true);
-            
+
             if (result) {
-                await ctx.reply('✅ Google Sheets test muvaffaqiyatli! Kunlik hisobot yuborildi.');
+                await safeEditMessageText(ctx, '✅ Google Sheets test muvaffaqiyatli! Kunlik hisobot yuborildi.', undefined, 'Test natijasi');
             } else {
-                await ctx.reply('❌ Google Sheets test muvaffaqiyatsiz. Loglarni tekshiring.');
+                await safeEditMessageText(ctx, '❌ Google Sheets test muvaffaqiyatsiz. Loglarni tekshiring.', undefined, 'Test natijasi');
             }
         } catch (error) {
-            await ctx.reply(`❌ Google Sheets test xatolik: ${error.message}`);
+            await safeEditMessageText(ctx, `❌ Google Sheets test xatolik: ${error.message}`, undefined, 'Test xatolik');
         }
     }
 
     @Command('test_email')
     @Roles(Role.SUPER_ADMIN)
     async testEmail(@Ctx() ctx: Context) {
-        await ctx.reply('🔄 Email ulanishini tekshiryapman...');
-        
+        await safeEditMessageText(ctx, '🔄 Email ulanishini tekshiryapman...', undefined, 'Test');
+
         try {
             const user = ctx.user;
             const result = await this.reportsService.sendReportByEmail(user, 'DAILY', true);
-            
+
             if (result) {
-                await ctx.reply('✅ Email test muvaffaqiyatli! Kunlik hisobot yuborildi.');
+                await safeEditMessageText(ctx, '✅ Email test muvaffaqiyatli! Kunlik hisobot yuborildi.', undefined, 'Test natijasi');
             } else {
-                await ctx.reply('❌ Email test muvaffaqiyatsiz. Loglarni tekshiring.');
+                await safeEditMessageText(ctx, '❌ Email test muvaffaqiyatsiz. Loglarni tekshiring.', undefined, 'Test natijasi');
             }
         } catch (error) {
-            await ctx.reply(`❌ Email test xatolik: ${error.message}`);
+            await safeEditMessageText(ctx, `❌ Email test xatolik: ${error.message}`, undefined, 'Test xatolik');
         }
     }
 }
