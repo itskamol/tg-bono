@@ -4,6 +4,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { Context } from '../../interfaces/context.interface';
 
 interface AddSideSceneState {
+    categoryId: string;
     name?: string;
     price?: number;
     awaitingName?: boolean;
@@ -17,10 +18,27 @@ export class AddSideScene {
     @SceneEnter()
     async onSceneEnter(@Ctx() ctx: Context) {
         const sceneState = ctx.scene.state as AddSideSceneState;
+
+        if (!sceneState.categoryId) {
+            await ctx.reply('❌ Kategoriya ma\'lumotlari topilmadi.');
+            await ctx.scene.leave();
+            return;
+        }
+
+        const category = await this.prisma.category.findUnique({
+            where: { id: sceneState.categoryId },
+        });
+
+        if (!category) {
+            await ctx.reply('❌ Kategoriya topilmadi.');
+            await ctx.scene.leave();
+            return;
+        }
+
         sceneState.awaitingName = true;
 
         await ctx.reply(
-            '🍕 Yangi tomon qo\'shish\n\n📝 Tomon nomini kiriting:',
+            `🍕 "${category.name}" kategoriyasiga yangi tomon qo'shish\n\n📝 Tomon nomini kiriting (masalan: "Oldi", "Orqa", "Ikki tomon"):`,
             Markup.inlineKeyboard([
                 Markup.button.callback('❌ Bekor qilish', 'CANCEL_ADD_SIDE'),
             ]),
@@ -45,9 +63,12 @@ export class AddSideScene {
                 return;
             }
 
-            // Tomon nomi mavjudligini tekshirish
+            // Tomon nomi mavjudligini tekshirish (shu kategoriyada)
             const existingSide = await this.prisma.side.findFirst({
-                where: { name: { equals: trimmedName, mode: 'insensitive' } },
+                where: { 
+                    name: { equals: trimmedName, mode: 'insensitive' },
+                    category_id: sceneState.categoryId
+                },
             });
 
             if (existingSide) {
@@ -148,12 +169,13 @@ export class AddSideScene {
             await ctx.scene.leave();
             return;
         }
-
+        console.log('Creating side with data:', sceneState);
         try {
             const newSide = await this.prisma.side.create({
                 data: {
                     name: sceneState.name,
                     price: sceneState.price,
+                    category_id: sceneState.categoryId,
                 },
             });
 

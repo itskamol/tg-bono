@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -33,16 +30,21 @@ model Branch {
 
 model Category {
   id         String   @id @default(auto()) @map("_id") @db.ObjectId
-  name       String   @unique // "Pizza", "Burger", etc.
-  emoji      String   // "🍕", "🍔", etc.
+  name       String   @unique
+  emoji      String   
+  sides      Side[]  
   created_at DateTime @default(now())
 }
 
 model Side {
-  id         String   @id @default(auto()) @map("_id") @db.ObjectId
-  name       String   @unique // "oldi", "orqa", "orqa + oldi", etc.
-  price      Float    // Har bir tomonning narxi
-  created_at DateTime @default(now())
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  name        String   
+  price       Float    
+  category    Category @relation(fields: [category_id], references: [id])
+  category_id String   @db.ObjectId
+  created_at  DateTime @default(now())
+
+  @@unique([name, category_id]) 
 }
 
 model Order {
@@ -65,11 +67,11 @@ model Order_Product {
   id           String @id @default(auto()) @map("_id") @db.ObjectId
   order        Order  @relation(fields: [order_id], references: [id])
   order_id     String @db.ObjectId
-  product_name String // Mahsulot nomi (display uchun)
-  category     String // Kategoriya nomi
-  side_name    String // Tanlangan tomon nomi
+  product_name String 
+  category     String 
+  side_name    String 
   quantity     Int
-  price        Float  // Har bir mahsulotning narxi (side price)
+  price        Float
 }
 
 model Payment {

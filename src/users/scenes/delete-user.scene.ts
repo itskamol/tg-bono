@@ -2,7 +2,7 @@ import { Scene, SceneEnter, Action, Ctx } from 'nestjs-telegraf';
 import { Markup } from 'telegraf';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Context } from '../../interfaces/context.interface';
-import { Role } from '@prisma/client';
+import { Role, User } from '@prisma/client';
 
 @Scene('delete-user-scene')
 export class DeleteUserScene {
@@ -10,25 +10,9 @@ export class DeleteUserScene {
 
     @SceneEnter()
     async onSceneEnter(@Ctx() ctx: Context) {
-        const telegramId = ctx.from?.id;
-        if (!telegramId) {
-            await ctx.reply('❌ Telegram ID topilmadi.');
-            await ctx.scene.leave();
-            return;
-        }
+        const currentUser = ctx.user;
 
-        const currentUser = await this.prisma.user.findUnique({
-            where: { telegram_id: telegramId },
-            include: { branch: true },
-        });
-
-        if (!currentUser) {
-            await ctx.reply("❌ Siz tizimda ro'yxatdan o'tmagansiz.");
-            await ctx.scene.leave();
-            return;
-        }
-
-        let users;
+        let users: User[] = [];
 
         if (currentUser.role === Role.SUPER_ADMIN) {
             users = await this.prisma.user.findMany({

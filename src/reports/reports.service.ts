@@ -4,6 +4,7 @@ import { EncryptionService } from '../settings/encryption.service';
 import { GoogleSheetsService } from '../sheets/google-sheets.service';
 import { EmailService } from '../email/email.service';
 import { Prisma, Role } from '@prisma/client';
+import { formatCurrency, formatNumber } from '../utils/format.utils';
 
 @Injectable()
 export class ReportsService {

@@ -35,14 +35,24 @@ export class NewOrderScene {
 
     @SceneEnter()
     async onSceneEnter(@Ctx() ctx: Context) {
+        return this.newOrderScene(ctx);
+    }
+
+    async newOrderScene(@Ctx() ctx: Context) {
         const sceneState = ctx.scene.state as NewOrderSceneState;
         sceneState.products = [];
         sceneState.currentProduct = {};
 
-        await ctx.reply(
+        await this.safeEditOrReply(
+            ctx,
             '🛒 Yangi buyurtma yaratish\n\n👤 Mijozning ismini kiriting:',
             Markup.inlineKeyboard([Markup.button.callback('❌ Bekor qilish', 'CANCEL_ORDER')]),
         );
+    }
+
+    @Action('START_NEW_ORDER')
+    async onStartNewOrder(@Ctx() ctx: Context) {
+        return this.newOrderScene(ctx);
     }
 
     @On('text')
@@ -52,7 +62,8 @@ export class NewOrderScene {
         // Step 1: Client Name
         if (!sceneState.clientName) {
             sceneState.clientName = text;
-            await ctx.reply(
+            await this.safeEditOrReply(
+                ctx,
                 `✅ Mijoz ismi: ${text}\n\n📞 Mijozning telefon raqamini kiriting:`,
                 Markup.inlineKeyboard([
                     Markup.button.callback("⏭️ O'tkazib yuborish", 'SKIP_PHONE'),
@@ -66,11 +77,15 @@ export class NewOrderScene {
         if (sceneState.clientPhone === undefined && !sceneState.phoneSkipped) {
             // Basic phone validation
             if (!/^[+]?[0-9\s-()]{9,}$/.test(text)) {
-                await ctx.reply("❌ Noto'g'ri telefon raqam formati. Qaytadan kiriting:");
+                await this.safeEditOrReply(
+                    ctx,
+                    "❌ Noto'g'ri telefon raqam formati. Qaytadan kiriting:",
+                );
                 return;
             }
             sceneState.clientPhone = text;
-            await ctx.reply(
+            await this.safeEditOrReply(
+                ctx,
                 `✅ Telefon: ${text}\n\n🎂 Mijozning tug'ilgan kunini kiriting (YYYY-MM-DD):`,
                 Markup.inlineKeyboard([
                     Markup.button.callback("⏭️ O'tkazib yuborish", 'SKIP_BIRTHDAY'),
@@ -83,7 +98,8 @@ export class NewOrderScene {
         // Step 3: Client Birthday
         if (!sceneState.clientBirthday && !sceneState.birthdaySkipped) {
             if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) {
-                await ctx.reply(
+                await this.safeEditOrReply(
+                    ctx,
                     "❌ Noto'g'ri sana formati. YYYY-MM-DD formatida kiriting (masalan: 1990-05-15):",
                 );
                 return;
@@ -91,12 +107,15 @@ export class NewOrderScene {
 
             const birthday = new Date(text);
             if (isNaN(birthday.getTime()) || birthday > new Date()) {
-                await ctx.reply("❌ Noto'g'ri sana. Qaytadan kiriting:");
+                await this.safeEditOrReply(ctx, "❌ Noto'g'ri sana. Qaytadan kiriting:");
                 return;
             }
 
             sceneState.clientBirthday = birthday;
-            await ctx.reply(`✅ Tug'ilgan kun: ${text}\n\n📦 Endi mahsulot qo'shamiz.`);
+            await this.safeEditOrReply(
+                ctx,
+                `✅ Tug'ilgan kun: ${text}\n\n📦 Endi mahsulot qo'shamiz.`,
+            );
             return this.showProductTypes(ctx);
         }
 
@@ -108,12 +127,13 @@ export class NewOrderScene {
             // Custom mahsulot uchun narx so'rash
             if (sceneState.isCustomProduct) {
                 sceneState.awaitingProductPrice = true;
-                await ctx.reply(
+                await this.safeEditOrReply(
+                    ctx,
                     `✅ Mahsulot nomi: ${text}\n\n💰 Narxini kiriting (so'mda):`,
                     Markup.inlineKeyboard([
                         Markup.button.callback('🔙 Orqaga', 'BACK_TO_TYPES'),
                         Markup.button.callback('❌ Bekor qilish', 'CANCEL_ORDER'),
-                    ])
+                    ]),
                 );
                 return;
             } else {
@@ -126,7 +146,7 @@ export class NewOrderScene {
         if (sceneState.awaitingProductPrice && sceneState.isCustomProduct) {
             const price = parseFloat(text);
             if (isNaN(price) || price <= 0) {
-                await ctx.reply("❌ Noto'g'ri narx. Faqat musbat raqam kiriting:");
+                await this.safeEditOrReply(ctx, "❌ Noto'g'ri narx. Faqat musbat raqam kiriting:");
                 return;
             }
 
@@ -140,7 +160,10 @@ export class NewOrderScene {
             sceneState.currentProduct = {};
             sceneState.isCustomProduct = false;
 
-            await ctx.reply(`✅ "${productName}" qo'shildi.\n💰 Narx: ${price} so'm`);
+            await this.safeEditOrReply(
+                ctx,
+                `✅ "${productName}" qo'shildi.\n💰 Narx: ${price} so'm`,
+            );
             return this.showOrderSummary(ctx);
         }
 
@@ -153,7 +176,7 @@ export class NewOrderScene {
 
             const validation = this.validatePaymentAmount(amount, remainingAmount);
             if (!validation.isValid) {
-                await ctx.reply(validation.error || "❌ Noto'g'ri miqdor.");
+                await this.safeEditOrReply(ctx, validation.error || "❌ Noto'g'ri miqdor.");
                 return;
             }
 
@@ -164,7 +187,10 @@ export class NewOrderScene {
             }
 
             sceneState.payments.push({ ...sceneState.currentPayment });
-            sceneState.remainingAmount = this.calculateRemainingAmount(sceneState.totalAmount || 0, sceneState.payments);
+            sceneState.remainingAmount = this.calculateRemainingAmount(
+                sceneState.totalAmount || 0,
+                sceneState.payments,
+            );
             sceneState.currentPayment = undefined;
             sceneState.awaitingPaymentAmount = false;
 
@@ -191,7 +217,8 @@ ${productsList}
 
 Yana mahsulot qo'shasizmi?`;
 
-        await ctx.reply(
+        await this.safeEditOrReply(
+            ctx,
             messageText,
             Markup.inlineKeyboard(
                 [
@@ -211,7 +238,8 @@ Yana mahsulot qo'shasizmi?`;
         const sceneState = ctx.scene.state as NewOrderSceneState;
         sceneState.clientPhone = null;
         sceneState.phoneSkipped = true;
-        await ctx.reply(
+        await this.safeEditOrReply(
+            ctx,
             `⏭️ Telefon raqami o'tkazib yuborildi.\n\n🎂 Mijozning tug'ilgan kunini kiriting (YYYY-MM-DD):`,
             Markup.inlineKeyboard([
                 Markup.button.callback("⏭️ O'tkazib yuborish", 'SKIP_BIRTHDAY'),
@@ -228,7 +256,7 @@ Yana mahsulot qo'shasizmi?`;
 
         await this.safeEditOrReply(
             ctx,
-            "⏭️ Tug'ilgan kun o'tkazib yuborildi.\n\n📦 Endi mahsulot qo'shamiz."
+            "⏭️ Tug'ilgan kun o'tkazib yuborildi.\n\n📦 Endi mahsulot qo'shamiz.",
         );
         return this.showProductTypes(ctx);
     }
@@ -237,22 +265,18 @@ Yana mahsulot qo'shasizmi?`;
         try {
             // Database'dan kategoriyalarni olish
             const categories = await this.prisma.category.findMany({
-                orderBy: { name: 'asc' }
+                orderBy: { name: 'asc' },
             });
 
             const typeButtons = categories.map((category) =>
-                Markup.button.callback(
-                    `${category.emoji} ${category.name}`,
-                    `TYPE_${category.id}`,
-                ),
+                Markup.button.callback(`${category.emoji} ${category.name}`, `TYPE_${category.id}`),
             );
 
             // Custom mahsulot tugmasini qo'shish
-            typeButtons.push(
-                Markup.button.callback('🔧 Custom mahsulot', 'TYPE_CUSTOM')
-            );
+            typeButtons.push(Markup.button.callback('🔧 Custom mahsulot', 'TYPE_CUSTOM'));
 
-            await ctx.reply(
+            await this.safeEditOrReply(
+                ctx,
                 '📦 Mahsulot kategoriyasini tanlang:',
                 Markup.inlineKeyboard(
                     [...typeButtons, Markup.button.callback('❌ Bekor qilish', 'CANCEL_ORDER')],
@@ -263,12 +287,13 @@ Yana mahsulot qo'shasizmi?`;
             );
         } catch (error) {
             console.error('Categories loading error:', error);
-            await ctx.reply(
-                '❌ Kategoriyalarni yuklashda xatolik. Qaytadan urinib ko\'ring.',
+            await this.safeEditOrReply(
+                ctx,
+                "❌ Kategoriyalarni yuklashda xatolik. Qaytadan urinib ko'ring.",
                 Markup.inlineKeyboard([
                     Markup.button.callback('🔄 Qaytadan', 'RETRY_CATEGORIES'),
                     Markup.button.callback('❌ Bekor qilish', 'CANCEL_ORDER'),
-                ])
+                ]),
             );
         }
     }
@@ -285,14 +310,14 @@ Yana mahsulot qo'shasizmi?`;
         if (typeData === 'CUSTOM') {
             sceneState.isCustomProduct = true;
             sceneState.currentProduct.category = 'Custom';
-            
+
             await this.safeEditOrReply(
                 ctx,
                 '🔧 Custom mahsulot tanlandi.\n\n📝 Mahsulot nomini kiriting:',
                 Markup.inlineKeyboard([
                     Markup.button.callback('🔙 Orqaga', 'BACK_TO_TYPES'),
                     Markup.button.callback('❌ Bekor qilish', 'CANCEL_ORDER'),
-                ])
+                ]),
             );
             sceneState.awaitingProductName = true;
             return;
@@ -301,7 +326,7 @@ Yana mahsulot qo'shasizmi?`;
         // Mavjud kategoriya uchun
         try {
             const category = await this.prisma.category.findUnique({
-                where: { id: typeData }
+                where: { id: typeData },
             });
 
             if (!category) {
@@ -319,7 +344,7 @@ Yana mahsulot qo'shasizmi?`;
                 Markup.inlineKeyboard([
                     Markup.button.callback('🔙 Orqaga', 'BACK_TO_TYPES'),
                     Markup.button.callback('❌ Bekor qilish', 'CANCEL_ORDER'),
-                ])
+                ]),
             );
             sceneState.awaitingProductName = true;
         } catch (error) {
@@ -328,12 +353,6 @@ Yana mahsulot qo'shasizmi?`;
             return this.showProductTypes(ctx);
         }
     }
-
-    // CREATE_NEW_PRODUCT action olib tashlandi - endi kerak emas
-
-    // SELECT_PRODUCT action olib tashlandi - mahsulot qidirish yo'q
-
-    // PRODUCT action olib tashlandi - mahsulot qidirish yo'q
 
     @Action(/^SELECT_SIDE_(.+)$/)
     async onSelectSide(@Ctx() ctx: Context) {
@@ -344,7 +363,7 @@ Yana mahsulot qo'shasizmi?`;
         const sceneState = ctx.scene.state as NewOrderSceneState;
 
         const side = await this.prisma.side.findUnique({
-            where: { id: sideId }
+            where: { id: sideId },
         });
 
         if (!side) {
@@ -362,7 +381,7 @@ Yana mahsulot qo'shasizmi?`;
 
         await this.safeEditOrReply(
             ctx,
-            `✅ "${sceneState.currentProduct.name}" (${side.name}) qo'shildi.\n💰 Narx: ${side.price} so'm`
+            `✅ "${sceneState.currentProduct.name}" (${side.name}) qo'shildi.\n💰 Narx: ${side.price} so'm`,
         );
 
         sceneState.currentProduct = {};
@@ -385,7 +404,10 @@ Yana mahsulot qo'shasizmi?`;
         const sceneState = ctx.scene.state as NewOrderSceneState;
 
         if (!sceneState.products || sceneState.products.length === 0) {
-            await this.safeEditOrReply(ctx, "❌ Buyurtmada mahsulot yo'q. Avval mahsulot qo'shing.");
+            await this.safeEditOrReply(
+                ctx,
+                "❌ Buyurtmada mahsulot yo'q. Avval mahsulot qo'shing.",
+            );
             return this.showProductTypes(ctx);
         }
 
@@ -397,15 +419,16 @@ Yana mahsulot qo'shasizmi?`;
         return this.showPaymentTypeSelection(ctx);
     }
 
-
-
     @Action('CONFIRM_ORDER')
     async onConfirmOrder(@Ctx() ctx: Context) {
         const sceneState = ctx.scene.state as NewOrderSceneState;
 
         // Check if payment is complete
         if (!this.isPaymentComplete(sceneState.totalAmount || 0, sceneState.payments || [])) {
-            await this.safeEditOrReply(ctx, "❌ Barcha summa to'lanmagan. Avval to'lovni yakunlang.");
+            await this.safeEditOrReply(
+                ctx,
+                "❌ Barcha summa to'lanmagan. Avval to'lovni yakunlang.",
+            );
             return this.showPaymentSummary(ctx);
         }
 
@@ -499,10 +522,10 @@ ${paymentsText}
                         client_phone: sceneState.clientPhone,
                         client_birthday: sceneState.clientBirthday,
                         branch: {
-                            connect: { id: user.branch_id }
+                            connect: { id: user.branch_id },
                         },
                         cashier: {
-                            connect: { id: user.id }
+                            connect: { id: user.id },
                         },
                         total_amount: sceneState.totalAmount,
                         order_products: {
@@ -533,19 +556,23 @@ ${paymentsText}
 
             await this.safeEditOrReply(
                 ctx,
-                `✅ Buyurtma muvaffaqiyatli yaratildi!\n\n🔢 Buyurtma raqami: ${orderNumber}\n\n💳 To'lovlar:\n${paymentsText}\n\n💰 Jami: ${sceneState.totalAmount} so'm\n\nRahmat!`
+                `✅ Buyurtma muvaffaqiyatli yaratildi!\n\n🔢 Buyurtma raqami: ${orderNumber}\n\n💳 To'lovlar:\n${paymentsText}\n\n💰 Jami: ${sceneState.totalAmount} so'm\n\nRahmat!`,
+                Markup.inlineKeyboard([
+                    Markup.button.callback('🆕 Yangi buyurtma', 'START_NEW_ORDER'),
+                ]),
             );
             await ctx.scene.leave();
         } catch (error) {
             console.error('Order creation error:', error);
 
-            let errorMessage = "❌ Buyurtma yaratishda xatolik yuz berdi.";
+            let errorMessage = '❌ Buyurtma yaratishda xatolik yuz berdi.';
 
             if (error instanceof Error) {
                 if (error.message.includes('duplicate')) {
                     errorMessage = "❌ Buyurtma raqami allaqachon mavjud. Qaytadan urinib ko'ring.";
                 } else if (error.message.includes('connection')) {
-                    errorMessage = "❌ Ma'lumotlar bazasiga ulanishda xatolik. Internetni tekshiring.";
+                    errorMessage =
+                        "❌ Ma'lumotlar bazasiga ulanishda xatolik. Internetni tekshiring.";
                 } else if (error.message.includes('validation')) {
                     errorMessage = "❌ Ma'lumotlar noto'g'ri. Qaytadan tekshiring.";
                 }
@@ -558,7 +585,7 @@ ${paymentsText}
                     Markup.button.callback('🔄 Qaytadan urinish', 'FINAL_CONFIRM_ORDER'),
                     Markup.button.callback('🔙 Orqaga', 'BACK_TO_PAYMENT_SUMMARY'),
                     Markup.button.callback('❌ Bekor qilish', 'CANCEL_ORDER'),
-                ])
+                ]),
             );
         }
     }
@@ -579,8 +606,8 @@ ${paymentsText}
                 `⚠️ Siz ${sceneState.payments.length} ta to'lov qo'shgansiz.\n\nHaqiqatan ham buyurtmani bekor qilmoqchimisiz?`,
                 Markup.inlineKeyboard([
                     Markup.button.callback('✅ Ha, bekor qilish', 'CONFIRM_CANCEL_ORDER'),
-                    Markup.button.callback('❌ Yo\'q, davom etish', 'BACK_TO_PAYMENT_SUMMARY'),
-                ])
+                    Markup.button.callback("❌ Yo'q, davom etish", 'BACK_TO_PAYMENT_SUMMARY'),
+                ]),
             );
         } else {
             await this.safeEditOrReply(ctx, '❌ Buyurtma bekor qilindi.');
@@ -610,7 +637,8 @@ ${paymentsText}
         try {
             // Barcha sides'larni olish
             const sides = await this.prisma.side.findMany({
-                orderBy: { price: 'asc' }
+                where: { category_id: sceneState.currentProduct.categoryId },
+                orderBy: { price: 'asc' },
             });
 
             if (sides.length === 0) {
@@ -620,7 +648,7 @@ ${paymentsText}
                     Markup.inlineKeyboard([
                         Markup.button.callback('🔙 Orqaga', 'BACK_TO_TYPES'),
                         Markup.button.callback('❌ Bekor qilish', 'CANCEL_ORDER'),
-                    ])
+                    ]),
                 );
                 return;
             }
@@ -628,18 +656,21 @@ ${paymentsText}
             const sideButtons = sides.map((side) =>
                 Markup.button.callback(
                     `${side.name} - ${side.price} so'm`,
-                    `SELECT_SIDE_${side.id}`
-                )
+                    `SELECT_SIDE_${side.id}`,
+                ),
             );
 
             await this.safeEditOrReply(
                 ctx,
                 `📦 "${sceneState.currentProduct.name}" tanlandi\n\n🍕 Tomonni tanlang (narx = tomon narxi):`,
-                Markup.inlineKeyboard([
-                    ...sideButtons,
-                    Markup.button.callback('🔙 Orqaga', 'BACK_TO_TYPES'),
-                    Markup.button.callback('❌ Bekor qilish', 'CANCEL_ORDER'),
-                ], { columns: 1 })
+                Markup.inlineKeyboard(
+                    [
+                        ...sideButtons,
+                        Markup.button.callback('🔙 Orqaga', 'BACK_TO_TYPES'),
+                        Markup.button.callback('❌ Bekor qilish', 'CANCEL_ORDER'),
+                    ],
+                    { columns: 1 },
+                ),
             );
         } catch (error) {
             console.error('Sides loading error:', error);
@@ -650,7 +681,7 @@ ${paymentsText}
                     Markup.button.callback('🔄 Qaytadan', 'RETRY_SIDES'),
                     Markup.button.callback('🔙 Orqaga', 'BACK_TO_TYPES'),
                     Markup.button.callback('❌ Bekor qilish', 'CANCEL_ORDER'),
-                ])
+                ]),
             );
         }
     }
@@ -664,7 +695,10 @@ ${paymentsText}
         return Math.max(0, totalAmount - paidAmount);
     }
 
-    private validatePaymentAmount(amount: number, remainingAmount: number): { isValid: boolean; error?: string } {
+    private validatePaymentAmount(
+        amount: number,
+        remainingAmount: number,
+    ): { isValid: boolean; error?: string } {
         if (isNaN(amount)) {
             return { isValid: false, error: "❌ Noto'g'ri raqam formati. Faqat raqam kiriting." };
         }
@@ -672,23 +706,29 @@ ${paymentsText}
             return { isValid: false, error: "❌ Miqdor 0 dan katta bo'lishi kerak." };
         }
         if (amount > remainingAmount) {
-            return { isValid: false, error: `❌ Kiritilgan miqdor qolgan summadan ko'p.\nMaksimal: ${remainingAmount} so'm` };
+            return {
+                isValid: false,
+                error: `❌ Kiritilgan miqdor qolgan summadan ko'p.\nMaksimal: ${remainingAmount} so'm`,
+            };
         }
         if (amount !== Math.floor(amount)) {
-            return { isValid: false, error: "❌ Faqat butun sonlar qabul qilinadi." };
+            return { isValid: false, error: '❌ Faqat butun sonlar qabul qilinadi.' };
         }
-        if (amount > 10000000) { // 10 million limit
+        if (amount > 10000000) {
             return { isValid: false, error: "❌ Miqdor juda katta. Maksimal: 10,000,000 so'm" };
         }
         return { isValid: true };
     }
 
-    private validateSceneState(sceneState: NewOrderSceneState): { isValid: boolean; error?: string } {
+    private validateSceneState(sceneState: NewOrderSceneState): {
+        isValid: boolean;
+        error?: string;
+    } {
         if (!sceneState.clientName) {
-            return { isValid: false, error: "❌ Mijoz ismi kiritilmagan." };
+            return { isValid: false, error: '❌ Mijoz ismi kiritilmagan.' };
         }
         if (!sceneState.products || sceneState.products.length === 0) {
-            return { isValid: false, error: "❌ Hech qanday mahsulot tanlanmagan." };
+            return { isValid: false, error: '❌ Hech qanday mahsulot tanlanmagan.' };
         }
         if (!sceneState.totalAmount || sceneState.totalAmount <= 0) {
             return { isValid: false, error: "❌ Buyurtma summasi noto'g'ri." };
@@ -708,11 +748,13 @@ ${paymentsText}
             return "Hech qanday to'lov qo'shilmagan";
         }
 
-        return payments.map((payment, index) => {
-            const emoji = this.getPaymentTypeEmoji(payment.type);
-            const typeName = this.getPaymentTypeName(payment.type);
-            return `${index + 1}. ${emoji} ${typeName}: ${payment.amount} so'm`;
-        }).join('\n');
+        return payments
+            .map((payment, index) => {
+                const emoji = this.getPaymentTypeEmoji(payment.type);
+                const typeName = this.getPaymentTypeName(payment.type);
+                return `${index + 1}. ${emoji} ${typeName}: ${payment.amount} so'm`;
+            })
+            .join('\n');
     }
 
     private getPaymentTypeEmoji(paymentType: PaymentType): string {
@@ -728,7 +770,7 @@ ${paymentsText}
         const names = {
             [PaymentType.CASH]: 'Naqd',
             [PaymentType.CARD]: 'Karta',
-            [PaymentType.TRANSFER]: "Nasiya",
+            [PaymentType.TRANSFER]: 'Nasiya',
         };
         return names[paymentType] || paymentType;
     }
@@ -744,13 +786,16 @@ ${paymentsText}
         await this.safeEditOrReply(
             ctx,
             `💳 To'lov turi tanlang\n\n💰 Qolgan summa: ${remainingAmount} so'm`,
-            Markup.inlineKeyboard([
-                Markup.button.callback('💵 Naqd', 'PAYMENT_TYPE_CASH'),
-                Markup.button.callback('💳 Karta', 'PAYMENT_TYPE_CARD'),
-                Markup.button.callback('📱 O\'tkazma', 'PAYMENT_TYPE_TRANSFER'),
-                Markup.button.callback('🔙 Orqaga', 'BACK_TO_ORDER_SUMMARY'),
-                Markup.button.callback('❌ Bekor qilish', 'CANCEL_ORDER'),
-            ], { columns: 2 })
+            Markup.inlineKeyboard(
+                [
+                    Markup.button.callback('💵 Naqd', 'PAYMENT_TYPE_CASH'),
+                    Markup.button.callback('💳 Karta', 'PAYMENT_TYPE_CARD'),
+                    Markup.button.callback('📱 Nasiya', 'PAYMENT_TYPE_TRANSFER'),
+                    Markup.button.callback('🔙 Orqaga', 'BACK_TO_ORDER_SUMMARY'),
+                    Markup.button.callback('❌ Bekor qilish', 'CANCEL_ORDER'),
+                ],
+                { columns: 2 },
+            ),
         );
     }
 
@@ -764,7 +809,7 @@ ${paymentsText}
 
         sceneState.currentPayment = {
             type: paymentType,
-            amount: 0
+            amount: 0,
         };
 
         const remainingAmount = sceneState.remainingAmount || 0;
@@ -774,11 +819,19 @@ ${paymentsText}
         await this.safeEditOrReply(
             ctx,
             `${emoji} ${typeName} to'lov tanlandi\n\n💰 Qolgan summa: ${remainingAmount} so'm\n\n💵 To'lov miqdorini kiriting:`,
-            Markup.inlineKeyboard([
-                Markup.button.callback(`💯 Barcha (${remainingAmount} so'm)`, 'PAY_ALL_REMAINING'),
-                Markup.button.callback('🔙 Orqaga', 'BACK_TO_PAYMENT_TYPE'),
-                Markup.button.callback('❌ Bekor qilish', 'CANCEL_ORDER'),
-            ])
+            Markup.inlineKeyboard(
+                [
+                    Markup.button.callback(
+                        `💯 Barcha (${remainingAmount} so'm)`,
+                        'PAY_ALL_REMAINING',
+                    ),
+                    Markup.button.callback('🔙 Orqaga', 'BACK_TO_PAYMENT_TYPE'),
+                    Markup.button.callback('❌ Bekor qilish', 'CANCEL_ORDER'),
+                ],
+                {
+                    columns: 2,
+                },
+            ),
         );
 
         sceneState.awaitingPaymentAmount = true;
@@ -841,11 +894,13 @@ ${paymentsText}
         const buttons = [];
 
         if (remainingAmount > 0) {
-            buttons.push(Markup.button.callback('➕ Yana to\'lov qo\'shish', 'ADD_PAYMENT'));
+            buttons.push(Markup.button.callback("➕ Yana to'lov qo'shish", 'ADD_PAYMENT'));
         }
 
         if (payments.length > 0) {
-            buttons.push(Markup.button.callback('🗑️ Oxirgi to\'lovni o\'chirish', 'REMOVE_LAST_PAYMENT'));
+            buttons.push(
+                Markup.button.callback("🗑️ Oxirgi to'lovni o'chirish", 'REMOVE_LAST_PAYMENT'),
+            );
         }
 
         if (isComplete) {
@@ -858,7 +913,7 @@ ${paymentsText}
         await this.safeEditOrReply(
             ctx,
             messageText,
-            Markup.inlineKeyboard(buttons, { columns: 1 })
+            Markup.inlineKeyboard(buttons, { columns: 1 }),
         );
     }
 
@@ -877,14 +932,17 @@ ${paymentsText}
         }
 
         const removedPayment = sceneState.payments.pop();
-        sceneState.remainingAmount = this.calculateRemainingAmount(sceneState.totalAmount || 0, sceneState.payments);
+        sceneState.remainingAmount = this.calculateRemainingAmount(
+            sceneState.totalAmount || 0,
+            sceneState.payments,
+        );
 
         const emoji = this.getPaymentTypeEmoji(removedPayment!.type);
         const typeName = this.getPaymentTypeName(removedPayment!.type);
 
         await this.safeEditOrReply(
             ctx,
-            `🗑️ To'lov o'chirildi: ${emoji} ${typeName} - ${removedPayment!.amount} so'm`
+            `🗑️ To'lov o'chirildi: ${emoji} ${typeName} - ${removedPayment!.amount} so'm`,
         );
 
         return this.showPaymentSummary(ctx);

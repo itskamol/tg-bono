@@ -29,7 +29,6 @@ export class TelegramService {
     // Emoji va buyruq matnlarini bog'laydigan xarita
     emojiMap: { [key: string]: string } = {
         start: '🚀',
-        help: '❓',
         profile: '👤',
         users: '👥',
         branches: '🏢',
@@ -37,16 +36,12 @@ export class TelegramService {
         reports: '📊',
         settings: '⚙️',
         categories: '📦',
-        sides: '🍕',
         products: '🍔',
         neworder: '➕',
     };
 
-    // Tugma matnlarini buyruqlarga moslashtiruvchi xarita.
-    // Bu xarita `@Start` metodida to'ldiriladi va `@On('text')`da ishlatiladi.
     private buttonTextMap: { [key: string]: string } = {
         '🚀 Botni ishga tushirish': 'start',
-        '❓ Yordam': 'help',
         "👤 Profil ma'lumotlari": 'profile',
         "👥 Foydalanuvchilar ro'yxati": 'users',
         "🏢 Filiallar ro'yxati": 'branches',
@@ -73,12 +68,12 @@ export class TelegramService {
 
         if (!user) {
             const welcomeMessage = `
-                🤖 Assalomu alaykum! TG-Bono botiga xush kelibsiz!
+🤖 Assalomu alaykum! Botiga xush kelibsiz!
 
-                ❗️ Siz hali tizimda ro'yxatdan o'tmagansiz.
-                Admin sizni tizimga qo'shishi kerak.
+❗️ Siz hali tizimda ro'yxatdan o'tmagansiz.
+Admin sizni tizimga qo'shishi kerak.
 
-                📞 Admin bilan bog'laning: @admin_username
+📞 Admin bilan bog'laning
             `;
             await ctx.reply(welcomeMessage);
             return;
@@ -92,19 +87,15 @@ export class TelegramService {
             }[user.role] || user.role;
 
         const startMessage = `
-            🤖 Assalomu alaykum, ${user.full_name}!
+🤖 Assalomu alaykum, ${user.full_name}!
 
-            👤 Sizning ma'lumotlaringiz:
-            • Rol: ${roleText}
-            • Filial: ${user.branch?.name || 'Tayinlanmagan'}
-
-            📋 Mavjud buyruqlar uchun /help yuboring.
+👤 Sizning ma'lumotlaringiz:
+• Rol: ${roleText}
+• Filial: ${user.branch?.name || 'Tayinlanmagan'}
         `;
 
-        // Foydalanuvchi rolidan kelib chiqib, buyruqlar ro'yxatini yaratamiz
         const commands = [
             { command: 'start', description: 'Botni ishga tushirish' },
-            { command: 'help', description: 'Yordam' },
             { command: 'profile', description: "Profil ma'lumotlari" },
         ];
 
@@ -116,7 +107,6 @@ export class TelegramService {
                 { command: 'reports', description: 'Batafsil hisobotlar' },
                 { command: 'settings', description: 'Bot sozlamalari' },
                 { command: 'categories', description: "Kategoriyalar ro'yxati" },
-                { command: 'sides', description: "Xizmatlar ro'yxati" },
             );
         } else if (user.role === Role.ADMIN) {
             commands.push(
@@ -173,7 +163,6 @@ export class TelegramService {
         // Rolga qarab buyruqlar ro'yxatini yaratamiz
         const commandsList = [
             { command: 'start', description: 'Botni ishga tushirish' },
-            { command: 'help', description: 'Yordam' },
             { command: 'profile', description: "Profil ma'lumotlari" },
         ];
 
@@ -181,7 +170,6 @@ export class TelegramService {
             commandsList.push(
                 { command: 'users', description: 'Foydalanuvchilar boshqaruvi' },
                 { command: 'branches', description: 'Filiallar boshqaruvi' },
-                { command: 'sides', description: 'Xizmatlar boshqaruvi' },
                 { command: 'categories', description: 'Kategoriyalar boshqaruvi' },
                 { command: 'orders', description: "Buyurtmalar ro'yxati" },
                 { command: 'reports', description: 'Batafsil hisobotlar' },
@@ -236,13 +224,13 @@ export class TelegramService {
             }[user.role] || user.role;
 
         const profileMessage = `
-            👤 Profil ma'lumotlari:
+👤 Profil ma'lumotlari:
 
-            📝 To'liq ism: ${user.full_name}
-            🎭 Rol: ${roleText}
-            🏪 Filial: ${user.branch?.name || 'Tayinlanmagan'}
-            📍 Filial manzili: ${user.branch?.address || 'N/A'}
-            📅 Ro'yxatdan o'tgan: ${user.created_at.toLocaleDateString('uz-UZ')}
+📝 To'liq ism: ${user.full_name}
+🎭 Rol: ${roleText}
+🏪 Filial: ${user.branch?.name || 'Tayinlanmagan'}
+📍 Filial manzili: ${user.branch?.address || 'N/A'}
+📅 Ro'yxatdan o'tgan: ${user.created_at.toLocaleDateString('uz-UZ')}
         `;
 
         await ctx.reply(profileMessage);
@@ -293,7 +281,7 @@ export class TelegramService {
             }
         } else {
             await ctx.reply(
-                "Kechirasiz, siz yuborgan xabar tushunarsiz. /help buyrug'idan foydalaning.",
+                "Kechirasiz, siz yuborgan xabar tushunarsiz.",
             );
         }
     }

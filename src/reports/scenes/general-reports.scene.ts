@@ -4,6 +4,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { Context } from '../../interfaces/context.interface';
 import { ReportHelpers } from '../helpers/report.helpers';
 import { Role } from '@prisma/client';
+import { formatCurrency, formatNumber } from '../../utils/format.utils';
 
 @Scene('general-reports-scene')
 export class GeneralReportsScene {
@@ -83,7 +84,7 @@ export class GeneralReportsScene {
             whereClause = { branch_id: user.branch_id };
         }
 
-        const [ordersCount, totalRevenue, avgOrderValue, topProducts] = await Promise.all([
+        const [ordersCount, totalRevenue, avgOrderValue, topCategories] = await Promise.all([
             this.prisma.order.count({
                 where: {
                     ...whereClause,
@@ -105,23 +106,28 @@ export class GeneralReportsScene {
                 _avg: { total_amount: true },
             }),
             this.prisma.order_Product.groupBy({
-                by: ['product_name'],
+                by: ['category'],
                 where: {
                     order: {
                         ...whereClause,
                         created_at: { gte: startDate, lt: endDate },
                     },
                 },
-                _sum: { quantity: true },
-                orderBy: { _sum: { quantity: 'desc' } },
+                _sum: { 
+                    quantity: true,
+                    price: true 
+                },
+                _count: true,
+                orderBy: { _sum: { price: 'desc' } },
                 take: 5,
             }),
         ]);
 
-        // Top products list - endi product_name bo'yicha
-        const topProductsList = topProducts
-            .map((tp) => {
-                return `• ${tp.product_name}: ${tp._sum.quantity} ta`;
+        // Top categories list - kategoriya bo'yicha
+        const topCategoriesList = topCategories
+            .map((tc) => {
+                const totalAmount = (tc._sum.price || 0) * (tc._sum.quantity || 0);
+                return `• ${tc.category}: ${formatNumber(tc._sum.quantity || 0)} ta - ${formatCurrency(totalAmount)}`;
             })
             .join('\n');
 
@@ -129,12 +135,12 @@ export class GeneralReportsScene {
 📊 ${periodName.toUpperCase()} UMUMIY HISOBOT
 
 📈 Asosiy ko'rsatkichlar:
-• Buyurtmalar soni: ${ordersCount} ta
-• Jami daromad: ${totalRevenue._sum.total_amount || 0} so'm
-• O'rtacha buyurtma: ${Math.round(avgOrderValue._avg.total_amount || 0)} so'm
+• Buyurtmalar soni: ${formatNumber(ordersCount)} ta
+• Jami daromad: ${formatCurrency(totalRevenue._sum.total_amount || 0)}
+• O'rtacha buyurtma: ${formatCurrency(Math.round(avgOrderValue._avg.total_amount || 0))}
 
-🔥 Eng ko'p sotilgan mahsulotlar:
-${topProductsList || "Ma'lumot yo'q"}
+📦 Eng ko'p sotilgan kategoriyalar:
+${topCategoriesList || "Ma'lumot yo'q"}
 
 ${user.role === Role.ADMIN ? `🏪 Filial: ${user.branch?.name || 'N/A'}` : '🌐 Barcha filiallar'}
     `;

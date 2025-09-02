@@ -15,9 +15,7 @@ export class ReportsUpdate {
 
         const reportButtons = [
             Markup.button.callback('📊 Umumiy', 'GENERAL_REPORTS'),
-            Markup.button.callback("💳 To'lovlar", 'PAYMENT_REPORTS'),
-            Markup.button.callback('📦 Mahsulotlar', 'PRODUCT_REPORTS'),
-            Markup.button.callback('💰 Daromad', 'REVENUE_REPORTS'),
+            Markup.button.callback("💳 To'lovlar", 'PAYMENT_REPORTS')
         ];
 
         if (user.role === Role.SUPER_ADMIN) {
@@ -30,7 +28,7 @@ export class ReportsUpdate {
         await ctx.reply(
             "📊 Hisobotlar bo'limi\n\nQaysi turdagi hisobotni ko'rmoqchisiz?",
             Markup.inlineKeyboard(reportButtons, {
-                columns: 2, // Har bir qatordagi tugmalar soni. 2 yoki 3 qilib o'zgartirishingiz mumkin.
+                columns: 2,
             }),
         );
     }

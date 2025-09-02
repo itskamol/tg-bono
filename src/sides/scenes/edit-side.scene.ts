@@ -7,6 +7,7 @@ interface EditSideSceneState {
     sideId: string;
     sideName: string;
     sidePrice: number;
+    categoryId: string;
     newName?: string;
     newPrice?: number;
     editingName?: boolean;
@@ -38,6 +39,7 @@ export class EditSideScene {
 
         sceneState.sideName = side.name;
         sceneState.sidePrice = side.price;
+        sceneState.categoryId = side.category_id;
 
         await ctx.reply(
             `✏️ Tomon tahrirlash\n\n📝 Joriy nomi: ${side.name}\n💰 Joriy narxi: ${side.price} so'm\n\nNimani tahrirlashni xohlaysiz?`,
@@ -101,10 +103,11 @@ export class EditSideScene {
                 return;
             }
 
-            // Tomon nomi mavjudligini tekshirish
+            // Tomon nomi mavjudligini tekshirish (shu kategoriyada)
             const existingSide = await this.prisma.side.findFirst({
                 where: { 
                     name: { equals: trimmedName, mode: 'insensitive' },
+                    category_id: sceneState.categoryId,
                     id: { not: sceneState.sideId }
                 },
             });

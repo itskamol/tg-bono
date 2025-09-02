@@ -5,9 +5,7 @@ import { Context } from '../../interfaces/context.interface';
 
 interface AddCategorySceneState {
     name?: string;
-    emoji?: string;
     awaitingName?: boolean;
-    awaitingEmoji?: boolean;
 }
 
 @Scene('add-category-scene')
@@ -31,7 +29,7 @@ export class AddCategoryScene {
     async onText(@Ctx() ctx: Context, @Message('text') text: string) {
         const sceneState = ctx.scene.state as AddCategorySceneState;
 
-        // Step 1: Kategoriya nomi
+        // Kategoriya nomi
         if (sceneState.awaitingName) {
             const trimmedName = text.trim();
             
@@ -57,78 +55,26 @@ export class AddCategoryScene {
 
             sceneState.name = trimmedName;
             sceneState.awaitingName = false;
-            sceneState.awaitingEmoji = true;
 
-            // Mashhur emoji'larni taklif qilish
+            // Tasdiqlash
             await ctx.reply(
-                `✅ Kategoriya nomi: ${trimmedName}\n\n😊 Kategoriya uchun emoji tanlang yoki kiriting:`,
+                `📋 Yangi kategoriya ma'lumotlari:\n\n📝 Nomi: ${trimmedName}\n\nTasdiqlaysizmi?`,
                 Markup.inlineKeyboard([
-                    Markup.button.callback('🍕', 'SELECT_EMOJI_🍕'),
-                    Markup.button.callback('🍔', 'SELECT_EMOJI_🍔'),
-                    Markup.button.callback('🥤', 'SELECT_EMOJI_🥤'),
-                    Markup.button.callback('🍰', 'SELECT_EMOJI_🍰'),
-                    Markup.button.callback('🥗', 'SELECT_EMOJI_🥗'),
-                    Markup.button.callback('🍜', 'SELECT_EMOJI_🍜'),
-                    Markup.button.callback('🌮', 'SELECT_EMOJI_🌮'),
-                    Markup.button.callback('🍣', 'SELECT_EMOJI_🍣'),
-                    Markup.button.callback('📦', 'SELECT_EMOJI_📦'),
+                    Markup.button.callback('✅ Ha, qo\'shish', 'CONFIRM_ADD_CATEGORY'),
                     Markup.button.callback('🔙 Orqaga', 'BACK_TO_NAME'),
                     Markup.button.callback('❌ Bekor qilish', 'CANCEL_ADD_CATEGORY'),
-                ], { columns: 3 })
+                ], { columns: 1 })
             );
             return;
         }
-
-        // Step 2: Emoji (agar matn orqali kiritilsa)
-        if (sceneState.awaitingEmoji) {
-            const emoji = text.trim();
-            
-            // Emoji validatsiyasi
-            if (emoji.length === 0) {
-                await ctx.reply('❌ Emoji kiriting yoki yuqoridagi tugmalardan birini tanlang.');
-                return;
-            }
-
-            if (emoji.length > 10) {
-                await ctx.reply('❌ Emoji juda uzun. Bitta emoji kiriting.');
-                return;
-            }
-
-            await this.processEmojiSelection(ctx, emoji);
-            return;
-        }
     }
 
-    @Action(/^SELECT_EMOJI_(.+)$/)
-    async onSelectEmoji(@Ctx() ctx: Context) {
-        if (!('data' in ctx.callbackQuery)) {
-            return;
-        }
-        const emoji = ctx.callbackQuery.data.replace('SELECT_EMOJI_', '');
-        await this.processEmojiSelection(ctx, emoji);
-    }
 
-    private async processEmojiSelection(ctx: Context, emoji: string) {
-        const sceneState = ctx.scene.state as AddCategorySceneState;
-        sceneState.emoji = emoji;
-        sceneState.awaitingEmoji = false;
-
-        // Tasdiqlash
-        await ctx.reply(
-            `📋 Yangi kategoriya ma'lumotlari:\n\n📝 Nomi: ${sceneState.name}\n😊 Emoji: ${emoji}\n\nTasdiqlaysizmi?`,
-            Markup.inlineKeyboard([
-                Markup.button.callback('✅ Ha, qo\'shish', 'CONFIRM_ADD_CATEGORY'),
-                Markup.button.callback('🔙 Emoji o\'zgartirish', 'BACK_TO_EMOJI'),
-                Markup.button.callback('❌ Bekor qilish', 'CANCEL_ADD_CATEGORY'),
-            ], { columns: 1 })
-        );
-    }
 
     @Action('BACK_TO_NAME')
     async onBackToName(@Ctx() ctx: Context) {
         const sceneState = ctx.scene.state as AddCategorySceneState;
         sceneState.awaitingName = true;
-        sceneState.awaitingEmoji = false;
         sceneState.name = undefined;
 
         await ctx.editMessageText(
@@ -139,35 +85,11 @@ export class AddCategoryScene {
         );
     }
 
-    @Action('BACK_TO_EMOJI')
-    async onBackToEmoji(@Ctx() ctx: Context) {
-        const sceneState = ctx.scene.state as AddCategorySceneState;
-        sceneState.awaitingEmoji = true;
-        sceneState.emoji = undefined;
-
-        await ctx.editMessageText(
-            `✅ Kategoriya nomi: ${sceneState.name}\n\n😊 Kategoriya uchun emoji tanlang yoki kiriting:`,
-            Markup.inlineKeyboard([
-                Markup.button.callback('🍕', 'SELECT_EMOJI_🍕'),
-                Markup.button.callback('🍔', 'SELECT_EMOJI_🍔'),
-                Markup.button.callback('🥤', 'SELECT_EMOJI_🥤'),
-                Markup.button.callback('🍰', 'SELECT_EMOJI_🍰'),
-                Markup.button.callback('🥗', 'SELECT_EMOJI_🥗'),
-                Markup.button.callback('🍜', 'SELECT_EMOJI_🍜'),
-                Markup.button.callback('🌮', 'SELECT_EMOJI_🌮'),
-                Markup.button.callback('🍣', 'SELECT_EMOJI_🍣'),
-                Markup.button.callback('📦', 'SELECT_EMOJI_📦'),
-                Markup.button.callback('🔙 Orqaga', 'BACK_TO_NAME'),
-                Markup.button.callback('❌ Bekor qilish', 'CANCEL_ADD_CATEGORY'),
-            ], { columns: 3 })
-        );
-    }
-
     @Action('CONFIRM_ADD_CATEGORY')
     async onConfirmAddCategory(@Ctx() ctx: Context) {
         const sceneState = ctx.scene.state as AddCategorySceneState;
 
-        if (!sceneState.name || !sceneState.emoji) {
+        if (!sceneState.name) {
             await ctx.editMessageText('❌ Ma\'lumotlar noto\'g\'ri.');
             await ctx.scene.leave();
             return;
@@ -177,12 +99,12 @@ export class AddCategoryScene {
             const newCategory = await this.prisma.category.create({
                 data: {
                     name: sceneState.name,
-                    emoji: sceneState.emoji,
+                    emoji: '📦', // Default emoji
                 },
             });
 
             await ctx.editMessageText(
-                `✅ Yangi kategoriya muvaffaqiyatli qo'shildi!\n\n📝 Nomi: ${newCategory.name}\n😊 Emoji: ${newCategory.emoji}`
+                `✅ Yangi kategoriya muvaffaqiyatli qo'shildi!\n\n📝 Nomi: ${newCategory.name}`
             );
             await ctx.scene.leave();
         } catch (error) {
@@ -212,9 +134,7 @@ export class AddCategoryScene {
     async onRetryAddCategory(@Ctx() ctx: Context) {
         const sceneState = ctx.scene.state as AddCategorySceneState;
         sceneState.awaitingName = true;
-        sceneState.awaitingEmoji = false;
         sceneState.name = undefined;
-        sceneState.emoji = undefined;
 
         await ctx.editMessageText(
             '📦 Yangi kategoriya qo\'shish\n\n📝 Kategoriya nomini kiriting:',

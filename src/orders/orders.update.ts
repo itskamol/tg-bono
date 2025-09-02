@@ -6,9 +6,9 @@ import { Roles } from '../auth/decorators/roles.decorator';
 import { PrismaService } from '../prisma/prisma.service';
 import { Context } from '../interfaces/context.interface';
 import { Order, PaymentType, Role } from '@prisma/client';
+import { safeEditMessageText } from '../utils/telegram.utils';
 
 @Update()
-
 export class OrdersUpdate {
     constructor(private readonly prisma: PrismaService) {}
 
@@ -80,7 +80,8 @@ export class OrdersUpdate {
         // Add search button at the end
         orderButtons.push(Markup.button.callback('🔍 Qidirish', 'SEARCH_ORDERS'));
 
-        await ctx.reply(
+        await safeEditMessageText(
+            ctx,
             `📋 Buyurtmalar ${orderButtons.length - 1 ? `(${orderButtons.length - 1})` : ''}:`,
             Markup.inlineKeyboard(orderButtons, { columns: 1 }),
         );
@@ -147,7 +148,14 @@ ${user.role === Role.ADMIN ? `🏪 Filial: ${user.branch?.name || 'N/A'}` : '�
 
     @Action('SEARCH_ORDERS')
     async onSearchOrdersAction(@Ctx() ctx: Context) {
+        await ctx.answerCbQuery();
         await ctx.scene.enter('order-search-scene');
+    }
+
+    @Action('BACK_TO_ORDERS')
+    async onBackToOrders(@Ctx() ctx: Context) {
+        await ctx.answerCbQuery();
+        return this.listOrders(ctx);
     }
 
     @Action(/^VIEW_ORDER_(.+)$/)
@@ -169,7 +177,12 @@ ${user.role === Role.ADMIN ? `🏪 Filial: ${user.branch?.name || 'N/A'}` : '�
         });
 
         if (!order) {
-            await ctx.editMessageText('❌ Buyurtma topilmadi.');
+            await safeEditMessageText(
+                ctx,
+                '❌ Buyurtma topilmadi.',
+                undefined,
+                'Buyurtma topilmadi',
+            );
             return;
         }
 
@@ -181,23 +194,28 @@ ${user.role === Role.ADMIN ? `🏪 Filial: ${user.branch?.name || 'N/A'}` : '�
             .join('\n');
 
         // Format payments display
-        const paymentsText = order.payments && order.payments.length > 0
-            ? order.payments.map((payment, index) => {
-                const emoji = {
-                    [PaymentType.CASH]: '💵',
-                    [PaymentType.CARD]: '💳',
-                    [PaymentType.TRANSFER]: '📱',
-                }[payment.payment_type] || '💰';
-                
-                const typeName = {
-                    [PaymentType.CASH]: 'Naqd',
-                    [PaymentType.CARD]: 'Karta',
-                    [PaymentType.TRANSFER]: "Nasiya",
-                }[payment.payment_type] || 'Noma\'lum';
-                
-                return `${index + 1}. ${emoji} ${typeName}: ${payment.amount} so'm`;
-            }).join('\n')
-            : 'To\'lov ma\'lumotlari mavjud emas';
+        const paymentsText =
+            order.payments && order.payments.length > 0
+                ? order.payments
+                      .map((payment, index) => {
+                          const emoji =
+                              {
+                                  [PaymentType.CASH]: '💵',
+                                  [PaymentType.CARD]: '💳',
+                                  [PaymentType.TRANSFER]: '📱',
+                              }[payment.payment_type] || '💰';
+
+                          const typeName =
+                              {
+                                  [PaymentType.CASH]: 'Naqd',
+                                  [PaymentType.CARD]: 'Karta',
+                                  [PaymentType.TRANSFER]: 'Nasiya',
+                              }[payment.payment_type] || "Noma'lum";
+
+                          return `${index + 1}. ${emoji} ${typeName}: ${payment.amount} so'm`;
+                      })
+                      .join('\n')
+                : "To'lov ma'lumotlari mavjud emas";
 
         const orderDetails = `
 📋 Buyurtma tafsilotlari:
@@ -220,6 +238,13 @@ ${products}
 📅 Sana: ${order.created_at.toLocaleString('uz-UZ')}
     `;
 
-        await ctx.editMessageText(orderDetails);
+        await safeEditMessageText(
+            ctx, 
+            orderDetails, 
+            Markup.inlineKeyboard([
+                Markup.button.callback('🔙 Buyurtmalar ro\'yxatiga qaytish', 'BACK_TO_ORDERS'),
+            ]),
+            'Buyurtma tafsilotlari'
+        );
     }
 }

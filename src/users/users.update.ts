@@ -3,10 +3,10 @@ import { Markup } from 'telegraf';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { PrismaService } from '../prisma/prisma.service';
 import { Context } from '../interfaces/context.interface';
-import { Role } from '@prisma/client';
+import { Role, User } from '@prisma/client';
+import { safeEditMessageText } from '../utils/telegram.utils';
 
 @Update()
-
 export class UsersUpdate {
     constructor(private readonly prisma: PrismaService) {}
 
@@ -14,7 +14,7 @@ export class UsersUpdate {
     @Roles(Role.SUPER_ADMIN, Role.ADMIN)
     async listUsers(@Ctx() ctx: Context) {
         const user = ctx.user;
-        let users;
+        let users: User[] = [];
 
         if (user.role === Role.SUPER_ADMIN) {
             users = await this.prisma.user.findMany({
@@ -82,7 +82,7 @@ export class UsersUpdate {
         // Regex orqali userId'ni olish
         const match = userData.match(/^VIEW_USER_(.+)$/);
         if (!match) {
-            await ctx.editMessageText('❌ Noto\'g\'ri ma\'lumot.');
+            await safeEditMessageText(ctx, '❌ Noto\'g\'ri ma\'lumot.', undefined, 'Xatolik');
             return;
         }
         
@@ -100,14 +100,14 @@ export class UsersUpdate {
         });
 
         if (!user) {
-            await ctx.editMessageText('❌ Foydalanuvchi topilmadi.');
+            await safeEditMessageText(ctx, '❌ Foydalanuvchi topilmadi.', undefined, 'Foydalanuvchi topilmadi');
             return;
         }
 
         // Ruxsatni tekshirish
         if (currentUser.role === Role.ADMIN) {
             if (user.branch_id !== currentUser.branch_id || user.role !== Role.CASHIER) {
-                await ctx.editMessageText('❌ Bu foydalanuvchini ko\'rish huquqingiz yo\'q.');
+                await safeEditMessageText(ctx, '❌ Bu foydalanuvchini ko\'rish huquqingiz yo\'q.', undefined, 'Ruxsat yo\'q');
                 return;
             }
         }
@@ -217,7 +217,7 @@ Nima qilmoqchisiz?
     async onBackToUsers(@Ctx() ctx: Context) {
         // Foydalanuvchilar ro'yxatini qayta ko'rsatish
         const currentUser = ctx.user;
-        let users;
+        let users: User[] = [];
 
         if (currentUser.role === Role.SUPER_ADMIN) {
             users = await this.prisma.user.findMany({
