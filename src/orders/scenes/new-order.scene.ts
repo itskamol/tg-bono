@@ -269,7 +269,7 @@ Yana mahsulot qo'shasizmi?`;
             });
 
             const typeButtons = categories.map((category) =>
-                Markup.button.callback(`${category.emoji} ${category.name}`, `TYPE_${category.id}`),
+                Markup.button.callback(`${category.name}`, `TYPE_${category.id}`),
             );
 
             // Custom mahsulot tugmasini qo'shish
@@ -340,7 +340,7 @@ Yana mahsulot qo'shasizmi?`;
 
             await this.safeEditOrReply(
                 ctx,
-                `${category.emoji} "${category.name}" kategoriyasi tanlandi.\n\n📝 Mahsulot nomini kiriting:`,
+                `"${category.name}" kategoriyasi tanlandi.\n\n📝 Mahsulot nomini kiriting:`,
                 Markup.inlineKeyboard([
                     Markup.button.callback('🔙 Orqaga', 'BACK_TO_TYPES'),
                     Markup.button.callback('❌ Bekor qilish', 'CANCEL_ORDER'),

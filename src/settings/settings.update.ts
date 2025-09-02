@@ -18,7 +18,7 @@ export class SettingsUpdate {
                 [
                     Markup.button.callback('Email', 'configure_email_export'),
                     Markup.button.callback('Sheets', 'configure_g_sheets_export'),
-                    Markup.button.callback('Hisobotlarni rejalashtirish', 'configure_schedule'),
+                    Markup.button.callback('Rejalashtirish', 'configure_schedule'),
                 ],
                 {
                     columns: 2,

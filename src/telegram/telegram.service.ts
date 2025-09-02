@@ -28,7 +28,6 @@ export class TelegramService {
 
     // Emoji va buyruq matnlarini bog'laydigan xarita
     emojiMap: { [key: string]: string } = {
-        start: '🚀',
         profile: '👤',
         users: '👥',
         branches: '🏢',
@@ -41,7 +40,6 @@ export class TelegramService {
     };
 
     private buttonTextMap: { [key: string]: string } = {
-        '🚀 Botni ishga tushirish': 'start',
         "👤 Profil ma'lumotlari": 'profile',
         "👥 Foydalanuvchilar ro'yxati": 'users',
         "🏢 Filiallar ro'yxati": 'branches',

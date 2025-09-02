@@ -42,7 +42,7 @@ export class DeleteCategoryScene {
         }
 
         await ctx.reply(
-            `🗑️ Kategoriya o'chirish\n\n📝 Nomi: ${category.name}\n😊 Emoji: ${category.emoji}${warningMessage}\n\nHaqiqatan ham bu kategoriyani o'chirmoqchimisiz?`,
+            `🗑️ Kategoriya o'chirish\n\n📝 Nomi: ${category.name}\n😊 ${warningMessage}\n\nHaqiqatan ham bu kategoriyani o'chirmoqchimisiz?`,
             Markup.inlineKeyboard([
                 Markup.button.callback('✅ Ha, o\'chirish', 'CONFIRM_DELETE_CATEGORY'),
                 Markup.button.callback('❌ Yo\'q, bekor qilish', 'CANCEL_DELETE_CATEGORY'),
@@ -70,7 +70,7 @@ export class DeleteCategoryScene {
             });
 
             await ctx.editMessageText(
-                `✅ Kategoriya muvaffaqiyatli o'chirildi!\n\n📝 Nomi: ${category.name}\n😊 Emoji: ${category.emoji}`
+                `✅ Kategoriya muvaffaqiyatli o'chirildi!\n\n📝 Nomi: ${category.name}\n😊`
             );
             await ctx.scene.leave();
         } catch (error) {

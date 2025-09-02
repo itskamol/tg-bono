@@ -31,7 +31,6 @@ model Branch {
 model Category {
   id         String   @id @default(auto()) @map("_id") @db.ObjectId
   name       String   @unique
-  emoji      String   
   sides      Side[]  
   created_at DateTime @default(now())
 }

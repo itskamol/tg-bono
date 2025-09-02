@@ -99,7 +99,6 @@ export class AddCategoryScene {
             const newCategory = await this.prisma.category.create({
                 data: {
                     name: sceneState.name,
-                    emoji: '📦', // Default emoji
                 },
             });
 
