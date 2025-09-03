@@ -53,4 +53,4 @@ import { Role } from '@prisma/client';
         GoogleSheetsModule,
     ],
 })
-export class AppModule {}
+export class AppModule { }

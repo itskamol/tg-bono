@@ -30,6 +30,7 @@
         "bcrypt": "^6.0.0",
         "cron": "^4.3.3",
         "crypto-js": "^4.2.0",
+        "dotenv": "^17.2.2",
         "googleapis": "^156.0.0",
         "nestjs-telegraf": "^2.9.1",
         "nodemailer": "^7.0.5",
