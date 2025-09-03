@@ -18,6 +18,7 @@ import { ReportsService } from 'src/reports/reports.service';
 import { EncryptionService } from 'src/settings/encryption.service';
 import { GoogleSheetsService } from 'src/sheets/google-sheets.service';
 import { EmailService } from 'src/email/email.service';
+import { NotificationService } from 'src/notifications/notification.service';
 
 @Module({
     imports: [
@@ -42,6 +43,7 @@ import { EmailService } from 'src/email/email.service';
         EncryptionService,
         GoogleSheetsService,
         EmailService,
+        NotificationService
     ],
 })
 export class TelegramModule {}

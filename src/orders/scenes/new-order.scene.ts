@@ -1,6 +1,7 @@
 import { Scene, SceneEnter, On, Message, Action, Ctx } from 'nestjs-telegraf';
 import { Markup } from 'telegraf';
 import { PrismaService } from '../../prisma/prisma.service';
+import { NotificationService } from '../../notifications/notification.service';
 import { Context } from '../../interfaces/context.interface';
 import { PaymentType } from '@prisma/client';
 import { formatCurrency } from 'src/utils/format.utils';
@@ -32,7 +33,10 @@ interface NewOrderSceneState {
 
 @Scene('new-order-scene')
 export class NewOrderScene {
-    constructor(private readonly prisma: PrismaService) {}
+    constructor(
+        private readonly prisma: PrismaService,
+        private readonly notificationService: NotificationService,
+    ) {}
 
     @SceneEnter()
     async onSceneEnter(@Ctx() ctx: Context) {
@@ -512,7 +516,7 @@ ${paymentsText}
             const orderNumber = `ORDER-${Date.now()}-${user.branch_id.slice(-4)}`;
 
             // Use transaction to create order and payments atomically
-            await this.prisma.$transaction(async (prisma) => {
+            const createdOrder = await this.prisma.$transaction(async (prisma) => {
                 // Create the order
                 const order = await prisma.order.create({
                     data: {
@@ -537,6 +541,11 @@ ${paymentsText}
                             })),
                         },
                     },
+                    include: {
+                        order_products: true,
+                        branch: true,
+                        cashier: true,
+                    },
                 });
 
                 // Create payment records
@@ -549,7 +558,36 @@ ${paymentsText}
                         })),
                     });
                 }
+
+                return order;
             });
+
+            // Kanal/guruhga notification yuborish
+            try {
+                await this.notificationService.sendOrderNotification({
+                    orderNumber: createdOrder.order_number,
+                    clientName: createdOrder.client_name,
+                    clientPhone: createdOrder.client_phone,
+                    branchName: createdOrder.branch.name,
+                    cashierName: createdOrder.cashier.full_name,
+                    products: createdOrder.order_products.map(p => ({
+                        productName: p.product_name,
+                        category: p.category,
+                        sideName: p.side_name,
+                        quantity: p.quantity,
+                        price: p.price,
+                    })),
+                    payments: sceneState.payments?.map(p => ({
+                        paymentType: p.type,
+                        amount: p.amount,
+                    })) || [],
+                    totalAmount: createdOrder.total_amount,
+                    createdAt: createdOrder.created_at,
+                });
+            } catch (notificationError) {
+                console.error('Notification yuborishda xatolik:', notificationError);
+                // Notification xatosi order yaratish jarayonini to'xtatmaydi
+            }
 
             const paymentsText = this.formatPaymentsList(sceneState.payments || []);
 
