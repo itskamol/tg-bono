@@ -2,9 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { EncryptionService } from '../settings/encryption.service';
 import { GoogleSheetsService } from '../sheets/google-sheets.service';
-import { EmailService } from '../email/email.service';
 import { Prisma, Role } from '@prisma/client';
-import { formatCurrency, formatNumber } from '../utils/format.utils';
 
 @Injectable()
 export class ReportsService {
@@ -14,65 +12,7 @@ export class ReportsService {
         private readonly prisma: PrismaService,
         private readonly encryptionService: EncryptionService,
         private readonly googleSheetsService: GoogleSheetsService,
-        private readonly emailService: EmailService,
     ) {}
-
-    async sendReportByEmail(
-        user: any,
-        timeRange: string,
-        detailed: boolean = false,
-    ): Promise<boolean> {
-        this.logger.log(
-            `Attempting to send report via email for user ${user.id} and range ${timeRange}`,
-        );
-
-        const emailConfigSetting = await this.prisma.setting.findUnique({
-            where: { key: 'email_config' },
-        });
-
-        if (!emailConfigSetting) {
-            this.logger.warn('Email settings not configured. Cannot send email.');
-            return false;
-        }
-
-        const configStr = this.encryptionService.decrypt(emailConfigSetting.value);
-        const config = JSON.parse(configStr);
-
-        const orders = await this.getOrdersForReportWithDetails(user, timeRange);
-
-        if (orders.length === 0) {
-            this.logger.log('No data for the report. Skipping email.');
-            return true; // Not an error, just no data to send
-        }
-
-        try {
-            const timeRangeNames = {
-                DAILY: 'Kunlik',
-                WEEKLY: 'Haftalik',
-                MONTHLY: 'Oylik',
-            };
-
-            const subject = `${timeRangeNames[timeRange] || timeRange} Buyurtmalar Hisoboti - ${new Date().toLocaleDateString('uz-UZ')}`;
-
-            const success = await this.emailService.sendOrdersReport(
-                config,
-                orders,
-                subject,
-                detailed,
-            );
-
-            if (success) {
-                this.logger.log(`Report sent to ${config.recipient}`);
-                return true;
-            } else {
-                this.logger.error('Failed to send email report');
-                return false;
-            }
-        } catch (error) {
-            this.logger.error('Email sending failed:', error);
-            return false;
-        }
-    }
 
     public async getOrdersForReport(user: any, timeRange: string): Promise<any[]> {
         const gte = this._getDateFilter(timeRange);
@@ -214,32 +154,5 @@ export class ReportsService {
             },
             orderBy: { created_at: 'desc' },
         });
-    }
-
-    // Barcha export turlarini birdan bajarish
-    async sendReportToAllConfiguredDestinations(
-        user: any,
-        timeRange: string,
-    ): Promise<{ email: boolean; sheets: boolean }> {
-        const results = {
-            email: false,
-            sheets: false,
-        };
-
-        // Email export (detailed format)
-        try {
-            results.email = await this.sendReportByEmail(user, timeRange, true);
-        } catch (error) {
-            this.logger.error('Email export failed:', error);
-        }
-
-        // Google Sheets export (detailed format)
-        try {
-            results.sheets = await this.sendReportToGoogleSheets(user, timeRange, true);
-        } catch (error) {
-            this.logger.error('Google Sheets export failed:', error);
-        }
-
-        return results;
     }
 }

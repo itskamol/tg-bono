@@ -5,6 +5,8 @@ import { NotificationService } from '../../notifications/notification.service';
 import { Context } from '../../interfaces/context.interface';
 import { PaymentType } from '@prisma/client';
 import { formatCurrency } from 'src/utils/format.utils';
+import { GoogleSheetsService } from '../../sheets/google-sheets.service';
+import { EncryptionService } from '../../settings/encryption.service';
 
 interface PaymentEntry {
     type: PaymentType;
@@ -36,7 +38,9 @@ export class NewOrderScene {
     constructor(
         private readonly prisma: PrismaService,
         private readonly notificationService: NotificationService,
-    ) {}
+        private readonly googleSheetsService: GoogleSheetsService,
+        private readonly encryptionService: EncryptionService,
+    ) { }
 
     @SceneEnter()
     async onSceneEnter(@Ctx() ctx: Context) {
@@ -591,6 +595,7 @@ ${paymentsText}
 
             const paymentsText = this.formatPaymentsList(sceneState.payments || []);
 
+            // Foydalanuvchiga darhol javob berish
             await this.safeEditOrReply(
                 ctx,
                 `✅ Buyurtma muvaffaqiyatli yaratildi!\n\n🔢 Buyurtma raqami: ${orderNumber}\n\n💳 To'lovlar:\n${paymentsText}\n\n💰 Jami: ${formatCurrency(sceneState.totalAmount)} \n\nRahmat!`,
@@ -599,6 +604,12 @@ ${paymentsText}
                 ]),
             );
             await ctx.scene.leave();
+
+            // Google Sheets'ga yozishni background'da bajarish (kutmasdan)
+            this.writeOrderToSheets(createdOrder).catch(sheetsError => {
+                console.error('Google Sheets\'ga yozishda xatolik:', sheetsError);
+                // Sheets xatosi order yaratish jarayonini to'xtatmaydi
+            });
         } catch (error) {
             let errorMessage = '❌ Buyurtma yaratishda xatolik yuz berdi.';
 
@@ -697,7 +708,7 @@ ${paymentsText}
 
             await this.safeEditOrReply(
                 ctx,
-                `📦 "${sceneState.currentProduct.name}" tanlandi\n\n🍕 Tomonni tanlang (narx = tomon narxi):`,
+                `📦 "${sceneState.currentProduct.name}" tanlandi\n\n🔲 Tomonni tanlang (narx = tomon narxi):`,
                 Markup.inlineKeyboard(
                     [
                         ...sideButtons,
@@ -991,4 +1002,100 @@ ${paymentsText}
     async onRetrySides(@Ctx() ctx: Context) {
         return this.showSidesSelection(ctx);
     }
+
+    private async writeOrderToSheets(order: any) {
+        try {
+            // Google Sheets sozlamalarini olish
+            const gSheetsConfig = await this.prisma.setting.findUnique({
+                where: { key: 'g_sheets_config' },
+            });
+
+            if (!gSheetsConfig) {
+                console.log('Google Sheets sozlamalari topilmadi');
+                return;
+            }
+
+            const decryptedConfig = this.encryptionService.decrypt(gSheetsConfig.value);
+            const config = JSON.parse(decryptedConfig);
+
+            // Avtomatik yozish o'chirilgan bo'lsa, yozmaymiz
+            if (config.autoWrite === false) {
+                console.log('Google Sheets avtomatik yozish o\'chirilgan');
+                return;
+            }
+
+            // To'lovlarni olish
+            const payments = await this.prisma.payment.findMany({
+                where: { order_id: order.id },
+            });
+
+            // Batafsil mahsulotlar ro'yxati
+            const detailedProducts = order.order_products.map((p, index) => {
+                const sideInfo = p.side_name !== 'custom' ? ` (${p.side_name})` : '';
+                return `${index + 1}. ${p.quantity}x ${p.product_name}${sideInfo} - ${this.formatCurrency(p.price * p.quantity)}`;
+            }).join('\n');
+
+            // Batafsil to'lovlar ro'yxati
+            const detailedPayments = payments.map((p, index) => {
+                const paymentName = this.getPaymentTypeName(p.payment_type as PaymentType);
+                return `${index + 1}. ${paymentName}: ${this.formatCurrency(p.amount)}`;
+            }).join('\n');
+
+            // Kategoriyalar ro'yxati
+            const categories = order.order_products.map(p => p.category).join(', ');
+
+            // Tomonlar ro'yxati
+            const sides = order.order_products
+                .filter(p => p.side_name && p.side_name !== 'custom')
+                .map(p => p.side_name)
+                .join(', ');
+
+            // Google Sheets'ga yozish uchun batafsil object
+            const orderObject = {
+                'Order Number': order.order_number,
+                'Client Name': order.client_name,
+                'Client Phone': order.client_phone || 'Ko\'rsatilmagan',
+                'Branch': order.branch.name,
+                'Cashier': order.cashier.full_name,
+                'Total Amount': order.total_amount,
+                'Created At': new Date(order.created_at).toLocaleString('uz-UZ'),
+                'Products Count': order.order_products.length,
+                'Products Detail': detailedProducts,
+                'Categories': categories,
+                'Sides': sides || 'Yo\'q',
+                'Payments Count': payments.length,
+                'Payments Detail': detailedPayments,
+                'Status': 'Completed'
+            };
+
+            // appendData methodini ishlatib haqiqiy yozish
+            const result = await this.googleSheetsService.appendData(
+                config.sheetId,
+                config.credentials,
+                [orderObject], // Object array
+                'Orders' // Default worksheet nomi
+            );
+
+            // if (result) {
+            //     console.log(`✅ Order ${order.order_number} Google Sheets'ga batafsil ma'lumot bilan yozildi`);
+            // } else {
+            //     console.log(`❌ Order ${order.order_number} Google Sheets'ga yozilmadi`);
+            // }
+        } catch (error) {
+            console.error('Google Sheets\'ga yozishda xatolik:', error);
+            // Xatolik bo'lsa ham order yaratish jarayonini to'xtatmaymiz
+        }
+    }
+
+    // Helper methodlar
+    private formatCurrency(amount: number): string {
+        return new Intl.NumberFormat('uz-UZ', {
+            style: 'currency',
+            currency: 'UZS',
+            minimumFractionDigits: 0,
+            maximumFractionDigits: 0,
+        }).format(amount).replace('UZS', 'so\'m');
+    }
+
+
 }

@@ -39,7 +39,7 @@ export class AddSideScene {
         sceneState.awaitingName = true;
 
         await ctx.reply(
-            `🍕 "${category.name}" kategoriyasiga yangi tomon qo'shish\n\n📝 Tomon nomini kiriting (masalan: "Oldi", "Orqa", "Ikki tomon"):`,
+            `🔲 "${category.name}" kategoriyasiga yangi tomon qo'shish\n\n📝 Tomon nomini kiriting (masalan: "Oldi", "Orqa", "Ikki tomon"):`,
             Markup.inlineKeyboard([Markup.button.callback('❌ Bekor qilish', 'CANCEL_ADD_SIDE')]),
         );
     }
@@ -141,7 +141,7 @@ export class AddSideScene {
         sceneState.name = undefined;
 
         await ctx.editMessageText(
-            "🍕 Yangi tomon qo'shish\n\n📝 Tomon nomini kiriting:",
+            "🔲 Yangi tomon qo'shish\n\n📝 Tomon nomini kiriting:",
             Markup.inlineKeyboard([Markup.button.callback('❌ Bekor qilish', 'CANCEL_ADD_SIDE')]),
         );
     }
@@ -214,7 +214,7 @@ export class AddSideScene {
         sceneState.price = undefined;
 
         await ctx.editMessageText(
-            "🍕 Yangi tomon qo'shish\n\n📝 Tomon nomini kiriting:",
+            "🔲 Yangi tomon qo'shish\n\n📝 Tomon nomini kiriting:",
             Markup.inlineKeyboard([Markup.button.callback('❌ Bekor qilish', 'CANCEL_ADD_SIDE')]),
         );
     }

@@ -19,7 +19,7 @@ export class OrderSearchScene {
                     Markup.button.callback('👤 Mijoz ismi', 'search_by_customer'),
                 ],
                 [
-                    Markup.button.callback('🍕 Mahsulot nomi', 'search_by_product'),
+                    Markup.button.callback('🔲 Mahsulot nomi', 'search_by_product'),
                     Markup.button.callback('🔢 Buyurtma raqami', 'search_by_number'),
                 ],
                 [Markup.button.callback('❌ Bekor qilish', 'cancel_search')],
@@ -74,7 +74,7 @@ export class OrderSearchScene {
         sceneState.searchType = 'product';
 
         await ctx.editMessageText(
-            '🍕 Mahsulot nomini kiriting:',
+            '🔲 Mahsulot nomini kiriting:',
             Markup.inlineKeyboard([
                 [
                     Markup.button.callback('⬅️ Orqaga', 'back_to_search_menu'),
@@ -275,7 +275,7 @@ export class OrderSearchScene {
         await this.searchAndDisplayOrders(
             ctx,
             whereClause,
-            `🍕 "${productName}" mahsuloti bo'lgan buyurtmalar`,
+            `🔲 "${productName}" mahsuloti bo'lgan buyurtmalar`,
         );
     }
 
@@ -364,7 +364,7 @@ export class OrderSearchScene {
                     Markup.button.callback('👤 Mijoz ismi', 'search_by_customer'),
                 ],
                 [
-                    Markup.button.callback('🍕 Mahsulot nomi', 'search_by_product'),
+                    Markup.button.callback('🔲 Mahsulot nomi', 'search_by_product'),
                     Markup.button.callback('🔢 Buyurtma raqami', 'search_by_number'),
                 ],
                 [Markup.button.callback('❌ Bekor qilish', 'cancel_search')],

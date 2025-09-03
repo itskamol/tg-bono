@@ -110,15 +110,15 @@ Admin sizni tizimga qo'shishi kerak.
         if (user.role === Role.SUPER_ADMIN) {
             keyboardButtons = [
                 ['👥 Foydalanuvchilar', '🏢 Filiallar'],
-                ['📦 Kategoriyalar', '🍕 Xizmatlar'],
+                ['📦 Kategoriyalar'],
                 ['📋 Buyurtmalar', '📊 Hisobotlar'],
                 ['👤 Profil', '⚙️ Sozlamalar'],
             ];
         } else if (user.role === Role.ADMIN) {
             keyboardButtons = [
-                ['👥 Xodimlar', '🍕 Mahsulotlar'],
+                ['👥 Foydalanuvchilar', '🏢 Filiallar'],
                 ['📋 Buyurtmalar', '📊 Hisobotlar'],
-                ['👤 Profil'],
+                ['📦 Kategoriyalar', '👤 Profil'],
             ];
         } else if (user.role === Role.CASHIER) {
             keyboardButtons = [['➕ Yangi'], ['📋 Buyurtmalar', '👤 Profil']];
@@ -298,7 +298,6 @@ Admin sizni tizimga qo'shishi kerak.
                 '👥 Foydalanuvchilar': 'users',
                 '🏢 Filiallar': 'branches',
                 '📦 Kategoriyalar': 'categories',
-                '🍕 Xizmatlar': 'sides',
                 '📋 Buyurtmalar': 'orders',
                 '📊 Hisobotlar': 'reports',
                 '👤 Profil': 'profile',
@@ -307,7 +306,6 @@ Admin sizni tizimga qo'shishi kerak.
         } else if (user.role === Role.ADMIN) {
             currentButtonTextMap = {
                 '👥 Xodimlar': 'users',
-                '🍕 Mahsulotlar': 'sides',
                 '📋 Buyurtmalar': 'orders',
                 '📊 Hisobotlar': 'reports',
                 '👤 Profil': 'profile',

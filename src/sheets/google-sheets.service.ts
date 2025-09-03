@@ -415,4 +415,35 @@ export class GoogleSheetsService {
             };
         }
     }
+
+    async writeOrderToSheet(orderData: any) {
+        try {
+            this.logger.log(`Writing order ${orderData.orderNumber} to Google Sheets`);
+
+            // Order ma'lumotlarini Google Sheets formatiga o'tkazish
+            const rowData = [
+                orderData.orderNumber,
+                orderData.clientName,
+                orderData.clientPhone,
+                orderData.branchName,
+                orderData.cashierName,
+                orderData.totalAmount,
+                new Date(orderData.createdAt).toLocaleString('uz-UZ'),
+                orderData.products.map(p => `${p.productName} (${p.quantity}x)`).join(', '),
+                orderData.products.map(p => p.category).join(', '),
+            ];
+
+            // Bu method faqat ma'lumotni tayyorlaydi
+            // Haqiqiy yozish appendData method orqali amalga oshiriladi
+            this.logger.log(`Order ${orderData.orderNumber} data prepared for Google Sheets`);
+            
+            return {
+                success: true,
+                data: rowData,
+            };
+        } catch (error) {
+            this.logger.error(`Error preparing order ${orderData.orderNumber} for Google Sheets:`, error);
+            throw error;
+        }
+    }
 }

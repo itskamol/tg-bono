@@ -62,7 +62,7 @@ export class ReportHelpers {
 
     static getTypeEmoji(type: string): string {
         const emojis = {
-            pizza: '🍕',
+            pizza: '🔲',
             burger: '🍔',
             drink: '🥤',
             dessert: '🍰',

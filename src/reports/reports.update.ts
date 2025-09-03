@@ -101,38 +101,4 @@ export class ReportsUpdate {
             );
         }
     }
-
-    @Command('test_email')
-    @Roles(Role.SUPER_ADMIN)
-    async testEmail(@Ctx() ctx: Context) {
-        await safeEditMessageText(ctx, '🔄 Email ulanishini tekshiryapman...', undefined, 'Test');
-
-        try {
-            const user = ctx.user;
-            const result = await this.reportsService.sendReportByEmail(user, 'DAILY', true);
-
-            if (result) {
-                await safeEditMessageText(
-                    ctx,
-                    '✅ Email test muvaffaqiyatli! Kunlik hisobot yuborildi.',
-                    undefined,
-                    'Test natijasi',
-                );
-            } else {
-                await safeEditMessageText(
-                    ctx,
-                    '❌ Email test muvaffaqiyatsiz. Loglarni tekshiring.',
-                    undefined,
-                    'Test natijasi',
-                );
-            }
-        } catch (error) {
-            await safeEditMessageText(
-                ctx,
-                `❌ Email test xatolik: ${error.message}`,
-                undefined,
-                'Test xatolik',
-            );
-        }
-    }
 }

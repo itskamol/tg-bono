@@ -10,10 +10,9 @@ import { PrismaModule } from '../prisma/prisma.module';
 import { ReportsService } from './reports.service';
 import { EncryptionService } from 'src/settings/encryption.service';
 import { GoogleSheetsModule } from 'src/sheets/google-sheets.module';
-import { EmailModule } from 'src/email/email.module';
 
 @Module({
-    imports: [PrismaModule, GoogleSheetsModule, EmailModule],
+    imports: [PrismaModule, GoogleSheetsModule],
     providers: [
         ReportsUpdate,
         GeneralReportsScene,

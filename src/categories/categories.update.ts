@@ -86,7 +86,7 @@ export class CategoriesUpdate {
 📊 Ishlatilgan: ${productsCount} ta buyurtmada
 📅 Yaratilgan: ${category.created_at.toLocaleDateString('uz-UZ')}
 
-🍕 Tomonlar (${category.sides.length} ta):
+🔲 Tomonlar (${category.sides.length} ta):
 ${sidesInfo}
 
 Nima qilmoqchisiz?
@@ -98,7 +98,7 @@ Nima qilmoqchisiz?
             Markup.inlineKeyboard(
                 [
                     Markup.button.callback('✏️ Tahrirlash', `EDIT_CATEGORY_${category.id}`),
-                    Markup.button.callback('🍕 Tomonlar', `MANAGE_SIDES_${category.id}`),
+                    Markup.button.callback('🔲 Tomonlar', `MANAGE_SIDES_${category.id}`),
                     Markup.button.callback("🗑️ O'chirish", `DELETE_CATEGORY_${category.id}`),
                     Markup.button.callback('🔙 Orqaga', 'BACK_TO_CATEGORIES'),
                 ],
@@ -162,7 +162,7 @@ Nima qilmoqchisiz?
 
         await safeEditMessageText(
             ctx,
-            `🍕 "${category.name}" kategoriyasi tomonlari (${category.sides.length} ta):`,
+            `🔲 "${category.name}" kategoriyasi tomonlari (${category.sides.length} ta):`,
             Markup.inlineKeyboard(
                 [
                     ...sidesButtons,
@@ -208,7 +208,7 @@ Nima qilmoqchisiz?
         }
 
         const sideDetails = `
-🍕 Tomon ma'lumotlari:
+🔲 Tomon ma'lumotlari:
 
 📝 Nomi: ${side.name}
 💰 Narxi: ${formatCurrency(side.price)}

@@ -17,7 +17,6 @@ import { SettingsUpdate } from 'src/settings/settings.update';
 import { ReportsService } from 'src/reports/reports.service';
 import { EncryptionService } from 'src/settings/encryption.service';
 import { GoogleSheetsService } from 'src/sheets/google-sheets.service';
-import { EmailService } from 'src/email/email.service';
 import { NotificationService } from 'src/notifications/notification.service';
 
 @Module({
@@ -42,7 +41,6 @@ import { NotificationService } from 'src/notifications/notification.service';
         ReportsService,
         EncryptionService,
         GoogleSheetsService,
-        EmailService,
         NotificationService
     ],
 })

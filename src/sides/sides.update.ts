@@ -8,7 +8,7 @@ import { formatCurrency } from 'src/utils/format.utils';
 
 @Update()
 export class SidesUpdate {
-    constructor(private readonly prisma: PrismaService) {}
+    constructor(private readonly prisma: PrismaService) { }
 
     @Command('sides')
     @Roles(Role.SUPER_ADMIN)
@@ -33,7 +33,7 @@ export class SidesUpdate {
         );
 
         await ctx.reply(
-            `🍕 Tomonlar ro'yxati (${sides.length} ta):`,
+            `🔲 Tomonlar ro'yxati (${sides.length} ta):`,
             Markup.inlineKeyboard(
                 [...sideButtons, Markup.button.callback('➕ Yangi', 'ADD_SIDE')],
                 { columns: 1 },
@@ -74,7 +74,7 @@ export class SidesUpdate {
         }
 
         const sideDetails = `
-🍕 Tomon ma'lumotlari:
+🔲 Tomon ma'lumotlari:
 
 📝 Nomi: ${side.name}
 💰 Narxi: ${formatCurrency(side.price)}
@@ -89,7 +89,7 @@ Nima qilmoqchisiz?
                 [
                     Markup.button.callback('✏️ Tahrirlash', `EDIT_SIDE_${side.id}`),
                     Markup.button.callback("🗑️ O'chirish", `DELETE_SIDE_${side.id}`),
-                    Markup.button.callback('🔙 Orqaga', 'BACK_TO_SIDES'),
+                    Markup.button.callback('🔙 Orqaga', `BACK_TO_SIDES_${side.category_id}`),
                 ],
                 { columns: 2 },
             ),
@@ -150,11 +150,23 @@ Nima qilmoqchisiz?
         await ctx.scene.enter('delete-side-scene', ctx.scene.state);
     }
 
-    @Action('BACK_TO_SIDES')
+    @Action(/^BACK_TO_SIDES_(.+)$/)
     @Roles(Role.SUPER_ADMIN)
     async onBackToSides(@Ctx() ctx: Context) {
+        if (!('data' in ctx.callbackQuery)) {
+            return;
+        }
+        const sideData = ctx.callbackQuery.data;
+
+        const match = sideData.match(/^BACK_TO_SIDES_(.+)$/);
+        if (!match) {
+            await ctx.editMessageText("❌ Noto'g'ri ma'lumot.");
+            return;
+        }
+        const categoryId = match[1];
         // Sides ro'yxatini qayta ko'rsatish
         const sides = await this.prisma.side.findMany({
+            where: { category_id: categoryId },
             orderBy: { price: 'asc' },
         });
 
@@ -174,7 +186,7 @@ Nima qilmoqchisiz?
         );
 
         await ctx.editMessageText(
-            `🍕 Tomonlar ro'yxati (${sides.length} ta):`,
+            `🔲 Tomonlar ro'yxati (${sides.length} ta):`,
             Markup.inlineKeyboard(
                 [...sideButtons, Markup.button.callback('➕ Yangi', 'ADD_SIDE')],
                 { columns: 1 },

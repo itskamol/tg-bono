@@ -9,14 +9,11 @@ import { OrdersModule } from './orders/orders.module';
 import { PrismaModule } from './prisma/prisma.module';
 
 import { ReportsModule } from './reports/reports.module';
-import { SchedulerModule } from './scheduler/scheduler.module';
 import { SettingsModule } from './settings/settings.module';
 import { TelegramModule } from './telegram/telegram.module';
 import { UsersModule } from './users/users.module';
 import { CategoriesModule } from './categories/categories.module';
 import { GoogleSheetsModule } from './sheets/google-sheets.module';
-import { AuthGuard } from './auth/guards/auth.guard';
-import { APP_GUARD } from '@nestjs/core';
 import { PrismaService } from './prisma/prisma.service';
 import { authMiddleware } from './auth/middlewares/auth.middleware';
 import { Role } from '@prisma/client';
@@ -48,7 +45,6 @@ import { Role } from '@prisma/client';
         TelegramModule,
         AuthModule,
         SettingsModule,
-        SchedulerModule,
         CategoriesModule,
         GoogleSheetsModule,
     ],
