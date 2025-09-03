@@ -76,6 +76,10 @@ export class DeleteCategoryScene {
                 return;
             }
 
+            await this.prisma.side.deleteMany({
+                where: { category_id: sceneState.categoryId },
+            });
+
             await this.prisma.category.delete({
                 where: { id: sceneState.categoryId },
             });

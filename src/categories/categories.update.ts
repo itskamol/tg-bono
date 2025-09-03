@@ -35,7 +35,7 @@ export class CategoriesUpdate {
         await ctx.reply(
             `📦 Kategoriyalar ro'yxati (${categories.length} ta):`,
             Markup.inlineKeyboard(
-                [...categoryButtons, Markup.button.callback('➕ Yangi kategoriya', 'ADD_CATEGORY')],
+                [...categoryButtons, Markup.button.callback('➕ Yangi', 'ADD_CATEGORY')],
                 { columns: 2 },
             ),
         );
@@ -166,7 +166,7 @@ Nima qilmoqchisiz?
             Markup.inlineKeyboard(
                 [
                     ...sidesButtons,
-                    Markup.button.callback('➕ Yangi tomon', `ADD_SIDE_${categoryId}`),
+                    Markup.button.callback('➕ Yangi', `ADD_SIDE_${categoryId}`),
                     Markup.button.callback('🔙 Orqaga', `VIEW_CATEGORY_${categoryId}`),
                 ],
                 { columns: 1 },
@@ -301,7 +301,7 @@ Nima qilmoqchisiz?
             ctx,
             `📦 Kategoriyalar ro'yxati (${categories.length} ta):`,
             Markup.inlineKeyboard(
-                [...categoryButtons, Markup.button.callback('➕ Yangi kategoriya', 'ADD_CATEGORY')],
+                [...categoryButtons, Markup.button.callback('➕ Yangi', 'ADD_CATEGORY')],
                 { columns: 2 },
             ),
             "Kategoriyalar ro'yxati",

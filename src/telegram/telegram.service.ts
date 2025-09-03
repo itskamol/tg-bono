@@ -109,7 +109,7 @@ Admin sizni tizimga qo'shishi kerak.
                 '👤 Profil': 'profile',
             };
         } else if (user.role === Role.CASHIER) {
-            keyboardButtons = [['➕ Yangi buyurtma'], ['📋 Buyurtmalar', '👤 Profil']];
+            keyboardButtons = [['➕ Yangi'], ['📋 Buyurtmalar', '👤 Profil']];
 
             // Button mapping for Cashier
             this.buttonTextMap = {

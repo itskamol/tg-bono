@@ -35,7 +35,7 @@ export class SidesUpdate {
         await ctx.reply(
             `🍕 Tomonlar ro'yxati (${sides.length} ta):`,
             Markup.inlineKeyboard(
-                [...sideButtons, Markup.button.callback('➕ Yangi tomon', 'ADD_SIDE')],
+                [...sideButtons, Markup.button.callback('➕ Yangi', 'ADD_SIDE')],
                 { columns: 1 },
             ),
         );
@@ -176,7 +176,7 @@ Nima qilmoqchisiz?
         await ctx.editMessageText(
             `🍕 Tomonlar ro'yxati (${sides.length} ta):`,
             Markup.inlineKeyboard(
-                [...sideButtons, Markup.button.callback('➕ Yangi tomon', 'ADD_SIDE')],
+                [...sideButtons, Markup.button.callback('➕ Yangi', 'ADD_SIDE')],
                 { columns: 1 },
             ),
         );

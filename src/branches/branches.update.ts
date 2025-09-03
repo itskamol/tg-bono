@@ -39,7 +39,7 @@ export class BranchesUpdate {
             ctx,
             `🏪 Filiallar ro'yxati (${branches.length} ta):`,
             Markup.inlineKeyboard(
-                [...branchButtons, Markup.button.callback('➕ Yangi filial', 'ADD_BRANCH')],
+                [...branchButtons, Markup.button.callback('➕ Yangi', 'ADD_BRANCH')],
                 { columns: 2 },
             ),
             "Filiallar ro'yxati",
@@ -196,7 +196,7 @@ Nima qilmoqchisiz?
             ctx,
             `🏪 Filiallar ro'yxati (${branches.length} ta):`,
             Markup.inlineKeyboard(
-                [...branchButtons, Markup.button.callback('➕ Yangi filial', 'ADD_BRANCH')],
+                [...branchButtons, Markup.button.callback('➕ Yangi', 'ADD_BRANCH')],
                 { columns: 2 },
             ),
             "Filiallar ro'yxati",

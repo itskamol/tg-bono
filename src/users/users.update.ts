@@ -57,7 +57,7 @@ export class UsersUpdate {
         await ctx.reply(
             `👥 Foydalanuvchilar ro'yxati (${users.length} ta):`,
             Markup.inlineKeyboard(
-                [...userButtons, Markup.button.callback('➕ Yangi foydalanuvchi', 'ADD_USER')],
+                [...userButtons, Markup.button.callback('➕ Yangi', 'ADD_USER')],
                 { columns: 2 },
             ),
         );
@@ -274,7 +274,7 @@ Nima qilmoqchisiz?
         await ctx.editMessageText(
             `👥 Foydalanuvchilar ro'yxati (${users.length} ta):`,
             Markup.inlineKeyboard(
-                [...userButtons, Markup.button.callback('➕ Yangi foydalanuvchi', 'ADD_USER')],
+                [...userButtons, Markup.button.callback('➕ Yangi', 'ADD_USER')],
                 { columns: 2 },
             ),
         );
