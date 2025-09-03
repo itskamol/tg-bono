@@ -22,7 +22,7 @@ export class EditBranchScene {
         const sceneState = ctx.scene.state as EditBranchSceneState;
 
         if (!sceneState.branchId) {
-            await ctx.reply('❌ Filial ma\'lumotlari topilmadi.');
+            await ctx.reply("❌ Filial ma'lumotlari topilmadi.");
             await ctx.scene.leave();
             return;
         }
@@ -42,11 +42,14 @@ export class EditBranchScene {
 
         await ctx.reply(
             `✏️ Filial tahrirlash\n\n🏪 Joriy nomi: ${branch.name}\n📍 Joriy manzil: ${branch.address}\n\nNimani tahrirlashni xohlaysiz?`,
-            Markup.inlineKeyboard([
-                Markup.button.callback('🏪 Nomini o\'zgartirish', 'EDIT_BRANCH_NAME'),
-                Markup.button.callback('📍 Manzilni o\'zgartirish', 'EDIT_BRANCH_ADDRESS'),
-                Markup.button.callback('❌ Bekor qilish', 'CANCEL_EDIT_BRANCH'),
-            ], { columns: 1 })
+            Markup.inlineKeyboard(
+                [
+                    Markup.button.callback("🏪 Nomini o'zgartirish", 'EDIT_BRANCH_NAME'),
+                    Markup.button.callback("📍 Manzilni o'zgartirish", 'EDIT_BRANCH_ADDRESS'),
+                    Markup.button.callback('❌ Bekor qilish', 'CANCEL_EDIT_BRANCH'),
+                ],
+                { columns: 1 },
+            ),
         );
     }
 
@@ -60,7 +63,7 @@ export class EditBranchScene {
             Markup.inlineKeyboard([
                 Markup.button.callback('🔙 Orqaga', 'BACK_TO_EDIT_MENU'),
                 Markup.button.callback('❌ Bekor qilish', 'CANCEL_EDIT_BRANCH'),
-            ])
+            ]),
         );
     }
 
@@ -74,7 +77,7 @@ export class EditBranchScene {
             Markup.inlineKeyboard([
                 Markup.button.callback('🔙 Orqaga', 'BACK_TO_EDIT_MENU'),
                 Markup.button.callback('❌ Bekor qilish', 'CANCEL_EDIT_BRANCH'),
-            ])
+            ]),
         );
     }
 
@@ -85,14 +88,14 @@ export class EditBranchScene {
         // Nom tahrirlash
         if (sceneState.editingName) {
             const trimmedName = text.trim();
-            
+
             if (trimmedName.length < 2) {
-                await ctx.reply('❌ Filial nomi kamida 2 ta belgidan iborat bo\'lishi kerak.');
+                await ctx.reply("❌ Filial nomi kamida 2 ta belgidan iborat bo'lishi kerak.");
                 return;
             }
 
             if (trimmedName.length > 50) {
-                await ctx.reply('❌ Filial nomi 50 ta belgidan ko\'p bo\'lmasligi kerak.');
+                await ctx.reply("❌ Filial nomi 50 ta belgidan ko'p bo'lmasligi kerak.");
                 return;
             }
 
@@ -104,9 +107,9 @@ export class EditBranchScene {
 
             // Filial nomi mavjudligini tekshirish
             const existingBranch = await this.prisma.branch.findFirst({
-                where: { 
+                where: {
                     name: { equals: trimmedName, mode: 'insensitive' },
-                    id: { not: sceneState.branchId }
+                    id: { not: sceneState.branchId },
                 },
             });
 
@@ -121,11 +124,14 @@ export class EditBranchScene {
             // Tasdiqlash
             await ctx.reply(
                 `📋 Nom o'zgarishi:\n\n🔸 Eski nom: ${sceneState.branchName}\n🔹 Yangi nom: ${trimmedName}\n\nTasdiqlaysizmi?`,
-                Markup.inlineKeyboard([
-                    Markup.button.callback('✅ Ha, o\'zgartirish', 'CONFIRM_NAME_CHANGE'),
-                    Markup.button.callback('🔙 Orqaga', 'BACK_TO_EDIT_MENU'),
-                    Markup.button.callback('❌ Bekor qilish', 'CANCEL_EDIT_BRANCH'),
-                ], { columns: 1 })
+                Markup.inlineKeyboard(
+                    [
+                        Markup.button.callback("✅ Ha, o'zgartirish", 'CONFIRM_NAME_CHANGE'),
+                        Markup.button.callback('🔙 Orqaga', 'BACK_TO_EDIT_MENU'),
+                        Markup.button.callback('❌ Bekor qilish', 'CANCEL_EDIT_BRANCH'),
+                    ],
+                    { columns: 1 },
+                ),
             );
             return;
         }
@@ -133,19 +139,21 @@ export class EditBranchScene {
         // Manzil tahrirlash
         if (sceneState.editingAddress) {
             const trimmedAddress = text.trim();
-            
+
             if (trimmedAddress.length < 5) {
-                await ctx.reply('❌ Manzil kamida 5 ta belgidan iborat bo\'lishi kerak.');
+                await ctx.reply("❌ Manzil kamida 5 ta belgidan iborat bo'lishi kerak.");
                 return;
             }
 
             if (trimmedAddress.length > 200) {
-                await ctx.reply('❌ Manzil 200 ta belgidan ko\'p bo\'lmasligi kerak.');
+                await ctx.reply("❌ Manzil 200 ta belgidan ko'p bo'lmasligi kerak.");
                 return;
             }
 
             if (trimmedAddress.toLowerCase() === sceneState.branchAddress.toLowerCase()) {
-                await ctx.reply('❌ Yangi manzil joriy manzil bilan bir xil. Boshqa manzil kiriting:');
+                await ctx.reply(
+                    '❌ Yangi manzil joriy manzil bilan bir xil. Boshqa manzil kiriting:',
+                );
                 return;
             }
 
@@ -155,11 +163,14 @@ export class EditBranchScene {
             // Tasdiqlash
             await ctx.reply(
                 `📋 Manzil o'zgarishi:\n\n🔸 Eski manzil: ${sceneState.branchAddress}\n🔹 Yangi manzil: ${trimmedAddress}\n\nTasdiqlaysizmi?`,
-                Markup.inlineKeyboard([
-                    Markup.button.callback('✅ Ha, o\'zgartirish', 'CONFIRM_ADDRESS_CHANGE'),
-                    Markup.button.callback('🔙 Orqaga', 'BACK_TO_EDIT_MENU'),
-                    Markup.button.callback('❌ Bekor qilish', 'CANCEL_EDIT_BRANCH'),
-                ], { columns: 1 })
+                Markup.inlineKeyboard(
+                    [
+                        Markup.button.callback("✅ Ha, o'zgartirish", 'CONFIRM_ADDRESS_CHANGE'),
+                        Markup.button.callback('🔙 Orqaga', 'BACK_TO_EDIT_MENU'),
+                        Markup.button.callback('❌ Bekor qilish', 'CANCEL_EDIT_BRANCH'),
+                    ],
+                    { columns: 1 },
+                ),
             );
             return;
         }
@@ -182,12 +193,11 @@ export class EditBranchScene {
             });
 
             await ctx.editMessageText(
-                `✅ Filial nomi muvaffaqiyatli o'zgartirildi!\n\n🔸 Eski nom: ${sceneState.branchName}\n🔹 Yangi nom: ${sceneState.newName}`
+                `✅ Filial nomi muvaffaqiyatli o'zgartirildi!\n\n🔸 Eski nom: ${sceneState.branchName}\n🔹 Yangi nom: ${sceneState.newName}`,
             );
             await ctx.scene.leave();
         } catch (error) {
-
-            await ctx.editMessageText('❌ Nom o\'zgartirishda xatolik yuz berdi.');
+            await ctx.editMessageText("❌ Nom o'zgartirishda xatolik yuz berdi.");
             await ctx.scene.leave();
         }
     }
@@ -209,12 +219,11 @@ export class EditBranchScene {
             });
 
             await ctx.editMessageText(
-                `✅ Filial manzili muvaffaqiyatli o'zgartirildi!\n\n🔸 Eski manzil: ${sceneState.branchAddress}\n🔹 Yangi manzil: ${sceneState.newAddress}`
+                `✅ Filial manzili muvaffaqiyatli o'zgartirildi!\n\n🔸 Eski manzil: ${sceneState.branchAddress}\n🔹 Yangi manzil: ${sceneState.newAddress}`,
             );
             await ctx.scene.leave();
         } catch (error) {
-
-            await ctx.editMessageText('❌ Manzil o\'zgartirishda xatolik yuz berdi.');
+            await ctx.editMessageText("❌ Manzil o'zgartirishda xatolik yuz berdi.");
             await ctx.scene.leave();
         }
     }
@@ -229,11 +238,14 @@ export class EditBranchScene {
 
         await ctx.editMessageText(
             `✏️ Filial tahrirlash\n\n🏪 Joriy nomi: ${sceneState.branchName}\n📍 Joriy manzil: ${sceneState.branchAddress}\n\nNimani tahrirlashni xohlaysiz?`,
-            Markup.inlineKeyboard([
-                Markup.button.callback('🏪 Nomini o\'zgartirish', 'EDIT_BRANCH_NAME'),
-                Markup.button.callback('📍 Manzilni o\'zgartirish', 'EDIT_BRANCH_ADDRESS'),
-                Markup.button.callback('❌ Bekor qilish', 'CANCEL_EDIT_BRANCH'),
-            ], { columns: 1 })
+            Markup.inlineKeyboard(
+                [
+                    Markup.button.callback("🏪 Nomini o'zgartirish", 'EDIT_BRANCH_NAME'),
+                    Markup.button.callback("📍 Manzilni o'zgartirish", 'EDIT_BRANCH_ADDRESS'),
+                    Markup.button.callback('❌ Bekor qilish', 'CANCEL_EDIT_BRANCH'),
+                ],
+                { columns: 1 },
+            ),
         );
     }
 

@@ -11,17 +11,15 @@ interface AddBranchSceneState {
 
 @Scene('add-branch-scene')
 export class AddBranchScene {
-    constructor(private readonly prisma: PrismaService) { }
+    constructor(private readonly prisma: PrismaService) {}
 
     @SceneEnter()
     async onSceneEnter(@Ctx() ctx: Context) {
         await safeEditMessageText(
             ctx,
             '🏪 Yangi filial yaratish\n\nFilial nomini kiriting:',
-            Markup.inlineKeyboard([
-                Markup.button.callback('❌ Bekor qilish', 'CANCEL_ADD_BRANCH'),
-            ]),
-            'Yangi filial'
+            Markup.inlineKeyboard([Markup.button.callback('❌ Bekor qilish', 'CANCEL_ADD_BRANCH')]),
+            'Yangi filial',
         );
     }
 
@@ -37,7 +35,12 @@ export class AddBranchScene {
             });
 
             if (existingBranch) {
-                await safeEditMessageText(ctx, '❌ Bu nom bilan filial allaqachon mavjud. Boshqa nom kiriting:', undefined, 'Xatolik');
+                await safeEditMessageText(
+                    ctx,
+                    '❌ Bu nom bilan filial allaqachon mavjud. Boshqa nom kiriting:',
+                    undefined,
+                    'Xatolik',
+                );
                 return;
             }
 
@@ -49,7 +52,7 @@ export class AddBranchScene {
                     Markup.button.callback('⏭️ Skip', 'SKIP_ADDRESS'),
                     Markup.button.callback('❌ Bekor qilish', 'CANCEL_ADD_BRANCH'),
                 ]),
-                'Filial nomi saqlandi'
+                'Filial nomi saqlandi',
             );
             return;
         }
@@ -69,14 +72,19 @@ export class AddBranchScene {
                 await safeEditMessageText(
                     ctx,
                     `✅ Filial muvaffaqiyatli yaratildi!\n\n` +
-                    `🏪 Nomi: ${newBranch.name}\n` +
-                    `📍 Manzil: ${newBranch.address}`,
+                        `🏪 Nomi: ${newBranch.name}\n` +
+                        `📍 Manzil: ${newBranch.address}`,
                     undefined,
-                    'Filial yaratildi'
+                    'Filial yaratildi',
                 );
                 await ctx.scene.leave();
             } catch {
-                await safeEditMessageText(ctx, '❌ Filial yaratishda xatolik yuz berdi.', undefined, 'Xatolik');
+                await safeEditMessageText(
+                    ctx,
+                    '❌ Filial yaratishda xatolik yuz berdi.',
+                    undefined,
+                    'Xatolik',
+                );
                 await ctx.scene.leave();
             }
             return;
@@ -104,21 +112,31 @@ export class AddBranchScene {
             await safeEditMessageText(
                 ctx,
                 `✅ Filial muvaffaqiyatli yaratildi!\n\n` +
-                `🏪 Nomi: ${newBranch.name}\n` +
-                `📍 Manzil: ${newBranch.address}`,
+                    `🏪 Nomi: ${newBranch.name}\n` +
+                    `📍 Manzil: ${newBranch.address}`,
                 undefined,
-                'Filial yaratildi'
+                'Filial yaratildi',
             );
             await ctx.scene.leave();
         } catch {
-            await safeEditMessageText(ctx, '❌ Filial yaratishda xatolik yuz berdi.', undefined, 'Xatolik');
+            await safeEditMessageText(
+                ctx,
+                '❌ Filial yaratishda xatolik yuz berdi.',
+                undefined,
+                'Xatolik',
+            );
             await ctx.scene.leave();
         }
     }
 
     @Action('CANCEL_ADD_BRANCH')
     async onCancelAddBranch(@Ctx() ctx: Context) {
-        await safeEditMessageText(ctx, '❌ Filial qo\'shish bekor qilindi.', undefined, 'Bekor qilindi');
+        await safeEditMessageText(
+            ctx,
+            "❌ Filial qo'shish bekor qilindi.",
+            undefined,
+            'Bekor qilindi',
+        );
         await ctx.scene.leave();
     }
 }

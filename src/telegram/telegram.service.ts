@@ -25,9 +25,7 @@ export class TelegramService {
         private readonly ordersUpdate: OrdersUpdate,
         private readonly reportsUpdate: ReportsUpdate,
         private readonly settingsUpdate: SettingsUpdate,
-    ) { }
-
-
+    ) {}
 
     private buttonTextMap: { [key: string]: string } = {};
 
@@ -81,7 +79,7 @@ Admin sizni tizimga qo'shishi kerak.
                 ['👥 Foydalanuvchilar', '🏢 Filiallar'],
                 ['📦 Kategoriyalar', '🍕 Xizmatlar'],
                 ['📋 Buyurtmalar', '📊 Hisobotlar'],
-                ['👤 Profil', '⚙️ Sozlamalar']
+                ['👤 Profil', '⚙️ Sozlamalar'],
             ];
 
             // Button mapping for Super Admin
@@ -93,13 +91,13 @@ Admin sizni tizimga qo'shishi kerak.
                 '📋 Buyurtmalar': 'orders',
                 '📊 Hisobotlar': 'reports',
                 '👤 Profil': 'profile',
-                '⚙️ Sozlamalar': 'settings'
+                '⚙️ Sozlamalar': 'settings',
             };
         } else if (user.role === Role.ADMIN) {
             keyboardButtons = [
                 ['👥 Xodimlar', '🍕 Mahsulotlar'],
                 ['📋 Buyurtmalar', '📊 Hisobotlar'],
-                ['👤 Profil']
+                ['👤 Profil'],
             ];
 
             // Button mapping for Admin
@@ -108,29 +106,21 @@ Admin sizni tizimga qo'shishi kerak.
                 '🍕 Mahsulotlar': 'sides',
                 '📋 Buyurtmalar': 'orders',
                 '📊 Hisobotlar': 'reports',
-                '👤 Profil': 'profile'
+                '👤 Profil': 'profile',
             };
         } else if (user.role === Role.CASHIER) {
-            keyboardButtons = [
-                ['➕ Yangi buyurtma'],
-                ['📋 Buyurtmalar', '👤 Profil']
-            ];
+            keyboardButtons = [['➕ Yangi buyurtma'], ['📋 Buyurtmalar', '👤 Profil']];
 
             // Button mapping for Cashier
             this.buttonTextMap = {
                 '➕ Yangi buyurtma': 'neworder',
                 '📋 Buyurtmalar': 'orders',
-                '👤 Profil': 'profile'
+                '👤 Profil': 'profile',
             };
         }
 
-        await ctx.reply(
-            startMessage,
-            Markup.keyboard(keyboardButtons).resize().persistent(),
-        );
+        await ctx.reply(startMessage, Markup.keyboard(keyboardButtons).resize().persistent());
     }
-
-
 
     @Command('profile')
     async profile(@Ctx() ctx: Context) {
@@ -210,7 +200,7 @@ Admin sizni tizimga qo'shishi kerak.
             }
         } else {
             await ctx.reply(
-                "Kechirasiz, siz yuborgan xabar tushunarsiz. Iltimos, tugmalardan foydalaning.",
+                'Kechirasiz, siz yuborgan xabar tushunarsiz. Iltimos, tugmalardan foydalaning yoki /start bosing.',
             );
         }
     }

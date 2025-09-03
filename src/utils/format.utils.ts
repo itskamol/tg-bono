@@ -8,6 +8,6 @@ export function formatNumber(num: number): string {
 /**
  * Format currency with thousand separators and currency symbol
  */
-export function formatCurrency(amount: number, currency: string = 'so\'m'): string {
+export function formatCurrency(amount: number, currency: string = "so'm"): string {
     return `${formatNumber(amount)} ${currency}`;
 }

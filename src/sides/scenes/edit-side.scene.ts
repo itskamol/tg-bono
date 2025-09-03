@@ -2,6 +2,7 @@ import { Scene, SceneEnter, On, Message, Action, Ctx } from 'nestjs-telegraf';
 import { Markup } from 'telegraf';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Context } from '../../interfaces/context.interface';
+import { formatCurrency } from 'src/utils/format.utils';
 
 interface EditSideSceneState {
     sideId: string;
@@ -22,7 +23,7 @@ export class EditSideScene {
     async onSceneEnter(@Ctx() ctx: Context) {
         const sceneState = ctx.scene.state as EditSideSceneState;
         if (!sceneState.sideId) {
-            await ctx.reply('❌ Tomon ma\'lumotlari topilmadi.');
+            await ctx.reply("❌ Tomon ma'lumotlari topilmadi.");
             await ctx.scene.leave();
             return;
         }
@@ -42,12 +43,15 @@ export class EditSideScene {
         sceneState.categoryId = side.category_id;
 
         await ctx.reply(
-            `✏️ Tomon tahrirlash\n\n📝 Joriy nomi: ${side.name}\n💰 Joriy narxi: ${side.price} so'm\n\nNimani tahrirlashni xohlaysiz?`,
-            Markup.inlineKeyboard([
-                Markup.button.callback('📝 Nomini o\'zgartirish', 'EDIT_SIDE_NAME'),
-                Markup.button.callback('💰 Narxini o\'zgartirish', 'EDIT_SIDE_PRICE'),
-                Markup.button.callback('❌ Bekor qilish', 'CANCEL_EDIT_SIDE'),
-            ], { columns: 1 })
+            `✏️ Tomon tahrirlash\n\n📝 Joriy nomi: ${side.name}\n💰 Joriy narxi: ${formatCurrency(side.price)} \n\nNimani tahrirlashni xohlaysiz?`,
+            Markup.inlineKeyboard(
+                [
+                    Markup.button.callback("📝 Nomini o'zgartirish", 'EDIT_SIDE_NAME'),
+                    Markup.button.callback("💰 Narxini o'zgartirish", 'EDIT_SIDE_PRICE'),
+                    Markup.button.callback('❌ Bekor qilish', 'CANCEL_EDIT_SIDE'),
+                ],
+                { columns: 1 },
+            ),
         );
     }
 
@@ -61,7 +65,7 @@ export class EditSideScene {
             Markup.inlineKeyboard([
                 Markup.button.callback('🔙 Orqaga', 'BACK_TO_EDIT_MENU'),
                 Markup.button.callback('❌ Bekor qilish', 'CANCEL_EDIT_SIDE'),
-            ])
+            ]),
         );
     }
 
@@ -71,11 +75,11 @@ export class EditSideScene {
         sceneState.editingPrice = true;
 
         await ctx.editMessageText(
-            `💰 Yangi narx kiriting (so'mda):\n\n🔸 Joriy narx: ${sceneState.sidePrice} so'm`,
+            `💰 Yangi narx kiriting (so'mda):\n\n🔸 Joriy narx: ${formatCurrency(sceneState.sidePrice)}`,
             Markup.inlineKeyboard([
                 Markup.button.callback('🔙 Orqaga', 'BACK_TO_EDIT_MENU'),
                 Markup.button.callback('❌ Bekor qilish', 'CANCEL_EDIT_SIDE'),
-            ])
+            ]),
         );
     }
 
@@ -86,14 +90,14 @@ export class EditSideScene {
         // Nom tahrirlash
         if (sceneState.editingName) {
             const trimmedName = text.trim();
-            
+
             if (trimmedName.length < 2) {
-                await ctx.reply('❌ Tomon nomi kamida 2 ta belgidan iborat bo\'lishi kerak.');
+                await ctx.reply("❌ Tomon nomi kamida 2 ta belgidan iborat bo'lishi kerak.");
                 return;
             }
 
             if (trimmedName.length > 50) {
-                await ctx.reply('❌ Tomon nomi 50 ta belgidan ko\'p bo\'lmasligi kerak.');
+                await ctx.reply("❌ Tomon nomi 50 ta belgidan ko'p bo'lmasligi kerak.");
                 return;
             }
 
@@ -105,10 +109,10 @@ export class EditSideScene {
 
             // Tomon nomi mavjudligini tekshirish (shu kategoriyada)
             const existingSide = await this.prisma.side.findFirst({
-                where: { 
+                where: {
                     name: { equals: trimmedName, mode: 'insensitive' },
                     category_id: sceneState.categoryId,
-                    id: { not: sceneState.sideId }
+                    id: { not: sceneState.sideId },
                 },
             });
 
@@ -123,11 +127,14 @@ export class EditSideScene {
             // Tasdiqlash
             await ctx.reply(
                 `📋 Nom o'zgarishi:\n\n🔸 Eski nom: ${sceneState.sideName}\n🔹 Yangi nom: ${trimmedName}\n\nTasdiqlaysizmi?`,
-                Markup.inlineKeyboard([
-                    Markup.button.callback('✅ Ha, o\'zgartirish', 'CONFIRM_NAME_CHANGE'),
-                    Markup.button.callback('🔙 Orqaga', 'BACK_TO_EDIT_MENU'),
-                    Markup.button.callback('❌ Bekor qilish', 'CANCEL_EDIT_SIDE'),
-                ], { columns: 1 })
+                Markup.inlineKeyboard(
+                    [
+                        Markup.button.callback("✅ Ha, o'zgartirish", 'CONFIRM_NAME_CHANGE'),
+                        Markup.button.callback('🔙 Orqaga', 'BACK_TO_EDIT_MENU'),
+                        Markup.button.callback('❌ Bekor qilish', 'CANCEL_EDIT_SIDE'),
+                    ],
+                    { columns: 1 },
+                ),
             );
             return;
         }
@@ -135,19 +142,20 @@ export class EditSideScene {
         // Narx tahrirlash
         if (sceneState.editingPrice) {
             const price = parseFloat(text);
-            
+
             if (isNaN(price)) {
-                await ctx.reply('❌ Noto\'g\'ri narx formati. Faqat raqam kiriting:');
+                await ctx.reply("❌ Noto'g'ri narx formati. Faqat raqam kiriting:");
                 return;
             }
 
             if (price <= 0) {
-                await ctx.reply('❌ Narx 0 dan katta bo\'lishi kerak:');
+                await ctx.reply("❌ Narx 0 dan katta bo'lishi kerak:");
                 return;
             }
 
-            if (price > 10000000) { // 10 million limit
-                await ctx.reply('❌ Narx juda katta. Maksimal: 10,000,000 so\'m');
+            if (price > 10000000) {
+                // 10 million limit
+                await ctx.reply("❌ Narx juda katta. Maksimal: 10,000,000 so'm");
                 return;
             }
 
@@ -166,12 +174,15 @@ export class EditSideScene {
 
             // Tasdiqlash
             await ctx.reply(
-                `📋 Narx o'zgarishi:\n\n🔸 Eski narx: ${sceneState.sidePrice} so'm\n🔹 Yangi narx: ${price} so'm\n\nTasdiqlaysizmi?`,
-                Markup.inlineKeyboard([
-                    Markup.button.callback('✅ Ha, o\'zgartirish', 'CONFIRM_PRICE_CHANGE'),
-                    Markup.button.callback('🔙 Orqaga', 'BACK_TO_EDIT_MENU'),
-                    Markup.button.callback('❌ Bekor qilish', 'CANCEL_EDIT_SIDE'),
-                ], { columns: 1 })
+                `📋 Narx o'zgarishi:\n\n🔸 Eski narx: ${formatCurrency(sceneState.sidePrice)} \n🔹 Yangi narx: ${formatCurrency(price)} \n\nTasdiqlaysizmi?`,
+                Markup.inlineKeyboard(
+                    [
+                        Markup.button.callback("✅ Ha, o'zgartirish", 'CONFIRM_PRICE_CHANGE'),
+                        Markup.button.callback('🔙 Orqaga', 'BACK_TO_EDIT_MENU'),
+                        Markup.button.callback('❌ Bekor qilish', 'CANCEL_EDIT_SIDE'),
+                    ],
+                    { columns: 1 },
+                ),
             );
             return;
         }
@@ -194,11 +205,11 @@ export class EditSideScene {
             });
 
             await ctx.editMessageText(
-                `✅ Tomon nomi muvaffaqiyatli o'zgartirildi!\n\n🔸 Eski nom: ${sceneState.sideName}\n🔹 Yangi nom: ${sceneState.newName}`
+                `✅ Tomon nomi muvaffaqiyatli o'zgartirildi!\n\n🔸 Eski nom: ${sceneState.sideName}\n🔹 Yangi nom: ${sceneState.newName}`,
             );
             await ctx.scene.leave();
         } catch (error) {
-            await ctx.editMessageText('❌ Nom o\'zgartirishda xatolik yuz berdi.');
+            await ctx.editMessageText("❌ Nom o'zgartirishda xatolik yuz berdi.");
             await ctx.scene.leave();
         }
     }
@@ -220,11 +231,11 @@ export class EditSideScene {
             });
 
             await ctx.editMessageText(
-                `✅ Tomon narxi muvaffaqiyatli o'zgartirildi!\n\n🔸 Eski narx: ${sceneState.sidePrice} so'm\n🔹 Yangi narx: ${sceneState.newPrice} so'm`
+                `✅ Tomon narxi muvaffaqiyatli o'zgartirildi!\n\n🔸 Eski narx: ${formatCurrency(sceneState.sidePrice)} \n🔹 Yangi narx: ${formatCurrency(sceneState.newPrice)}`,
             );
             await ctx.scene.leave();
         } catch (error) {
-            await ctx.editMessageText('❌ Narx o\'zgartirishda xatolik yuz berdi.');
+            await ctx.editMessageText("❌ Narx o'zgartirishda xatolik yuz berdi.");
             await ctx.scene.leave();
         }
     }
@@ -238,12 +249,15 @@ export class EditSideScene {
         sceneState.newPrice = undefined;
 
         await ctx.editMessageText(
-            `✏️ Tomon tahrirlash\n\n📝 Joriy nomi: ${sceneState.sideName}\n💰 Joriy narxi: ${sceneState.sidePrice} so'm\n\nNimani tahrirlashni xohlaysiz?`,
-            Markup.inlineKeyboard([
-                Markup.button.callback('📝 Nomini o\'zgartirish', 'EDIT_SIDE_NAME'),
-                Markup.button.callback('💰 Narxini o\'zgartirish', 'EDIT_SIDE_PRICE'),
-                Markup.button.callback('❌ Bekor qilish', 'CANCEL_EDIT_SIDE'),
-            ], { columns: 1 })
+            `✏️ Tomon tahrirlash\n\n📝 Joriy nomi: ${sceneState.sideName}\n💰 Joriy narxi: ${formatCurrency(sceneState.sidePrice)} \n\nNimani tahrirlashni xohlaysiz?`,
+            Markup.inlineKeyboard(
+                [
+                    Markup.button.callback("📝 Nomini o'zgartirish", 'EDIT_SIDE_NAME'),
+                    Markup.button.callback("💰 Narxini o'zgartirish", 'EDIT_SIDE_PRICE'),
+                    Markup.button.callback('❌ Bekor qilish', 'CANCEL_EDIT_SIDE'),
+                ],
+                { columns: 1 },
+            ),
         );
     }
 

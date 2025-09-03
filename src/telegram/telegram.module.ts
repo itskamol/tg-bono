@@ -19,7 +19,6 @@ import { EncryptionService } from 'src/settings/encryption.service';
 import { GoogleSheetsService } from 'src/sheets/google-sheets.service';
 import { EmailService } from 'src/email/email.service';
 
-
 @Module({
     imports: [
         PrismaModule,
@@ -32,6 +31,17 @@ import { EmailService } from 'src/email/email.service';
         CategoriesModule,
         SettingsModule,
     ],
-    providers: [TelegramService, UsersUpdate, BranchesUpdate, OrdersUpdate, ReportsUpdate, SettingsUpdate, ReportsService, EncryptionService, GoogleSheetsService, EmailService],
+    providers: [
+        TelegramService,
+        UsersUpdate,
+        BranchesUpdate,
+        OrdersUpdate,
+        ReportsUpdate,
+        SettingsUpdate,
+        ReportsService,
+        EncryptionService,
+        GoogleSheetsService,
+        EmailService,
+    ],
 })
 export class TelegramModule {}

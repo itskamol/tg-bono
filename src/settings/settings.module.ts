@@ -20,7 +20,7 @@ import { EmailModule } from 'src/email/email.module';
         EncryptionService,
         SchedulerService,
         ReportsService,
-        GoogleSheetsService
+        GoogleSheetsService,
     ],
 })
 export class SettingsModule {}

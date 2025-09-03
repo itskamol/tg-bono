@@ -3,6 +3,7 @@ import { PrismaService } from '../../prisma/prisma.service';
 import { Context } from '../../interfaces/context.interface';
 import { Markup } from 'telegraf';
 import { Role } from '@prisma/client';
+import { formatCurrency } from 'src/utils/format.utils';
 
 @Scene('order-search-scene')
 export class OrderSearchScene {
@@ -14,17 +15,15 @@ export class OrderSearchScene {
             '🔍 Buyurtma qidirish',
             Markup.inlineKeyboard([
                 [
-                    Markup.button.callback('📅 Sana bo\'yicha', 'search_by_date'),
-                    Markup.button.callback('👤 Mijoz ismi', 'search_by_customer')
+                    Markup.button.callback("📅 Sana bo'yicha", 'search_by_date'),
+                    Markup.button.callback('👤 Mijoz ismi', 'search_by_customer'),
                 ],
                 [
                     Markup.button.callback('🍕 Mahsulot nomi', 'search_by_product'),
-                    Markup.button.callback('🔢 Buyurtma raqami', 'search_by_number')
+                    Markup.button.callback('🔢 Buyurtma raqami', 'search_by_number'),
                 ],
-                [
-                    Markup.button.callback('❌ Bekor qilish', 'cancel_search')
-                ]
-            ])
+                [Markup.button.callback('❌ Bekor qilish', 'cancel_search')],
+            ]),
         );
     }
 
@@ -32,26 +31,24 @@ export class OrderSearchScene {
     async onSearchByDate(@Ctx() ctx: Context) {
         const sceneState = ctx.scene.state as any;
         sceneState.searchType = 'date';
-        
+
         await ctx.editMessageText(
             '📅 Sanani tanlang:',
             Markup.inlineKeyboard([
                 [
                     Markup.button.callback('📅 Bugun', 'date_today'),
-                    Markup.button.callback('📅 Kecha', 'date_yesterday')
+                    Markup.button.callback('📅 Kecha', 'date_yesterday'),
                 ],
                 [
                     Markup.button.callback('📅 Bu hafta', 'date_this_week'),
-                    Markup.button.callback('📅 Bu oy', 'date_this_month')
+                    Markup.button.callback('📅 Bu oy', 'date_this_month'),
                 ],
-                [
-                    Markup.button.callback('📝 Maxsus sana', 'date_custom'),
-                ],
+                [Markup.button.callback('📝 Maxsus sana', 'date_custom')],
                 [
                     Markup.button.callback('⬅️ Orqaga', 'back_to_search_menu'),
-                    Markup.button.callback('❌ Bekor qilish', 'cancel_search')
-                ]
-            ])
+                    Markup.button.callback('❌ Bekor qilish', 'cancel_search'),
+                ],
+            ]),
         );
     }
 
@@ -59,15 +56,15 @@ export class OrderSearchScene {
     async onSearchByCustomer(@Ctx() ctx: Context) {
         const sceneState = ctx.scene.state as any;
         sceneState.searchType = 'customer';
-        
+
         await ctx.editMessageText(
             '👤 Mijoz ismini kiriting:',
             Markup.inlineKeyboard([
                 [
                     Markup.button.callback('⬅️ Orqaga', 'back_to_search_menu'),
-                    Markup.button.callback('❌ Bekor qilish', 'cancel_search')
-                ]
-            ])
+                    Markup.button.callback('❌ Bekor qilish', 'cancel_search'),
+                ],
+            ]),
         );
     }
 
@@ -75,15 +72,15 @@ export class OrderSearchScene {
     async onSearchByProduct(@Ctx() ctx: Context) {
         const sceneState = ctx.scene.state as any;
         sceneState.searchType = 'product';
-        
+
         await ctx.editMessageText(
             '🍕 Mahsulot nomini kiriting:',
             Markup.inlineKeyboard([
                 [
                     Markup.button.callback('⬅️ Orqaga', 'back_to_search_menu'),
-                    Markup.button.callback('❌ Bekor qilish', 'cancel_search')
-                ]
-            ])
+                    Markup.button.callback('❌ Bekor qilish', 'cancel_search'),
+                ],
+            ]),
         );
     }
 
@@ -91,25 +88,25 @@ export class OrderSearchScene {
     async onSearchByNumber(@Ctx() ctx: Context) {
         const sceneState = ctx.scene.state as any;
         sceneState.searchType = 'number';
-        
+
         await ctx.editMessageText(
             '🔢 Buyurtma raqamini kiriting:',
             Markup.inlineKeyboard([
                 [
                     Markup.button.callback('⬅️ Orqaga', 'back_to_search_menu'),
-                    Markup.button.callback('❌ Bekor qilish', 'cancel_search')
-                ]
-            ])
+                    Markup.button.callback('❌ Bekor qilish', 'cancel_search'),
+                ],
+            ]),
         );
     }
 
     @Action(/^date_(.+)$/)
     async onDateSelection(@Ctx() ctx: Context) {
         const dateType = (ctx.callbackQuery as any).data.replace('date_', '');
-        
+
         let startDate = new Date();
         let endDate = new Date();
-        
+
         switch (dateType) {
             case 'today':
                 startDate.setHours(0, 0, 0, 0);
@@ -141,9 +138,9 @@ export class OrderSearchScene {
                     Markup.inlineKeyboard([
                         [
                             Markup.button.callback('⬅️ Orqaga', 'search_by_date'),
-                            Markup.button.callback('❌ Bekor qilish', 'cancel_search')
-                        ]
-                    ])
+                            Markup.button.callback('❌ Bekor qilish', 'cancel_search'),
+                        ],
+                    ]),
                 );
                 return;
         }
@@ -158,21 +155,23 @@ export class OrderSearchScene {
         if (sceneState.waitingForCustomDate) {
             const dateRegex = /^(\d{1,2})\.(\d{1,2})\.(\d{4})$/;
             const match = text.match(dateRegex);
-            
+
             if (!match) {
-                await ctx.reply('❌ Noto\'g\'ri sana formati. DD.MM.YYYY formatida kiriting (masalan: 25.12.2024)');
+                await ctx.reply(
+                    "❌ Noto'g'ri sana formati. DD.MM.YYYY formatida kiriting (masalan: 25.12.2024)",
+                );
                 return;
             }
 
             const [, day, month, year] = match;
             const startDate = new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
             startDate.setHours(0, 0, 0, 0);
-            
+
             const endDate = new Date(startDate);
             endDate.setHours(23, 59, 59, 999);
 
             if (isNaN(startDate.getTime())) {
-                await ctx.reply('❌ Noto\'g\'ri sana. Iltimos, to\'g\'ri sana kiriting.');
+                await ctx.reply("❌ Noto'g'ri sana. Iltimos, to'g'ri sana kiriting.");
                 return;
             }
 
@@ -211,7 +210,11 @@ export class OrderSearchScene {
             whereClause.branch_id = user.branch_id;
         }
 
-        await this.searchAndDisplayOrders(ctx, whereClause, `📅 ${startDate.toLocaleDateString('uz-UZ')} sanasidagi buyurtmalar`);
+        await this.searchAndDisplayOrders(
+            ctx,
+            whereClause,
+            `📅 ${startDate.toLocaleDateString('uz-UZ')} sanasidagi buyurtmalar`,
+        );
     }
 
     private async performCustomerSearch(ctx: Context, customerName: string) {
@@ -231,7 +234,11 @@ export class OrderSearchScene {
             whereClause.branch_id = user.branch_id;
         }
 
-        await this.searchAndDisplayOrders(ctx, whereClause, `👤 "${customerName}" mijozining buyurtmalari`);
+        await this.searchAndDisplayOrders(
+            ctx,
+            whereClause,
+            `👤 "${customerName}" mijozining buyurtmalari`,
+        );
     }
 
     private async performProductSearch(ctx: Context, productName: string) {
@@ -265,7 +272,11 @@ export class OrderSearchScene {
             whereClause.branch_id = user.branch_id;
         }
 
-        await this.searchAndDisplayOrders(ctx, whereClause, `🍕 "${productName}" mahsuloti bo'lgan buyurtmalar`);
+        await this.searchAndDisplayOrders(
+            ctx,
+            whereClause,
+            `🍕 "${productName}" mahsuloti bo'lgan buyurtmalar`,
+        );
     }
 
     private async performNumberSearch(ctx: Context, orderNumber: string) {
@@ -285,7 +296,11 @@ export class OrderSearchScene {
             whereClause.branch_id = user.branch_id;
         }
 
-        await this.searchAndDisplayOrders(ctx, whereClause, `🔢 "${orderNumber}" raqamli buyurtmalar`);
+        await this.searchAndDisplayOrders(
+            ctx,
+            whereClause,
+            `🔢 "${orderNumber}" raqamli buyurtmalar`,
+        );
     }
 
     private async searchAndDisplayOrders(ctx: Context, whereClause: any, title: string) {
@@ -303,20 +318,20 @@ export class OrderSearchScene {
 
         if (!orders || orders.length === 0) {
             await ctx.reply(
-                '❌ Qidiruv bo\'yicha buyurtmalar topilmadi.',
+                "❌ Qidiruv bo'yicha buyurtmalar topilmadi.",
                 Markup.inlineKeyboard([
                     [
                         Markup.button.callback('🔍 Qayta qidirish', 'back_to_search_menu'),
-                        Markup.button.callback('❌ Chiqish', 'cancel_search')
-                    ]
-                ])
+                        Markup.button.callback('❌ Chiqish', 'cancel_search'),
+                    ],
+                ]),
             );
             return;
         }
 
         const orderButtons = orders.map((order) =>
             Markup.button.callback(
-                `${order.order_number} - ${order.total_amount} so'm`,
+                `${order.order_number} - ${formatCurrency(order.total_amount)}`,
                 `VIEW_ORDER_${order.id}`,
             ),
         );
@@ -324,7 +339,7 @@ export class OrderSearchScene {
         // Add navigation buttons
         orderButtons.push(
             Markup.button.callback('🔍 Qayta qidirish', 'back_to_search_menu'),
-            Markup.button.callback('❌ Chiqish', 'cancel_search')
+            Markup.button.callback('❌ Chiqish', 'cancel_search'),
         );
 
         await ctx.reply(
@@ -340,22 +355,20 @@ export class OrderSearchScene {
         const sceneState = ctx.scene.state as any;
         delete sceneState.searchType;
         delete sceneState.waitingForCustomDate;
-        
+
         await ctx.editMessageText(
             '🔍 Buyurtma qidirish',
             Markup.inlineKeyboard([
                 [
-                    Markup.button.callback('📅 Sana bo\'yicha', 'search_by_date'),
-                    Markup.button.callback('👤 Mijoz ismi', 'search_by_customer')
+                    Markup.button.callback("📅 Sana bo'yicha", 'search_by_date'),
+                    Markup.button.callback('👤 Mijoz ismi', 'search_by_customer'),
                 ],
                 [
                     Markup.button.callback('🍕 Mahsulot nomi', 'search_by_product'),
-                    Markup.button.callback('🔢 Buyurtma raqami', 'search_by_number')
+                    Markup.button.callback('🔢 Buyurtma raqami', 'search_by_number'),
                 ],
-                [
-                    Markup.button.callback('❌ Bekor qilish', 'cancel_search')
-                ]
-            ])
+                [Markup.button.callback('❌ Bekor qilish', 'cancel_search')],
+            ]),
         );
     }
 

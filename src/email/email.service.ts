@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import * as nodemailer from 'nodemailer';
 import { Order, Order_Product, Payment, PaymentType } from '@prisma/client';
+import { formatCurrency } from 'src/utils/format.utils';
 
 @Injectable()
 export class EmailService {
@@ -27,12 +28,12 @@ export class EmailService {
             payments: Payment[];
         })[],
         subject: string = 'Buyurtmalar hisoboti',
-        detailed: boolean = false
+        detailed: boolean = false,
     ): Promise<boolean> {
         try {
             const transporter = this.createTransporter(emailConfig);
 
-            const htmlContent = detailed 
+            const htmlContent = detailed
                 ? this.generateDetailedOrdersHTML(orders)
                 : this.generateOrdersHTML(orders);
 
@@ -49,9 +50,9 @@ export class EmailService {
                     {
                         filename: `buyurtmalar_${new Date().toISOString().split('T')[0]}.csv`,
                         content: csvContent,
-                        contentType: 'text/csv; charset=utf-8'
-                    }
-                ]
+                        contentType: 'text/csv; charset=utf-8',
+                    },
+                ],
             };
 
             const result = await transporter.sendMail(mailOptions);
@@ -63,12 +64,14 @@ export class EmailService {
         }
     }
 
-    private generateOrdersHTML(orders: (Order & {
-        branch: { name: string };
-        cashier: { full_name: string };
-        order_products: Order_Product[];
-        payments: Payment[];
-    })[]): string {
+    private generateOrdersHTML(
+        orders: (Order & {
+            branch: { name: string };
+            cashier: { full_name: string };
+            order_products: Order_Product[];
+            payments: Payment[];
+        })[],
+    ): string {
         const totalAmount = orders.reduce((sum, order) => sum + order.total_amount, 0);
         const totalOrders = orders.length;
 
@@ -98,7 +101,7 @@ export class EmailService {
             <div class="summary">
                 <h2>📊 Umumiy Ma'lumotlar</h2>
                 <p><strong>Jami buyurtmalar:</strong> ${totalOrders} ta</p>
-                <p><strong>Jami summa:</strong> <span class="amount">${totalAmount.toLocaleString()} so'm</span></p>
+                <p><strong>Jami summa:</strong> <span class="amount">${formatCurrency(totalAmount)}</span></p>
             </div>
 
             <table>
@@ -120,14 +123,19 @@ export class EmailService {
         `;
 
         orders.forEach((order, index) => {
-            const productsInfo = order.order_products.map((product, i) => 
-                `${i + 1}. ${product.product_name} (${product.side_name}) - ${product.quantity}x${product.price} = ${(product.quantity * product.price).toLocaleString()} so'm`
-            ).join('<br>');
+            const productsInfo = order.order_products
+                .map(
+                    (product, i) =>
+                        `${i + 1}. ${product.product_name} (${product.side_name}) - ${product.quantity}x${product.price} = ${formatCurrency(product.quantity * product.price)}`,
+                )
+                .join('<br>');
 
-            const paymentsInfo = order.payments.map((payment, i) => {
-                const paymentTypeName = this.getPaymentTypeName(payment.payment_type);
-                return `${i + 1}. ${paymentTypeName}: ${payment.amount.toLocaleString()} so'm`;
-            }).join('<br>');
+            const paymentsInfo = order.payments
+                .map((payment, i) => {
+                    const paymentTypeName = this.getPaymentTypeName(payment.payment_type);
+                    return `${i + 1}. ${paymentTypeName}: ${formatCurrency(payment.amount)}`;
+                })
+                .join('<br>');
 
             html += `
                 <tr class="order-row">
@@ -139,7 +147,7 @@ export class EmailService {
                     <td>${order.cashier.full_name}</td>
                     <td>${productsInfo}</td>
                     <td>${paymentsInfo}</td>
-                    <td class="amount">${order.total_amount.toLocaleString()} so'm</td>
+                    <td class="amount">${formatCurrency(order.total_amount)} </td>
                     <td>${order.created_at.toLocaleString('uz-UZ')}</td>
                 </tr>
             `;
@@ -159,12 +167,14 @@ export class EmailService {
         return html;
     }
 
-    private generateDetailedOrdersHTML(orders: (Order & {
-        branch: { name: string };
-        cashier: { full_name: string };
-        order_products: Order_Product[];
-        payments: Payment[];
-    })[]): string {
+    private generateDetailedOrdersHTML(
+        orders: (Order & {
+            branch: { name: string };
+            cashier: { full_name: string };
+            order_products: Order_Product[];
+            payments: Payment[];
+        })[],
+    ): string {
         const totalAmount = orders.reduce((sum, order) => sum + order.total_amount, 0);
         const totalOrders = orders.length;
         const totalProducts = orders.reduce((sum, order) => sum + order.order_products.length, 0);
@@ -197,7 +207,7 @@ export class EmailService {
                 <h2>📊 Umumiy Ma'lumotlar</h2>
                 <p><strong>Jami buyurtmalar:</strong> ${totalOrders} ta</p>
                 <p><strong>Jami mahsulotlar:</strong> ${totalProducts} ta</p>
-                <p><strong>Jami summa:</strong> <span class="amount">${totalAmount.toLocaleString()} so'm</span></p>
+                <p><strong>Jami summa:</strong> <span class="amount">${formatCurrency(totalAmount)}</span></p>
             </div>
 
             <table>
@@ -222,27 +232,29 @@ export class EmailService {
         `;
 
         orders.forEach((order) => {
-            const paymentsInfo = order.payments.map((payment, i) => {
-                const paymentTypeName = this.getPaymentTypeName(payment.payment_type);
-                return `${i + 1}. ${paymentTypeName}: ${payment.amount.toLocaleString()} so'm`;
-            }).join('<br>');
+            const paymentsInfo = order.payments
+                .map((payment, i) => {
+                    const paymentTypeName = this.getPaymentTypeName(payment.payment_type);
+                    return `${i + 1}. ${paymentTypeName}: ${formatCurrency(payment.amount)}`;
+                })
+                .join('<br>');
 
             order.order_products.forEach((product, productIndex) => {
                 const isFirstProduct = productIndex === 0;
-                
+
                 html += `
                     <tr class="${isFirstProduct ? 'order-header' : 'product-row'}">
                         <td>${isFirstProduct ? order.order_number : ''}</td>
                         <td>${isFirstProduct ? order.client_name : ''}</td>
-                        <td>${isFirstProduct ? (order.client_phone || 'N/A') : ''}</td>
+                        <td>${isFirstProduct ? order.client_phone || 'N/A' : ''}</td>
                         <td>${isFirstProduct ? order.branch.name : ''}</td>
                         <td>${isFirstProduct ? order.cashier.full_name : ''}</td>
                         <td>${product.product_name}</td>
                         <td>${product.category}</td>
                         <td>${product.side_name}</td>
                         <td>${product.quantity}</td>
-                        <td>${product.price.toLocaleString()} so'm</td>
-                        <td class="amount">${(product.quantity * product.price).toLocaleString()} so'm</td>
+                        <td>${formatCurrency(product.price)}</td>
+                        <td class="amount">${formatCurrency(product.quantity * product.price)}</td>
                         <td>${isFirstProduct ? paymentsInfo : ''}</td>
                         <td>${isFirstProduct ? order.created_at.toLocaleString('uz-UZ') : ''}</td>
                     </tr>
@@ -285,38 +297,45 @@ export class EmailService {
         return html;
     }
 
-    private generateOrdersCSV(orders: (Order & {
-        branch: { name: string };
-        cashier: { full_name: string };
-        order_products: Order_Product[];
-        payments: Payment[];
-    })[]): string {
+    private generateOrdersCSV(
+        orders: (Order & {
+            branch: { name: string };
+            cashier: { full_name: string };
+            order_products: Order_Product[];
+            payments: Payment[];
+        })[],
+    ): string {
         const headers = [
             'Buyurtma raqami',
             'Mijoz ismi',
             'Telefon',
-            'Tug\'ilgan kun',
+            "Tug'ilgan kun",
             'Filial',
             'Kassir',
             'Jami summa',
             'Buyurtma sanasi',
             'Mahsulotlar',
-            'To\'lovlar',
+            "To'lovlar",
             'Mahsulotlar soni',
-            'To\'lovlar soni'
+            "To'lovlar soni",
         ];
 
         let csv = headers.join(',') + '\n';
 
         orders.forEach((order) => {
-            const productsInfo = order.order_products.map((product, index) => 
-                `${index + 1}. ${product.product_name} (${product.category}) - ${product.side_name} - ${product.quantity}x${product.price} = ${product.quantity * product.price} so'm`
-            ).join(' | ');
+            const productsInfo = order.order_products
+                .map(
+                    (product, index) =>
+                        `${index + 1}. ${product.product_name} (${product.category}) - ${product.side_name} - ${product.quantity}x${product.price} = ${formatCurrency(product.quantity * product.price)}`,
+                )
+                .join(' | ');
 
-            const paymentsInfo = order.payments.map((payment, index) => {
-                const paymentTypeName = this.getPaymentTypeName(payment.payment_type);
-                return `${index + 1}. ${paymentTypeName}: ${payment.amount} so'm`;
-            }).join(' | ');
+            const paymentsInfo = order.payments
+                .map((payment, index) => {
+                    const paymentTypeName = this.getPaymentTypeName(payment.payment_type);
+                    return `${index + 1}. ${paymentTypeName}: ${formatCurrency(payment.amount)}`;
+                })
+                .join(' | ');
 
             const row = [
                 `"${order.order_number}"`,
@@ -330,7 +349,7 @@ export class EmailService {
                 `"${productsInfo}"`,
                 `"${paymentsInfo}"`,
                 order.order_products.length,
-                order.payments.length
+                order.payments.length,
             ];
 
             csv += row.join(',') + '\n';
@@ -339,46 +358,52 @@ export class EmailService {
         return csv;
     }
 
-    private generateDetailedOrdersCSV(orders: (Order & {
-        branch: { name: string };
-        cashier: { full_name: string };
-        order_products: Order_Product[];
-        payments: Payment[];
-    })[]): string {
+    private generateDetailedOrdersCSV(
+        orders: (Order & {
+            branch: { name: string };
+            cashier: { full_name: string };
+            order_products: Order_Product[];
+            payments: Payment[];
+        })[],
+    ): string {
         const headers = [
             'Buyurtma raqami',
             'Mijoz ismi',
             'Telefon',
-            'Tug\'ilgan kun',
+            "Tug'ilgan kun",
             'Filial',
             'Kassir',
             'Jami summa',
             'Buyurtma sanasi',
-            'To\'lovlar',
+            "To'lovlar",
             'Mahsulot nomi',
             'Kategoriya',
             'Side',
             'Miqdor',
             'Birlik narxi',
-            'Jami narx'
+            'Jami narx',
         ];
 
         let csv = headers.join(',') + '\n';
 
         orders.forEach((order) => {
-            const paymentsInfo = order.payments.map((payment, index) => {
-                const paymentTypeName = this.getPaymentTypeName(payment.payment_type);
-                return `${index + 1}. ${paymentTypeName}: ${payment.amount} so'm`;
-            }).join(' | ');
+            const paymentsInfo = order.payments
+                .map((payment, index) => {
+                    const paymentTypeName = this.getPaymentTypeName(payment.payment_type);
+                    return `${index + 1}. ${paymentTypeName}: ${formatCurrency(payment.amount)}`;
+                })
+                .join(' | ');
 
             order.order_products.forEach((product, productIndex) => {
                 const isFirstProduct = productIndex === 0;
-                
+
                 const row = [
                     isFirstProduct ? `"${order.order_number}"` : '""',
                     isFirstProduct ? `"${order.client_name}"` : '""',
                     isFirstProduct ? `"${order.client_phone || 'N/A'}"` : '""',
-                    isFirstProduct ? `"${order.client_birthday ? order.client_birthday.toLocaleDateString('uz-UZ') : 'N/A'}"` : '""',
+                    isFirstProduct
+                        ? `"${order.client_birthday ? order.client_birthday.toLocaleDateString('uz-UZ') : 'N/A'}"`
+                        : '""',
                     isFirstProduct ? `"${order.branch.name}"` : '""',
                     isFirstProduct ? `"${order.cashier.full_name}"` : '""',
                     isFirstProduct ? order.total_amount : '""',
@@ -389,7 +414,7 @@ export class EmailService {
                     `"${product.side_name}"`,
                     product.quantity,
                     product.price,
-                    product.quantity * product.price
+                    product.quantity * product.price,
                 ];
 
                 csv += row.join(',') + '\n';
@@ -412,7 +437,7 @@ export class EmailService {
                     '"-"',
                     0,
                     0,
-                    0
+                    0,
                 ];
 
                 csv += row.join(',') + '\n';

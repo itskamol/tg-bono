@@ -37,31 +37,29 @@ export class UsersUpdate {
             await ctx.reply(
                 '❌ Hech qanday foydalanuvchi mavjud emas.',
                 Markup.inlineKeyboard([
-                    Markup.button.callback('➕ Foydalanuvchi qo\'shish', 'ADD_USER'),
-                ])
+                    Markup.button.callback("➕ Foydalanuvchi qo'shish", 'ADD_USER'),
+                ]),
             );
             return;
         }
 
         const userButtons = users.map((u) => {
-            const roleEmoji = {
-                [Role.SUPER_ADMIN]: '👑',
-                [Role.ADMIN]: '👨‍💼',
-                [Role.CASHIER]: '💰',
-            }[u.role] || '👤';
-            
-            return Markup.button.callback(
-                `${roleEmoji} ${u.full_name}`,
-                `VIEW_USER_${u.id}`,
-            );
+            const roleEmoji =
+                {
+                    [Role.SUPER_ADMIN]: '👑',
+                    [Role.ADMIN]: '👨‍💼',
+                    [Role.CASHIER]: '💰',
+                }[u.role] || '👤';
+
+            return Markup.button.callback(`${roleEmoji} ${u.full_name}`, `VIEW_USER_${u.id}`);
         });
 
         await ctx.reply(
             `👥 Foydalanuvchilar ro'yxati (${users.length} ta):`,
-            Markup.inlineKeyboard([
-                ...userButtons,
-                Markup.button.callback('➕ Yangi foydalanuvchi', 'ADD_USER'),
-            ], { columns: 2 }),
+            Markup.inlineKeyboard(
+                [...userButtons, Markup.button.callback('➕ Yangi foydalanuvchi', 'ADD_USER')],
+                { columns: 2 },
+            ),
         );
     }
 
@@ -78,20 +76,20 @@ export class UsersUpdate {
             return;
         }
         const userData = ctx.callbackQuery.data;
-        
+
         // Regex orqali userId'ni olish
         const match = userData.match(/^VIEW_USER_(.+)$/);
         if (!match) {
-            await safeEditMessageText(ctx, '❌ Noto\'g\'ri ma\'lumot.', undefined, 'Xatolik');
+            await safeEditMessageText(ctx, "❌ Noto'g'ri ma'lumot.", undefined, 'Xatolik');
             return;
         }
-        
+
         const userId = match[1];
         const currentUser = ctx.user;
 
         const user = await this.prisma.user.findUnique({
             where: { id: userId },
-            include: { 
+            include: {
                 branch: true,
                 _count: {
                     select: { orders: true },
@@ -100,23 +98,34 @@ export class UsersUpdate {
         });
 
         if (!user) {
-            await safeEditMessageText(ctx, '❌ Foydalanuvchi topilmadi.', undefined, 'Foydalanuvchi topilmadi');
+            await safeEditMessageText(
+                ctx,
+                '❌ Foydalanuvchi topilmadi.',
+                undefined,
+                'Foydalanuvchi topilmadi',
+            );
             return;
         }
 
         // Ruxsatni tekshirish
         if (currentUser.role === Role.ADMIN) {
             if (user.branch_id !== currentUser.branch_id || user.role !== Role.CASHIER) {
-                await safeEditMessageText(ctx, '❌ Bu foydalanuvchini ko\'rish huquqingiz yo\'q.', undefined, 'Ruxsat yo\'q');
+                await safeEditMessageText(
+                    ctx,
+                    "❌ Bu foydalanuvchini ko'rish huquqingiz yo'q.",
+                    undefined,
+                    "Ruxsat yo'q",
+                );
                 return;
             }
         }
 
-        const roleText = {
-            [Role.SUPER_ADMIN]: '👑 Super Admin',
-            [Role.ADMIN]: '👨‍💼 Admin',
-            [Role.CASHIER]: '💰 Kassir',
-        }[user.role] || user.role;
+        const roleText =
+            {
+                [Role.SUPER_ADMIN]: '👑 Super Admin',
+                [Role.ADMIN]: '👨‍💼 Admin',
+                [Role.CASHIER]: '💰 Kassir',
+            }[user.role] || user.role;
 
         const userDetails = `
 👤 Foydalanuvchi ma'lumotlari:
@@ -132,25 +141,30 @@ Nima qilmoqchisiz?
         `;
 
         const buttons = [];
-        
+
         // Tahrirlash tugmasi (faqat ruxsat bor bo'lsa)
-        if (currentUser.role === Role.SUPER_ADMIN || 
-            (currentUser.role === Role.ADMIN && user.role === Role.CASHIER && user.branch_id === currentUser.branch_id)) {
+        if (
+            currentUser.role === Role.SUPER_ADMIN ||
+            (currentUser.role === Role.ADMIN &&
+                user.role === Role.CASHIER &&
+                user.branch_id === currentUser.branch_id)
+        ) {
             buttons.push(Markup.button.callback('✏️ Tahrirlash', `EDIT_USER_${user.id}`));
         }
-        
+
         // O'chirish tugmasi (faqat ruxsat bor bo'lsa)
-        if (currentUser.role === Role.SUPER_ADMIN || 
-            (currentUser.role === Role.ADMIN && user.role === Role.CASHIER && user.branch_id === currentUser.branch_id)) {
-            buttons.push(Markup.button.callback('🗑️ O\'chirish', `DELETE_USER_${user.id}`));
+        if (
+            currentUser.role === Role.SUPER_ADMIN ||
+            (currentUser.role === Role.ADMIN &&
+                user.role === Role.CASHIER &&
+                user.branch_id === currentUser.branch_id)
+        ) {
+            buttons.push(Markup.button.callback("🗑️ O'chirish", `DELETE_USER_${user.id}`));
         }
-        
+
         buttons.push(Markup.button.callback('🔙 Orqaga', 'BACK_TO_USERS'));
 
-        await ctx.editMessageText(
-            userDetails,
-            Markup.inlineKeyboard(buttons, { columns: 2 })
-        );
+        await ctx.editMessageText(userDetails, Markup.inlineKeyboard(buttons, { columns: 2 }));
     }
 
     @Action(/^EDIT_USER_(.+)$/)
@@ -160,14 +174,14 @@ Nima qilmoqchisiz?
             return;
         }
         const userData = ctx.callbackQuery.data;
-        
+
         // Regex orqali userId'ni olish
         const match = userData.match(/^EDIT_USER_(.+)$/);
         if (!match) {
-            await ctx.editMessageText('❌ Noto\'g\'ri ma\'lumot.');
+            await ctx.editMessageText("❌ Noto'g'ri ma'lumot.");
             return;
         }
-        
+
         const userId = match[1];
 
         const user = await this.prisma.user.findUnique({
@@ -181,11 +195,11 @@ Nima qilmoqchisiz?
         }
 
         // Scene state'ga user ma'lumotlarini saqlash
-        ctx.scene.state = { 
-            userId, 
-            userName: user.full_name, 
+        ctx.scene.state = {
+            userId,
+            userName: user.full_name,
             userBranchId: user.branch_id,
-            userRole: user.role
+            userRole: user.role,
         };
         await ctx.scene.enter('edit-user-scene', ctx.scene.state);
     }
@@ -197,14 +211,14 @@ Nima qilmoqchisiz?
             return;
         }
         const userData = ctx.callbackQuery.data;
-        
+
         // Regex orqali userId'ni olish
         const match = userData.match(/^DELETE_USER_(.+)$/);
         if (!match) {
-            await ctx.editMessageText('❌ Noto\'g\'ri ma\'lumot.');
+            await ctx.editMessageText("❌ Noto'g'ri ma'lumot.");
             return;
         }
-        
+
         const userId = match[1];
 
         // Scene state'ga user ID'ni saqlash
@@ -240,31 +254,29 @@ Nima qilmoqchisiz?
             await ctx.editMessageText(
                 '❌ Hech qanday foydalanuvchi mavjud emas.',
                 Markup.inlineKeyboard([
-                    Markup.button.callback('➕ Foydalanuvchi qo\'shish', 'ADD_USER'),
-                ])
+                    Markup.button.callback("➕ Foydalanuvchi qo'shish", 'ADD_USER'),
+                ]),
             );
             return;
         }
 
         const userButtons = users.map((u) => {
-            const roleEmoji = {
-                [Role.SUPER_ADMIN]: '👑',
-                [Role.ADMIN]: '👨‍💼',
-                [Role.CASHIER]: '💰',
-            }[u.role] || '👤';
-            
-            return Markup.button.callback(
-                `${roleEmoji} ${u.full_name}`,
-                `VIEW_USER_${u.id}`,
-            );
+            const roleEmoji =
+                {
+                    [Role.SUPER_ADMIN]: '👑',
+                    [Role.ADMIN]: '👨‍💼',
+                    [Role.CASHIER]: '💰',
+                }[u.role] || '👤';
+
+            return Markup.button.callback(`${roleEmoji} ${u.full_name}`, `VIEW_USER_${u.id}`);
         });
 
         await ctx.editMessageText(
             `👥 Foydalanuvchilar ro'yxati (${users.length} ta):`,
-            Markup.inlineKeyboard([
-                ...userButtons,
-                Markup.button.callback('➕ Yangi foydalanuvchi', 'ADD_USER'),
-            ], { columns: 2 }),
+            Markup.inlineKeyboard(
+                [...userButtons, Markup.button.callback('➕ Yangi foydalanuvchi', 'ADD_USER')],
+                { columns: 2 },
+            ),
         );
     }
 }

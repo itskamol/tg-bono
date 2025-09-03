@@ -18,7 +18,7 @@ export class AddCategoryScene {
         sceneState.awaitingName = true;
 
         await ctx.reply(
-            '📦 Yangi kategoriya qo\'shish\n\n📝 Kategoriya nomini kiriting:',
+            "📦 Yangi kategoriya qo'shish\n\n📝 Kategoriya nomini kiriting:",
             Markup.inlineKeyboard([
                 Markup.button.callback('❌ Bekor qilish', 'CANCEL_ADD_CATEGORY'),
             ]),
@@ -32,14 +32,14 @@ export class AddCategoryScene {
         // Kategoriya nomi
         if (sceneState.awaitingName) {
             const trimmedName = text.trim();
-            
+
             if (trimmedName.length < 2) {
-                await ctx.reply('❌ Kategoriya nomi kamida 2 ta belgidan iborat bo\'lishi kerak.');
+                await ctx.reply("❌ Kategoriya nomi kamida 2 ta belgidan iborat bo'lishi kerak.");
                 return;
             }
 
             if (trimmedName.length > 30) {
-                await ctx.reply('❌ Kategoriya nomi 30 ta belgidan ko\'p bo\'lmasligi kerak.');
+                await ctx.reply("❌ Kategoriya nomi 30 ta belgidan ko'p bo'lmasligi kerak.");
                 return;
             }
 
@@ -49,7 +49,9 @@ export class AddCategoryScene {
             });
 
             if (existingCategory) {
-                await ctx.reply('❌ Bu nom bilan kategoriya allaqachon mavjud. Boshqa nom kiriting:');
+                await ctx.reply(
+                    '❌ Bu nom bilan kategoriya allaqachon mavjud. Boshqa nom kiriting:',
+                );
                 return;
             }
 
@@ -59,17 +61,18 @@ export class AddCategoryScene {
             // Tasdiqlash
             await ctx.reply(
                 `📋 Yangi kategoriya ma'lumotlari:\n\n📝 Nomi: ${trimmedName}\n\nTasdiqlaysizmi?`,
-                Markup.inlineKeyboard([
-                    Markup.button.callback('✅ Ha, qo\'shish', 'CONFIRM_ADD_CATEGORY'),
-                    Markup.button.callback('🔙 Orqaga', 'BACK_TO_NAME'),
-                    Markup.button.callback('❌ Bekor qilish', 'CANCEL_ADD_CATEGORY'),
-                ], { columns: 1 })
+                Markup.inlineKeyboard(
+                    [
+                        Markup.button.callback("✅ Ha, qo'shish", 'CONFIRM_ADD_CATEGORY'),
+                        Markup.button.callback('🔙 Orqaga', 'BACK_TO_NAME'),
+                        Markup.button.callback('❌ Bekor qilish', 'CANCEL_ADD_CATEGORY'),
+                    ],
+                    { columns: 1 },
+                ),
             );
             return;
         }
     }
-
-
 
     @Action('BACK_TO_NAME')
     async onBackToName(@Ctx() ctx: Context) {
@@ -78,10 +81,10 @@ export class AddCategoryScene {
         sceneState.name = undefined;
 
         await ctx.editMessageText(
-            '📦 Yangi kategoriya qo\'shish\n\n📝 Kategoriya nomini kiriting:',
+            "📦 Yangi kategoriya qo'shish\n\n📝 Kategoriya nomini kiriting:",
             Markup.inlineKeyboard([
                 Markup.button.callback('❌ Bekor qilish', 'CANCEL_ADD_CATEGORY'),
-            ])
+            ]),
         );
     }
 
@@ -90,7 +93,7 @@ export class AddCategoryScene {
         const sceneState = ctx.scene.state as AddCategorySceneState;
 
         if (!sceneState.name) {
-            await ctx.editMessageText('❌ Ma\'lumotlar noto\'g\'ri.');
+            await ctx.editMessageText("❌ Ma'lumotlar noto'g'ri.");
             await ctx.scene.leave();
             return;
         }
@@ -103,17 +106,17 @@ export class AddCategoryScene {
             });
 
             await ctx.editMessageText(
-                `✅ Yangi kategoriya muvaffaqiyatli qo'shildi!\n\n📝 Nomi: ${newCategory.name}`
+                `✅ Yangi kategoriya muvaffaqiyatli qo'shildi!\n\n📝 Nomi: ${newCategory.name}`,
             );
             await ctx.scene.leave();
         } catch (error) {
-            let errorMessage = '❌ Kategoriya qo\'shishda xatolik yuz berdi.';
-            
+            let errorMessage = "❌ Kategoriya qo'shishda xatolik yuz berdi.";
+
             if (error instanceof Error) {
                 if (error.message.includes('duplicate')) {
                     errorMessage = '❌ Bu nom bilan kategoriya allaqachon mavjud.';
                 } else if (error.message.includes('validation')) {
-                    errorMessage = '❌ Ma\'lumotlar noto\'g\'ri.';
+                    errorMessage = "❌ Ma'lumotlar noto'g'ri.";
                 }
             }
 
@@ -122,7 +125,7 @@ export class AddCategoryScene {
                 Markup.inlineKeyboard([
                     Markup.button.callback('🔄 Qaytadan', 'RETRY_ADD_CATEGORY'),
                     Markup.button.callback('❌ Bekor qilish', 'CANCEL_ADD_CATEGORY'),
-                ])
+                ]),
             );
         }
     }
@@ -134,16 +137,16 @@ export class AddCategoryScene {
         sceneState.name = undefined;
 
         await ctx.editMessageText(
-            '📦 Yangi kategoriya qo\'shish\n\n📝 Kategoriya nomini kiriting:',
+            "📦 Yangi kategoriya qo'shish\n\n📝 Kategoriya nomini kiriting:",
             Markup.inlineKeyboard([
                 Markup.button.callback('❌ Bekor qilish', 'CANCEL_ADD_CATEGORY'),
-            ])
+            ]),
         );
     }
 
     @Action('CANCEL_ADD_CATEGORY')
     async onCancelAddCategory(@Ctx() ctx: Context) {
-        await ctx.editMessageText('❌ Kategoriya qo\'shish bekor qilindi.');
+        await ctx.editMessageText("❌ Kategoriya qo'shish bekor qilindi.");
         await ctx.scene.leave();
     }
 }

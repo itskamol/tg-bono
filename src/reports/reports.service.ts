@@ -15,9 +15,13 @@ export class ReportsService {
         private readonly encryptionService: EncryptionService,
         private readonly googleSheetsService: GoogleSheetsService,
         private readonly emailService: EmailService,
-    ) { }
+    ) {}
 
-    async sendReportByEmail(user: any, timeRange: string, detailed: boolean = false): Promise<boolean> {
+    async sendReportByEmail(
+        user: any,
+        timeRange: string,
+        detailed: boolean = false,
+    ): Promise<boolean> {
         this.logger.log(
             `Attempting to send report via email for user ${user.id} and range ${timeRange}`,
         );
@@ -43,9 +47,9 @@ export class ReportsService {
 
         try {
             const timeRangeNames = {
-                'DAILY': 'Kunlik',
-                'WEEKLY': 'Haftalik',
-                'MONTHLY': 'Oylik'
+                DAILY: 'Kunlik',
+                WEEKLY: 'Haftalik',
+                MONTHLY: 'Oylik',
             };
 
             const subject = `${timeRangeNames[timeRange] || timeRange} Buyurtmalar Hisoboti - ${new Date().toLocaleDateString('uz-UZ')}`;
@@ -54,7 +58,7 @@ export class ReportsService {
                 config,
                 orders,
                 subject,
-                detailed
+                detailed,
             );
 
             if (success) {
@@ -98,9 +102,10 @@ export class ReportsService {
                     : o.client_name;
 
                 // Format payment types from payments array
-                const paymentTypes = o.payments && o.payments.length > 0
-                    ? o.payments.map(p => `${p.payment_type}:${p.amount}`).join(';')
-                    : 'N/A';
+                const paymentTypes =
+                    o.payments && o.payments.length > 0
+                        ? o.payments.map((p) => `${p.payment_type}:${p.amount}`).join(';')
+                        : 'N/A';
 
                 return `${o.order_number},${o.created_at.toISOString()},${clientName},"${o.client_phone}",${o.branch.name},${o.cashier.full_name},"${paymentTypes}",${o.total_amount}`;
             })
@@ -128,7 +133,11 @@ export class ReportsService {
     }
 
     // Google Sheets'ga report yuborish
-    async sendReportToGoogleSheets(user: any, timeRange: string, detailed: boolean = false): Promise<boolean> {
+    async sendReportToGoogleSheets(
+        user: any,
+        timeRange: string,
+        detailed: boolean = false,
+    ): Promise<boolean> {
         this.logger.log(
             `Attempting to send report to Google Sheets for user ${user.id} and range ${timeRange}`,
         );
@@ -145,7 +154,7 @@ export class ReportsService {
         try {
             const configStr = this.encryptionService.decrypt(gSheetsConfigSetting.value);
             const config = JSON.parse(configStr);
-            
+
             this.logger.log(`Google Sheets config loaded. Sheet ID: ${config.sheetId}`);
 
             const orders = await this.getOrdersForReportWithDetails(user, timeRange);
@@ -164,11 +173,13 @@ export class ReportsService {
                 config.credentials,
                 orders,
                 worksheetName,
-                detailed
+                detailed,
             );
 
             if (result.success) {
-                this.logger.log(`Report successfully exported to Google Sheets worksheet: ${worksheetName}`);
+                this.logger.log(
+                    `Report successfully exported to Google Sheets worksheet: ${worksheetName}`,
+                );
                 return true;
             } else {
                 this.logger.error(`Failed to export report to Google Sheets: ${result.error}`);
@@ -206,7 +217,10 @@ export class ReportsService {
     }
 
     // Barcha export turlarini birdan bajarish
-    async sendReportToAllConfiguredDestinations(user: any, timeRange: string): Promise<{ email: boolean; sheets: boolean }> {
+    async sendReportToAllConfiguredDestinations(
+        user: any,
+        timeRange: string,
+    ): Promise<{ email: boolean; sheets: boolean }> {
         const results = {
             email: false,
             sheets: false,

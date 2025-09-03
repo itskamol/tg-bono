@@ -2,6 +2,7 @@ import { Scene, SceneEnter, On, Message, Action, Ctx } from 'nestjs-telegraf';
 import { Markup } from 'telegraf';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Context } from '../../interfaces/context.interface';
+import { formatCurrency } from 'src/utils/format.utils';
 
 interface AddSideSceneState {
     categoryId: string;
@@ -20,7 +21,7 @@ export class AddSideScene {
         const sceneState = ctx.scene.state as AddSideSceneState;
 
         if (!sceneState.categoryId) {
-            await ctx.reply('❌ Kategoriya ma\'lumotlari topilmadi.');
+            await ctx.reply("❌ Kategoriya ma'lumotlari topilmadi.");
             await ctx.scene.leave();
             return;
         }
@@ -39,9 +40,7 @@ export class AddSideScene {
 
         await ctx.reply(
             `🍕 "${category.name}" kategoriyasiga yangi tomon qo'shish\n\n📝 Tomon nomini kiriting (masalan: "Oldi", "Orqa", "Ikki tomon"):`,
-            Markup.inlineKeyboard([
-                Markup.button.callback('❌ Bekor qilish', 'CANCEL_ADD_SIDE'),
-            ]),
+            Markup.inlineKeyboard([Markup.button.callback('❌ Bekor qilish', 'CANCEL_ADD_SIDE')]),
         );
     }
 
@@ -52,22 +51,22 @@ export class AddSideScene {
         // Step 1: Tomon nomi
         if (sceneState.awaitingName) {
             const trimmedName = text.trim();
-            
+
             if (trimmedName.length < 2) {
-                await ctx.reply('❌ Tomon nomi kamida 2 ta belgidan iborat bo\'lishi kerak.');
+                await ctx.reply("❌ Tomon nomi kamida 2 ta belgidan iborat bo'lishi kerak.");
                 return;
             }
 
             if (trimmedName.length > 50) {
-                await ctx.reply('❌ Tomon nomi 50 ta belgidan ko\'p bo\'lmasligi kerak.');
+                await ctx.reply("❌ Tomon nomi 50 ta belgidan ko'p bo'lmasligi kerak.");
                 return;
             }
 
             // Tomon nomi mavjudligini tekshirish (shu kategoriyada)
             const existingSide = await this.prisma.side.findFirst({
-                where: { 
+                where: {
                     name: { equals: trimmedName, mode: 'insensitive' },
-                    category_id: sceneState.categoryId
+                    category_id: sceneState.categoryId,
                 },
             });
 
@@ -85,7 +84,7 @@ export class AddSideScene {
                 Markup.inlineKeyboard([
                     Markup.button.callback('🔙 Orqaga', 'BACK_TO_NAME'),
                     Markup.button.callback('❌ Bekor qilish', 'CANCEL_ADD_SIDE'),
-                ])
+                ]),
             );
             return;
         }
@@ -93,19 +92,20 @@ export class AddSideScene {
         // Step 2: Tomon narxi
         if (sceneState.awaitingPrice) {
             const price = parseFloat(text);
-            
+
             if (isNaN(price)) {
-                await ctx.reply('❌ Noto\'g\'ri narx formati. Faqat raqam kiriting:');
+                await ctx.reply("❌ Noto'g'ri narx formati. Faqat raqam kiriting:");
                 return;
             }
 
             if (price <= 0) {
-                await ctx.reply('❌ Narx 0 dan katta bo\'lishi kerak:');
+                await ctx.reply("❌ Narx 0 dan katta bo'lishi kerak:");
                 return;
             }
 
-            if (price > 10000000) { // 10 million limit
-                await ctx.reply('❌ Narx juda katta. Maksimal: 10,000,000 so\'m');
+            if (price > 10000000) {
+                // 10 million limit
+                await ctx.reply("❌ Narx juda katta. Maksimal: 10,000,000 so'm");
                 return;
             }
 
@@ -119,12 +119,15 @@ export class AddSideScene {
 
             // Tasdiqlash
             await ctx.reply(
-                `📋 Yangi tomon ma'lumotlari:\n\n📝 Nomi: ${sceneState.name}\n💰 Narxi: ${price} so'm\n\nTasdiqlaysizmi?`,
-                Markup.inlineKeyboard([
-                    Markup.button.callback('✅ Ha, qo\'shish', 'CONFIRM_ADD_SIDE'),
-                    Markup.button.callback('🔙 Orqaga', 'BACK_TO_PRICE'),
-                    Markup.button.callback('❌ Bekor qilish', 'CANCEL_ADD_SIDE'),
-                ], { columns: 1 })
+                `📋 Yangi tomon ma'lumotlari:\n\n📝 Nomi: ${sceneState.name}\n💰 Narxi: ${formatCurrency(price)} \n\nTasdiqlaysizmi?`,
+                Markup.inlineKeyboard(
+                    [
+                        Markup.button.callback("✅ Ha, qo'shish", 'CONFIRM_ADD_SIDE'),
+                        Markup.button.callback('🔙 Orqaga', 'BACK_TO_PRICE'),
+                        Markup.button.callback('❌ Bekor qilish', 'CANCEL_ADD_SIDE'),
+                    ],
+                    { columns: 1 },
+                ),
             );
             return;
         }
@@ -138,10 +141,8 @@ export class AddSideScene {
         sceneState.name = undefined;
 
         await ctx.editMessageText(
-            '🍕 Yangi tomon qo\'shish\n\n📝 Tomon nomini kiriting:',
-            Markup.inlineKeyboard([
-                Markup.button.callback('❌ Bekor qilish', 'CANCEL_ADD_SIDE'),
-            ])
+            "🍕 Yangi tomon qo'shish\n\n📝 Tomon nomini kiriting:",
+            Markup.inlineKeyboard([Markup.button.callback('❌ Bekor qilish', 'CANCEL_ADD_SIDE')]),
         );
     }
 
@@ -156,7 +157,7 @@ export class AddSideScene {
             Markup.inlineKeyboard([
                 Markup.button.callback('🔙 Orqaga', 'BACK_TO_NAME'),
                 Markup.button.callback('❌ Bekor qilish', 'CANCEL_ADD_SIDE'),
-            ])
+            ]),
         );
     }
 
@@ -165,7 +166,7 @@ export class AddSideScene {
         const sceneState = ctx.scene.state as AddSideSceneState;
 
         if (!sceneState.name || !sceneState.price) {
-            await ctx.editMessageText('❌ Ma\'lumotlar noto\'g\'ri.');
+            await ctx.editMessageText("❌ Ma'lumotlar noto'g'ri.");
             await ctx.scene.leave();
             return;
         }
@@ -180,19 +181,17 @@ export class AddSideScene {
             });
 
             await ctx.editMessageText(
-                `✅ Yangi tomon muvaffaqiyatli qo'shildi!\n\n📝 Nomi: ${newSide.name}\n💰 Narxi: ${newSide.price} so'm`
+                `✅ Yangi tomon muvaffaqiyatli qo'shildi!\n\n📝 Nomi: ${newSide.name}\n💰 Narxi: ${formatCurrency(newSide.price)}`,
             );
             await ctx.scene.leave();
         } catch (error) {
+            let errorMessage = "❌ Tomon qo'shishda xatolik yuz berdi.";
 
-            
-            let errorMessage = '❌ Tomon qo\'shishda xatolik yuz berdi.';
-            
             if (error instanceof Error) {
                 if (error.message.includes('duplicate')) {
                     errorMessage = '❌ Bu nom bilan tomon allaqachon mavjud.';
                 } else if (error.message.includes('validation')) {
-                    errorMessage = '❌ Ma\'lumotlar noto\'g\'ri.';
+                    errorMessage = "❌ Ma'lumotlar noto'g'ri.";
                 }
             }
 
@@ -201,7 +200,7 @@ export class AddSideScene {
                 Markup.inlineKeyboard([
                     Markup.button.callback('🔄 Qaytadan', 'RETRY_ADD_SIDE'),
                     Markup.button.callback('❌ Bekor qilish', 'CANCEL_ADD_SIDE'),
-                ])
+                ]),
             );
         }
     }
@@ -215,16 +214,14 @@ export class AddSideScene {
         sceneState.price = undefined;
 
         await ctx.editMessageText(
-            '🍕 Yangi tomon qo\'shish\n\n📝 Tomon nomini kiriting:',
-            Markup.inlineKeyboard([
-                Markup.button.callback('❌ Bekor qilish', 'CANCEL_ADD_SIDE'),
-            ])
+            "🍕 Yangi tomon qo'shish\n\n📝 Tomon nomini kiriting:",
+            Markup.inlineKeyboard([Markup.button.callback('❌ Bekor qilish', 'CANCEL_ADD_SIDE')]),
         );
     }
 
     @Action('CANCEL_ADD_SIDE')
     async onCancelAddSide(@Ctx() ctx: Context) {
-        await ctx.editMessageText('❌ Tomon qo\'shish bekor qilindi.');
+        await ctx.editMessageText("❌ Tomon qo'shish bekor qilindi.");
         await ctx.scene.leave();
     }
 }

@@ -12,14 +12,14 @@ export class ScheduleSettingsScene {
         'Har 5 daqiqada': { cron: '*/5 * * * *' },
         'Har 15 daqiqada': { cron: '*/15 * * * *' },
         'Har 30 daqiqada': { cron: '*/30 * * * *' },
-        'Soatlik': { cron: '0 * * * *' },
+        Soatlik: { cron: '0 * * * *' },
         'Har 2 soatda': { cron: '0 */2 * * *' },
         'Har 4 soatda': { cron: '0 */4 * * *' },
         'Har 6 soatda': { cron: '0 */6 * * *' },
         'Har 12 soatda': { cron: '0 */12 * * *' },
-        'Kundalik': { cron: '0 0 * * *' },
-        'Haftalik': { cron: '0 0 * * 0' },
-        'Oylik': { cron: '0 0 1 * *' },
+        Kundalik: { cron: '0 0 * * *' },
+        Haftalik: { cron: '0 0 * * 0' },
+        Oylik: { cron: '0 0 1 * *' },
     };
 
     constructor(
@@ -34,10 +34,10 @@ export class ScheduleSettingsScene {
         });
 
         let statusText = '⏰ Rejalashtirilgan hisobotlar sozlamalarini boshlash...\n\n';
-        
+
         if (existingSetting) {
             const config = JSON.parse(existingSetting.value);
-            const status = config.enabled ? 'yoqilgan' : 'o\'chirilgan';
+            const status = config.enabled ? 'yoqilgan' : "o'chirilgan";
             const destName = this.getDestinationName(config.destination || 'email');
             statusText += `📊 Joriy jadval: \`${config.cron}\`\n🔘 Holat: *${status}*\n📤 Jo'natish: ${destName}\n\n`;
         }
@@ -52,7 +52,7 @@ export class ScheduleSettingsScene {
             ctx,
             statusText + 'Jadvalni tanlang yoki maxsus cron qatorini kiriting:',
             Markup.inlineKeyboard(buttons, { columns: 2 }),
-            'Jadval sozlamalari'
+            'Jadval sozlamalari',
         );
     }
 
@@ -61,7 +61,7 @@ export class ScheduleSettingsScene {
         const cron = (ctx.callbackQuery as any).data.replace('set_cron_', '');
         const sceneState = ctx.scene.state as any;
         sceneState.cron = cron;
-        
+
         await safeReplyOrEdit(
             ctx,
             `✅ Cron qatori \`${cron}\` ga o'rnatildi.\n\nAgar maxsus cron qatori kerak bo'lsa, uni hozir yozing.\nAks holda, bu jadvalni yoqishni yoki o'chirishni xohlaysizmi?`,
@@ -71,16 +71,16 @@ export class ScheduleSettingsScene {
                     inline_keyboard: [
                         [
                             Markup.button.callback('✅ Yoqish', 'schedule_enable'),
-                            Markup.button.callback('❌ O\'chirish', 'schedule_disable')
+                            Markup.button.callback("❌ O'chirish", 'schedule_disable'),
                         ],
                         [
                             Markup.button.callback('⬅️ Orqaga', 'back_to_schedule_selection'),
-                            Markup.button.callback('❌ Bekor qilish', 'cancel_schedule_config')
-                        ]
-                    ]
-                }
+                            Markup.button.callback('❌ Bekor qilish', 'cancel_schedule_config'),
+                        ],
+                    ],
+                },
             },
-            'Cron saqlandi'
+            'Cron saqlandi',
         );
     }
 
@@ -92,7 +92,9 @@ export class ScheduleSettingsScene {
             // Basic validation for cron string
             const cronParts = text.split(' ');
             if (cronParts.length !== 5) {
-                await ctx.reply('Noto\'g\'ri cron qatori. U 5 ta qismdan iborat bo\'lishi kerak. Iltimos, qayta urinib ko\'ring.');
+                await ctx.reply(
+                    "Noto'g'ri cron qatori. U 5 ta qismdan iborat bo'lishi kerak. Iltimos, qayta urinib ko'ring.",
+                );
                 return;
             }
             sceneState.cron = text;
@@ -104,15 +106,15 @@ export class ScheduleSettingsScene {
                         inline_keyboard: [
                             [
                                 Markup.button.callback('✅ Yoqish', 'schedule_enable'),
-                                Markup.button.callback('❌ O\'chirish', 'schedule_disable')
+                                Markup.button.callback("❌ O'chirish", 'schedule_disable'),
                             ],
                             [
                                 Markup.button.callback('⬅️ Orqaga', 'back_to_schedule_selection'),
-                                Markup.button.callback('❌ Bekor qilish', 'cancel_schedule_config')
-                            ]
-                        ]
-                    }
-                }
+                                Markup.button.callback('❌ Bekor qilish', 'cancel_schedule_config'),
+                            ],
+                        ],
+                    },
+                },
             );
             return;
         }
@@ -134,18 +136,16 @@ export class ScheduleSettingsScene {
                         inline_keyboard: [
                             [
                                 Markup.button.callback('📧 Email', 'dest_email'),
-                                Markup.button.callback('📊 Google Sheets', 'dest_sheets')
+                                Markup.button.callback('📊 Google Sheets', 'dest_sheets'),
                             ],
-                            [
-                                Markup.button.callback('📧📊 Ikkalasiga ham', 'dest_both')
-                            ],
+                            [Markup.button.callback('📧📊 Ikkalasiga ham', 'dest_both')],
                             [
                                 Markup.button.callback('⬅️ Orqaga', 'back_to_schedule_selection'),
-                                Markup.button.callback('❌ Bekor qilish', 'cancel_schedule_config')
-                            ]
-                        ]
-                    }
-                }
+                                Markup.button.callback('❌ Bekor qilish', 'cancel_schedule_config'),
+                            ],
+                        ],
+                    },
+                },
             );
             return;
         }
@@ -168,9 +168,11 @@ export class ScheduleSettingsScene {
         // Update the running cron job
         await this.schedulerService.updateCronJobFromSettings();
 
-        const status = enabled ? 'yoqildi' : 'o\'chirildi';
+        const status = enabled ? 'yoqildi' : "o'chirildi";
         const emoji = enabled ? '✅' : '❌';
-        const destText = sceneState.destination ? ` (${this.getDestinationName(sceneState.destination)})` : '';
+        const destText = sceneState.destination
+            ? ` (${this.getDestinationName(sceneState.destination)})`
+            : '';
         await ctx.editMessageText(`${emoji} Rejalashtirilgan hisobotlar ${status}${destText}.`);
         await ctx.scene.leave();
     }
@@ -206,9 +208,9 @@ export class ScheduleSettingsScene {
 
     private getDestinationName(destination: string): string {
         const names = {
-            'email': 'Email',
-            'sheets': 'Google Sheets',
-            'both': 'Email va Google Sheets'
+            email: 'Email',
+            sheets: 'Google Sheets',
+            both: 'Email va Google Sheets',
         };
         return names[destination] || destination;
     }

@@ -8,7 +8,7 @@ import { safeEditMessageText } from '../utils/telegram.utils';
 
 @Update()
 export class ReportsUpdate {
-    constructor(private readonly reportsService: ReportsService) { }
+    constructor(private readonly reportsService: ReportsService) {}
     @Command('reports')
     @Roles(Role.SUPER_ADMIN, Role.ADMIN)
     async showReports(@Ctx() ctx: Context) {
@@ -16,7 +16,7 @@ export class ReportsUpdate {
 
         const reportButtons = [
             Markup.button.callback('📊 Umumiy', 'GENERAL_REPORTS'),
-            Markup.button.callback("💳 To'lovlar", 'PAYMENT_REPORTS')
+            Markup.button.callback("💳 To'lovlar", 'PAYMENT_REPORTS'),
         ];
 
         if (user.role === Role.SUPER_ADMIN) {
@@ -32,7 +32,7 @@ export class ReportsUpdate {
             Markup.inlineKeyboard(reportButtons, {
                 columns: 2,
             }),
-            'Hisobotlar'
+            'Hisobotlar',
         );
     }
 
@@ -66,19 +66,39 @@ export class ReportsUpdate {
     @Command('test_sheets')
     @Roles(Role.SUPER_ADMIN)
     async testGoogleSheets(@Ctx() ctx: Context) {
-        await safeEditMessageText(ctx, '🔄 Google Sheets ulanishini tekshiryapman...', undefined, 'Test');
+        await safeEditMessageText(
+            ctx,
+            '🔄 Google Sheets ulanishini tekshiryapman...',
+            undefined,
+            'Test',
+        );
 
         try {
             const user = ctx.user;
             const result = await this.reportsService.sendReportToGoogleSheets(user, 'DAILY', true);
 
             if (result) {
-                await safeEditMessageText(ctx, '✅ Google Sheets test muvaffaqiyatli! Kunlik hisobot yuborildi.', undefined, 'Test natijasi');
+                await safeEditMessageText(
+                    ctx,
+                    '✅ Google Sheets test muvaffaqiyatli! Kunlik hisobot yuborildi.',
+                    undefined,
+                    'Test natijasi',
+                );
             } else {
-                await safeEditMessageText(ctx, '❌ Google Sheets test muvaffaqiyatsiz. Loglarni tekshiring.', undefined, 'Test natijasi');
+                await safeEditMessageText(
+                    ctx,
+                    '❌ Google Sheets test muvaffaqiyatsiz. Loglarni tekshiring.',
+                    undefined,
+                    'Test natijasi',
+                );
             }
         } catch (error) {
-            await safeEditMessageText(ctx, `❌ Google Sheets test xatolik: ${error.message}`, undefined, 'Test xatolik');
+            await safeEditMessageText(
+                ctx,
+                `❌ Google Sheets test xatolik: ${error.message}`,
+                undefined,
+                'Test xatolik',
+            );
         }
     }
 
@@ -92,12 +112,27 @@ export class ReportsUpdate {
             const result = await this.reportsService.sendReportByEmail(user, 'DAILY', true);
 
             if (result) {
-                await safeEditMessageText(ctx, '✅ Email test muvaffaqiyatli! Kunlik hisobot yuborildi.', undefined, 'Test natijasi');
+                await safeEditMessageText(
+                    ctx,
+                    '✅ Email test muvaffaqiyatli! Kunlik hisobot yuborildi.',
+                    undefined,
+                    'Test natijasi',
+                );
             } else {
-                await safeEditMessageText(ctx, '❌ Email test muvaffaqiyatsiz. Loglarni tekshiring.', undefined, 'Test natijasi');
+                await safeEditMessageText(
+                    ctx,
+                    '❌ Email test muvaffaqiyatsiz. Loglarni tekshiring.',
+                    undefined,
+                    'Test natijasi',
+                );
             }
         } catch (error) {
-            await safeEditMessageText(ctx, `❌ Email test xatolik: ${error.message}`, undefined, 'Test xatolik');
+            await safeEditMessageText(
+                ctx,
+                `❌ Email test xatolik: ${error.message}`,
+                undefined,
+                'Test xatolik',
+            );
         }
     }
 }

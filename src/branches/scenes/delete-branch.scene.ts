@@ -10,7 +10,7 @@ export class DeleteBranchScene {
     @SceneEnter()
     async onSceneEnter(@Ctx() ctx: Context) {
         const sceneState = ctx.scene.state as { branchId: string };
-        
+
         if (!sceneState?.branchId) {
             await ctx.reply("❌ Filial ma'lumotlari topilmadi.");
             await ctx.scene.leave();
@@ -44,8 +44,6 @@ export class DeleteBranchScene {
             ]),
         );
     }
-
-
 
     @Action(/^CONFIRM_DELETE_BRANCH_(.+)$/)
     async onConfirmDelete(@Ctx() ctx: Context) {

@@ -5,6 +5,7 @@ import { Context } from '../../interfaces/context.interface';
 import { ReportHelpers } from '../helpers/report.helpers';
 import { Role } from '@prisma/client';
 import { safeEditMessageText } from '../../utils/telegram.utils';
+import { formatCurrency } from 'src/utils/format.utils';
 
 @Scene('payment-reports-scene')
 export class PaymentReportsScene {
@@ -27,7 +28,7 @@ export class PaymentReportsScene {
                     columns: 2, // Har bir qatordagi tugmalar soni. 2 yoki 3 qilib o'zgartirishingiz mumkin.
                 },
             ),
-            "To'lov hisoboti"
+            "To'lov hisoboti",
         );
     }
 
@@ -54,12 +55,12 @@ export class PaymentReportsScene {
     @Action('BACK_TO_REPORTS')
     async backToReports(@Ctx() ctx: Context) {
         await ctx.scene.leave();
-        
+
         // Show the main reports menu
         const user = ctx.user;
         const reportButtons = [
             Markup.button.callback('📊 Umumiy', 'GENERAL_REPORTS'),
-            Markup.button.callback("💳 To'lovlar", 'PAYMENT_REPORTS')
+            Markup.button.callback("💳 To'lovlar", 'PAYMENT_REPORTS'),
         ];
 
         if (user.role === Role.SUPER_ADMIN) {
@@ -75,7 +76,7 @@ export class PaymentReportsScene {
             Markup.inlineKeyboard(reportButtons, {
                 columns: 2,
             }),
-            'Hisobotlar'
+            'Hisobotlar',
         );
     }
 
@@ -93,7 +94,12 @@ export class PaymentReportsScene {
         });
 
         if (!user) {
-            await safeEditMessageText(ctx, "❌ Siz tizimda ro'yxatdan o'tmagansiz.", undefined, 'Xatolik');
+            await safeEditMessageText(
+                ctx,
+                "❌ Siz tizimda ro'yxatdan o'tmagansiz.",
+                undefined,
+                'Xatolik',
+            );
             return;
         }
 
@@ -132,15 +138,15 @@ export class PaymentReportsScene {
                     : 0;
                 return `💳 ${ReportHelpers.getPaymentEmoji(ps.payment_type)} ${ReportHelpers.capitalizeFirst(ps.payment_type)}:
   • To'lovlar: ${ps._count} ta
-  • Daromad: ${ps._sum.amount} so'm (${percentage}%)
-  • O'rtacha: ${Math.round(ps._avg.amount)} so'm`;
+  • Daromad: ${formatCurrency(ps._sum.amount)} (${percentage}%)
+  • O'rtacha: ${formatCurrency(Math.round(ps._avg.amount))}`;
             })
             .join('\n\n');
 
         const report = `
 💳 ${periodName.toUpperCase()} TO'LOV TURLARI HISOBOTI
 
-📊 Jami daromad: ${totalRevenue._sum.amount || 0} so'm
+📊 Jami daromad: ${formatCurrency(totalRevenue._sum.amount) || 0}
 
 ${paymentList || "Ma'lumot yo'q"}
 
@@ -148,12 +154,10 @@ ${user.role === Role.ADMIN ? `🏪 Filial: ${user.branch?.name || 'N/A'}` : '�
     `;
 
         await safeEditMessageText(
-            ctx, 
-            report, 
-            Markup.inlineKeyboard([
-                Markup.button.callback('🔙 Orqaga', 'BACK_TO_REPORTS')
-            ]),
-            'Hisobot'
+            ctx,
+            report,
+            Markup.inlineKeyboard([Markup.button.callback('🔙 Orqaga', 'BACK_TO_REPORTS')]),
+            'Hisobot',
         );
     }
 }

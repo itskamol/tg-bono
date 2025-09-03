@@ -5,11 +5,11 @@ import { PrismaService } from '../prisma/prisma.service';
 import { Context } from '../interfaces/context.interface';
 import { Role } from '@prisma/client';
 import { safeEditMessageText } from '../utils/telegram.utils';
+import { formatCurrency } from 'src/utils/format.utils';
 
 @Update()
-
 export class CategoriesUpdate {
-    constructor(private readonly prisma: PrismaService) { }
+    constructor(private readonly prisma: PrismaService) {}
 
     @Command('categories')
     @Roles(Role.SUPER_ADMIN)
@@ -22,25 +22,22 @@ export class CategoriesUpdate {
             await ctx.reply(
                 '❌ Hech qanday kategoriya mavjud emas.',
                 Markup.inlineKeyboard([
-                    Markup.button.callback('➕ Kategoriya qo\'shish', 'ADD_CATEGORY'),
-                ])
+                    Markup.button.callback("➕ Kategoriya qo'shish", 'ADD_CATEGORY'),
+                ]),
             );
             return;
         }
 
         const categoryButtons = categories.map((category) =>
-            Markup.button.callback(
-                category.name,
-                `VIEW_CATEGORY_${category.id}`,
-            ),
+            Markup.button.callback(category.name, `VIEW_CATEGORY_${category.id}`),
         );
 
         await ctx.reply(
             `📦 Kategoriyalar ro'yxati (${categories.length} ta):`,
-            Markup.inlineKeyboard([
-                ...categoryButtons,
-                Markup.button.callback('➕ Yangi kategoriya', 'ADD_CATEGORY'),
-            ], { columns: 2 }),
+            Markup.inlineKeyboard(
+                [...categoryButtons, Markup.button.callback('➕ Yangi kategoriya', 'ADD_CATEGORY')],
+                { columns: 2 },
+            ),
         );
     }
 
@@ -75,9 +72,12 @@ export class CategoriesUpdate {
         });
 
         // Sides ma'lumotlari
-        const sidesInfo = category.sides.length > 0
-            ? category.sides.map(side => `• ${side.name}: ${side.price.toLocaleString()} so'm`).join('\n')
-            : 'Hech qanday tomon qo\'shilmagan';
+        const sidesInfo =
+            category.sides.length > 0
+                ? category.sides
+                      .map((side) => `• ${side.name}: ${formatCurrency(side.price)}`)
+                      .join('\n')
+                : "Hech qanday tomon qo'shilmagan";
 
         const categoryDetails = `
 📦 Kategoriya ma'lumotlari:
@@ -95,13 +95,16 @@ Nima qilmoqchisiz?
         await safeEditMessageText(
             ctx,
             categoryDetails,
-            Markup.inlineKeyboard([
-                Markup.button.callback('✏️ Tahrirlash', `EDIT_CATEGORY_${category.id}`),
-                Markup.button.callback('🍕 Tomonlar', `MANAGE_SIDES_${category.id}`),
-                Markup.button.callback('🗑️ O\'chirish', `DELETE_CATEGORY_${category.id}`),
-                Markup.button.callback('🔙 Orqaga', 'BACK_TO_CATEGORIES'),
-            ], { columns: 2 }),
-            'Kategoriya ma\'lumotlari'
+            Markup.inlineKeyboard(
+                [
+                    Markup.button.callback('✏️ Tahrirlash', `EDIT_CATEGORY_${category.id}`),
+                    Markup.button.callback('🍕 Tomonlar', `MANAGE_SIDES_${category.id}`),
+                    Markup.button.callback("🗑️ O'chirish", `DELETE_CATEGORY_${category.id}`),
+                    Markup.button.callback('🔙 Orqaga', 'BACK_TO_CATEGORIES'),
+                ],
+                { columns: 2 },
+            ),
+            "Kategoriya ma'lumotlari",
         );
     }
 
@@ -126,7 +129,7 @@ Nima qilmoqchisiz?
         // Scene state'ga category ma'lumotlarini saqlash
         ctx.scene.state = {
             categoryId,
-            categoryName: category.name
+            categoryName: category.name,
         };
         await ctx.scene.enter('edit-category-scene', ctx.scene.state);
     }
@@ -150,22 +153,25 @@ Nima qilmoqchisiz?
             return;
         }
 
-        const sidesButtons = category.sides.map(side =>
+        const sidesButtons = category.sides.map((side) =>
             Markup.button.callback(
-                `${side.name} (${side.price.toLocaleString()} so'm)`,
-                `VIEW_SIDE_${side.id}`
-            )
+                `${side.name} (${formatCurrency(side.price)})`,
+                `VIEW_SIDE_${side.id}`,
+            ),
         );
 
         await safeEditMessageText(
             ctx,
             `🍕 "${category.name}" kategoriyasi tomonlari (${category.sides.length} ta):`,
-            Markup.inlineKeyboard([
-                ...sidesButtons,
-                Markup.button.callback('➕ Yangi tomon', `ADD_SIDE_${categoryId}`),
-                Markup.button.callback('🔙 Orqaga', `VIEW_CATEGORY_${categoryId}`),
-            ], { columns: 1 }),
-            'Tomonlar ro\'yxati'
+            Markup.inlineKeyboard(
+                [
+                    ...sidesButtons,
+                    Markup.button.callback('➕ Yangi tomon', `ADD_SIDE_${categoryId}`),
+                    Markup.button.callback('🔙 Orqaga', `VIEW_CATEGORY_${categoryId}`),
+                ],
+                { columns: 1 },
+            ),
+            "Tomonlar ro'yxati",
         );
     }
 
@@ -205,7 +211,7 @@ Nima qilmoqchisiz?
 🍕 Tomon ma'lumotlari:
 
 📝 Nomi: ${side.name}
-💰 Narxi: ${side.price.toLocaleString()} so'm
+💰 Narxi: ${formatCurrency(side.price)}
 📦 Kategoriya: ${side.category.name}
 📅 Yaratilgan: ${side.created_at.toLocaleDateString('uz-UZ')}
 
@@ -215,12 +221,15 @@ Nima qilmoqchisiz?
         await safeEditMessageText(
             ctx,
             sideDetails,
-            Markup.inlineKeyboard([
-                Markup.button.callback('✏️ Tahrirlash', `EDIT_SIDE_${side.id}`),
-                Markup.button.callback('🗑️ O\'chirish', `DELETE_SIDE_${side.id}`),
-                Markup.button.callback('🔙 Orqaga', `MANAGE_SIDES_${side.category_id}`),
-            ], { columns: 2 }),
-            'Tomon ma\'lumotlari'
+            Markup.inlineKeyboard(
+                [
+                    Markup.button.callback('✏️ Tahrirlash', `EDIT_SIDE_${side.id}`),
+                    Markup.button.callback("🗑️ O'chirish", `DELETE_SIDE_${side.id}`),
+                    Markup.button.callback('🔙 Orqaga', `MANAGE_SIDES_${side.category_id}`),
+                ],
+                { columns: 2 },
+            ),
+            "Tomon ma'lumotlari",
         );
     }
 
@@ -277,28 +286,25 @@ Nima qilmoqchisiz?
                 ctx,
                 '❌ Hech qanday kategoriya mavjud emas.',
                 Markup.inlineKeyboard([
-                    Markup.button.callback('➕ Kategoriya qo\'shish', 'ADD_CATEGORY'),
+                    Markup.button.callback("➕ Kategoriya qo'shish", 'ADD_CATEGORY'),
                 ]),
-                'Kategoriyalar ro\'yxati'
+                "Kategoriyalar ro'yxati",
             );
             return;
         }
 
         const categoryButtons = categories.map((category) =>
-            Markup.button.callback(
-                category.name,
-                `VIEW_CATEGORY_${category.id}`,
-            ),
+            Markup.button.callback(category.name, `VIEW_CATEGORY_${category.id}`),
         );
 
         await safeEditMessageText(
             ctx,
             `📦 Kategoriyalar ro'yxati (${categories.length} ta):`,
-            Markup.inlineKeyboard([
-                ...categoryButtons,
-                Markup.button.callback('➕ Yangi kategoriya', 'ADD_CATEGORY'),
-            ], { columns: 2 }),
-            'Kategoriyalar ro\'yxati'
+            Markup.inlineKeyboard(
+                [...categoryButtons, Markup.button.callback('➕ Yangi kategoriya', 'ADD_CATEGORY')],
+                { columns: 2 },
+            ),
+            "Kategoriyalar ro'yxati",
         );
     }
 }

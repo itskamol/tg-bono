@@ -14,7 +14,7 @@ export class SchedulerService implements OnModuleInit {
         private readonly reportsService: ReportsService,
         private readonly schedulerRegistry: SchedulerRegistry,
         private readonly prisma: PrismaService,
-    ) { }
+    ) {}
 
     async onModuleInit() {
         this.logger.log('Initializing scheduler...');
@@ -55,23 +55,39 @@ export class SchedulerService implements OnModuleInit {
 
                 try {
                     if (config.destination === 'email') {
-                        const success = await this.reportsService.sendReportByEmail(schedulerUser, timeRange, true);
+                        const success = await this.reportsService.sendReportByEmail(
+                            schedulerUser,
+                            timeRange,
+                            true,
+                        );
                         if (!success) {
                             this.logger.error('Scheduled email report failed');
                         }
                     } else if (config.destination === 'sheets') {
-                        const success = await this.reportsService.sendReportToGoogleSheets(schedulerUser, timeRange, true);
+                        const success = await this.reportsService.sendReportToGoogleSheets(
+                            schedulerUser,
+                            timeRange,
+                            true,
+                        );
                         if (!success) {
-                            this.logger.error('Scheduled Google Sheets report failed - check Google Sheets API configuration');
+                            this.logger.error(
+                                'Scheduled Google Sheets report failed - check Google Sheets API configuration',
+                            );
                         }
                     } else if (config.destination === 'both') {
                         // Send to both email and Google Sheets
-                        const results = await this.reportsService.sendReportToAllConfiguredDestinations(schedulerUser, timeRange);
+                        const results =
+                            await this.reportsService.sendReportToAllConfiguredDestinations(
+                                schedulerUser,
+                                timeRange,
+                            );
                         if (!results.email) {
                             this.logger.error('Scheduled email report failed');
                         }
                         if (!results.sheets) {
-                            this.logger.error('Scheduled Google Sheets report failed - check Google Sheets API configuration');
+                            this.logger.error(
+                                'Scheduled Google Sheets report failed - check Google Sheets API configuration',
+                            );
                         }
                     }
                 } catch (error) {

@@ -26,7 +26,7 @@ export class SettingsUpdate {
                     columns: 2,
                 },
             ),
-            'Sozlamalar'
+            'Sozlamalar',
         );
     }
 

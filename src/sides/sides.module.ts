@@ -7,17 +7,7 @@ import { DeleteSideScene } from './scenes/delete-side.scene';
 
 @Module({
     imports: [PrismaModule],
-    providers: [
-        SidesUpdate,
-        AddSideScene,
-        EditSideScene,
-        DeleteSideScene,
-    ],
-    exports: [
-        SidesUpdate,
-        AddSideScene,
-        EditSideScene,
-        DeleteSideScene,
-    ],
+    providers: [SidesUpdate, AddSideScene, EditSideScene, DeleteSideScene],
+    exports: [SidesUpdate, AddSideScene, EditSideScene, DeleteSideScene],
 })
 export class SidesModule {}

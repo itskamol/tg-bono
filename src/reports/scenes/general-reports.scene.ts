@@ -28,7 +28,7 @@ export class GeneralReportsScene {
                     columns: 2, // Har bir qatordagi tugmalar soni. 2 yoki 3 qilib o'zgartirishingiz mumkin.
                 },
             ),
-            'Umumiy hisobotlar'
+            'Umumiy hisobotlar',
         );
     }
 
@@ -55,12 +55,12 @@ export class GeneralReportsScene {
     @Action('BACK_TO_REPORTS')
     async backToReports(@Ctx() ctx: Context) {
         await ctx.scene.leave();
-        
+
         // Show the main reports menu
         const user = ctx.user;
         const reportButtons = [
             Markup.button.callback('📊 Umumiy', 'GENERAL_REPORTS'),
-            Markup.button.callback("💳 To'lovlar", 'PAYMENT_REPORTS')
+            Markup.button.callback("💳 To'lovlar", 'PAYMENT_REPORTS'),
         ];
 
         if (user.role === Role.SUPER_ADMIN) {
@@ -76,7 +76,7 @@ export class GeneralReportsScene {
             Markup.inlineKeyboard(reportButtons, {
                 columns: 2,
             }),
-            'Hisobotlar'
+            'Hisobotlar',
         );
     }
 
@@ -94,7 +94,12 @@ export class GeneralReportsScene {
         });
 
         if (!user) {
-            await safeEditMessageText(ctx, "❌ Siz tizimda ro'yxatdan o'tmagansiz.", undefined, 'Xatolik');
+            await safeEditMessageText(
+                ctx,
+                "❌ Siz tizimda ro'yxatdan o'tmagansiz.",
+                undefined,
+                'Xatolik',
+            );
             return;
         }
 
@@ -134,9 +139,9 @@ export class GeneralReportsScene {
                         created_at: { gte: startDate, lt: endDate },
                     },
                 },
-                _sum: { 
+                _sum: {
                     quantity: true,
-                    price: true 
+                    price: true,
                 },
                 _count: true,
                 orderBy: { _sum: { price: 'desc' } },
@@ -167,12 +172,10 @@ ${user.role === Role.ADMIN ? `🏪 Filial: ${user.branch?.name || 'N/A'}` : '�
     `;
 
         await safeEditMessageText(
-            ctx, 
-            report, 
-            Markup.inlineKeyboard([
-                Markup.button.callback('🔙 Orqaga', 'BACK_TO_REPORTS')
-            ]),
-            'Hisobot'
+            ctx,
+            report,
+            Markup.inlineKeyboard([Markup.button.callback('🔙 Orqaga', 'BACK_TO_REPORTS')]),
+            'Hisobot',
         );
     }
 }

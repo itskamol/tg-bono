@@ -7,6 +7,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { Context } from '../interfaces/context.interface';
 import { Order, PaymentType, Role } from '@prisma/client';
 import { safeEditMessageText } from '../utils/telegram.utils';
+import { formatCurrency } from 'src/utils/format.utils';
 
 @Update()
 export class OrdersUpdate {
@@ -72,7 +73,7 @@ export class OrdersUpdate {
 
         const orderButtons = orders.map((order) =>
             Markup.button.callback(
-                `${order.order_number} - ${order.total_amount} so'm`,
+                `${order.order_number} - ${formatCurrency(order.total_amount)}`,
                 `VIEW_ORDER_${order.id}`,
             ),
         );
@@ -134,11 +135,11 @@ export class OrdersUpdate {
 
 📅 Bugun:
 • Buyurtmalar: ${todayOrders} ta
-• Daromad: ${todayRevenue._sum.total_amount || 0} so'm
+• Daromad: ${formatCurrency(totalRevenue._sum.total_amount) || 0}
 
 📈 Jami:
 • Buyurtmalar: ${totalOrders} ta  
-• Daromad: ${totalRevenue._sum.total_amount || 0} so'm
+• Daromad: ${formatCurrency(totalRevenue._sum.total_amount) || 0}
 
 ${user.role === Role.ADMIN ? `🏪 Filial: ${user.branch?.name || 'N/A'}` : '🌐 Barcha filiallar'}
     `;
@@ -162,17 +163,17 @@ ${user.role === Role.ADMIN ? `🏪 Filial: ${user.branch?.name || 'N/A'}` : '�
     @Roles(Role.CASHIER)
     async onStartNewOrderAction(@Ctx() ctx: Context) {
         await ctx.answerCbQuery();
-        
+
         if (!ctx.user.branch_id) {
             await safeEditMessageText(
                 ctx,
                 '❌ Siz hech qanday filialga tayinlanmagansiz. Buyurtma yarata olmaysiz.',
                 undefined,
-                'Xatolik'
+                'Xatolik',
             );
             return;
         }
-        
+
         await ctx.scene.enter('new-order-scene');
     }
 
@@ -207,7 +208,7 @@ ${user.role === Role.ADMIN ? `🏪 Filial: ${user.branch?.name || 'N/A'}` : '�
         const products = order.order_products
             .map(
                 (op) =>
-                    `• ${op.quantity}x ${op.product_name} (${op.side_name}) - ${op.price * op.quantity} so'm`,
+                    `• ${op.quantity}x ${op.product_name} (${op.side_name}) - ${formatCurrency(op.price * op.quantity)}`,
             )
             .join('\n');
 
@@ -230,7 +231,7 @@ ${user.role === Role.ADMIN ? `🏪 Filial: ${user.branch?.name || 'N/A'}` : '�
                                   [PaymentType.TRANSFER]: 'Nasiya',
                               }[payment.payment_type] || "Noma'lum";
 
-                          return `${index + 1}. ${emoji} ${typeName}: ${payment.amount} so'm`;
+                          return `${index + 1}. ${emoji} ${typeName}: ${formatCurrency(payment.amount)}`;
                       })
                       .join('\n')
                 : "To'lov ma'lumotlari mavjud emas";
@@ -252,17 +253,17 @@ ${paymentsText}
 📦 Mahsulotlar:
 ${products}
 
-💵 Jami: ${order.total_amount} so'm
+💵 Jami: ${formatCurrency(order.total_amount)}
 📅 Sana: ${order.created_at.toLocaleString('uz-UZ')}
     `;
 
         await safeEditMessageText(
-            ctx, 
-            orderDetails, 
+            ctx,
+            orderDetails,
             Markup.inlineKeyboard([
-                Markup.button.callback('🔙 Buyurtmalar ro\'yxatiga qaytish', 'BACK_TO_ORDERS'),
+                Markup.button.callback("🔙 Buyurtmalar ro'yxatiga qaytish", 'BACK_TO_ORDERS'),
             ]),
-            'Buyurtma tafsilotlari'
+            'Buyurtma tafsilotlari',
         );
     }
 }

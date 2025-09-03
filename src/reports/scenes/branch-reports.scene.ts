@@ -5,6 +5,7 @@ import { Context } from '../../interfaces/context.interface';
 import { ReportHelpers } from '../helpers/report.helpers';
 import { Role } from '@prisma/client';
 import { safeEditMessageText } from '../../utils/telegram.utils';
+import { formatCurrency } from 'src/utils/format.utils';
 
 @Scene('branch-reports-scene')
 export class BranchReportsScene {
@@ -27,7 +28,7 @@ export class BranchReportsScene {
                     columns: 2, // Har bir qatordagi tugmalar soni. 2 yoki 3 qilib o'zgartirishingiz mumkin.
                 },
             ),
-            'Filiallar hisoboti'
+            'Filiallar hisoboti',
         );
     }
 
@@ -54,12 +55,12 @@ export class BranchReportsScene {
     @Action('BACK_TO_REPORTS')
     async backToReports(@Ctx() ctx: Context) {
         await ctx.scene.leave();
-        
+
         // Show the main reports menu
         const user = ctx.user;
         const reportButtons = [
             Markup.button.callback('📊 Umumiy', 'GENERAL_REPORTS'),
-            Markup.button.callback("💳 To'lovlar", 'PAYMENT_REPORTS')
+            Markup.button.callback("💳 To'lovlar", 'PAYMENT_REPORTS'),
         ];
 
         if (user.role === Role.SUPER_ADMIN) {
@@ -75,7 +76,7 @@ export class BranchReportsScene {
             Markup.inlineKeyboard(reportButtons, {
                 columns: 2,
             }),
-            'Hisobotlar'
+            'Hisobotlar',
         );
     }
 
@@ -92,7 +93,12 @@ export class BranchReportsScene {
         });
 
         if (!user || user.role !== Role.SUPER_ADMIN) {
-            await safeEditMessageText(ctx, "❌ Sizda bu hisobotni ko'rish huquqi yo'q.", undefined, 'Ruxsat yo\'q');
+            await safeEditMessageText(
+                ctx,
+                "❌ Sizda bu hisobotni ko'rish huquqi yo'q.",
+                undefined,
+                "Ruxsat yo'q",
+            );
             return;
         }
 
@@ -125,8 +131,8 @@ export class BranchReportsScene {
                 return `🏪 ${branch.name}:
   • Foydalanuvchilar: ${branch._count.users} ta
   • Buyurtmalar: ${branch._count.orders} ta
-  • Daromad: ${revenue} so'm
-  • O'rtacha buyurtma: ${avgOrder} so'm`;
+  • Daromad: ${formatCurrency(revenue)}
+  • O'rtacha buyurtma: ${formatCurrency(avgOrder)}`;
             })
             .join('\n\n');
 
@@ -141,19 +147,17 @@ export class BranchReportsScene {
 🏪 ${periodName.toUpperCase()} FILIALLAR HISOBOTI
 
 📊 Umumiy ko'rsatkichlar:
-• Jami daromad: ${totalRevenue} so'm
+• Jami daromad: ${formatCurrency(totalRevenue)}
 • Jami buyurtmalar: ${totalOrders} ta
 
 ${branchList || "Ma'lumot yo'q"}
     `;
 
         await safeEditMessageText(
-            ctx, 
-            report, 
-            Markup.inlineKeyboard([
-                Markup.button.callback('🔙 Orqaga', 'BACK_TO_REPORTS')
-            ]),
-            'Hisobot'
+            ctx,
+            report,
+            Markup.inlineKeyboard([Markup.button.callback('🔙 Orqaga', 'BACK_TO_REPORTS')]),
+            'Hisobot',
         );
     }
 }

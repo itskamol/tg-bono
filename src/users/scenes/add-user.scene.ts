@@ -2,12 +2,12 @@ import { Scene, SceneEnter, On, Message, Action, Ctx } from 'nestjs-telegraf';
 import { Markup } from 'telegraf';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Context } from '../../interfaces/context.interface';
-import { safeEditMessageText } from '../../utils/telegram.utils'
+import { safeEditMessageText } from '../../utils/telegram.utils';
 import { Role } from '@prisma/client';
 
 @Scene('add-user-scene')
 export class AddUserScene {
-    constructor(private readonly prisma: PrismaService) { }
+    constructor(private readonly prisma: PrismaService) {}
 
     @SceneEnter()
     async onSceneEnter(@Ctx() ctx: Context) {
@@ -85,12 +85,16 @@ export class AddUserScene {
         try {
             await ctx.editMessageText(
                 `✅ Rol tanlandi: ${roleText}\n\n📱 Yangi foydalanuvchining Telegram ID raqamini kiriting:`,
-                Markup.inlineKeyboard([Markup.button.callback('❌ Bekor qilish', 'CANCEL_ADD_USER')]),
+                Markup.inlineKeyboard([
+                    Markup.button.callback('❌ Bekor qilish', 'CANCEL_ADD_USER'),
+                ]),
             );
         } catch (error) {
             await ctx.reply(
                 `✅ Rol tanlandi: ${roleText}\n\n📱 Yangi foydalanuvchining Telegram ID raqamini kiriting:`,
-                Markup.inlineKeyboard([Markup.button.callback('❌ Bekor qilish', 'CANCEL_ADD_USER')]),
+                Markup.inlineKeyboard([
+                    Markup.button.callback('❌ Bekor qilish', 'CANCEL_ADD_USER'),
+                ]),
             );
         }
     }

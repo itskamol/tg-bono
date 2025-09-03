@@ -23,6 +23,6 @@ import { EmailModule } from 'src/email/email.module';
         ReportsService,
         EncryptionService,
     ],
-    exports: [ReportsService]
+    exports: [ReportsService],
 })
 export class ReportsModule {}

@@ -3,6 +3,7 @@ import { Markup } from 'telegraf';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Context } from '../../interfaces/context.interface';
 import { PaymentType } from '@prisma/client';
+import { formatCurrency } from 'src/utils/format.utils';
 
 interface PaymentEntry {
     type: PaymentType;
@@ -31,7 +32,7 @@ interface NewOrderSceneState {
 
 @Scene('new-order-scene')
 export class NewOrderScene {
-    constructor(private readonly prisma: PrismaService) { }
+    constructor(private readonly prisma: PrismaService) {}
 
     @SceneEnter()
     async onSceneEnter(@Ctx() ctx: Context) {
@@ -162,7 +163,7 @@ export class NewOrderScene {
 
             await this.safeEditOrReply(
                 ctx,
-                `✅ "${productName}" qo'shildi.\n💰 Narx: ${price} so'm`,
+                `✅ "${productName}" qo'shildi.\n💰 Narx: ${formatCurrency(price)}`,
             );
             return this.showOrderSummary(ctx);
         }
@@ -204,7 +205,7 @@ export class NewOrderScene {
         const productsList = sceneState.products
             .map((p, i) => {
                 const sideInfo = p.sideName ? ` (${p.sideName})` : '';
-                return `${i + 1}. ${p.quantity}x ${p.name}${sideInfo} - ${p.price * p.quantity} so'm`;
+                return `${i + 1}. ${p.quantity}x ${p.name}${sideInfo} - ${formatCurrency(p.price * p.quantity)}`;
             })
             .join('\n');
 
@@ -213,7 +214,7 @@ export class NewOrderScene {
 📦 Joriy mahsulotlar:
 ${productsList}
 
-💰 Jami: ${total} so'm
+💰 Jami: ${formatCurrency(total)}
 
 Yana mahsulot qo'shasizmi?`;
 
@@ -379,7 +380,7 @@ Yana mahsulot qo'shasizmi?`;
 
         await this.safeEditOrReply(
             ctx,
-            `✅ "${sceneState.currentProduct.name}" (${side.name}) qo'shildi.\n💰 Narx: ${side.price} so'm`,
+            `✅ "${sceneState.currentProduct.name}" (${side.name}) qo'shildi.\n💰 Narx: ${formatCurrency(side.price)}`,
         );
 
         sceneState.currentProduct = {};
@@ -434,7 +435,7 @@ Yana mahsulot qo'shasizmi?`;
         const productsList = sceneState.products
             .map((p, i) => {
                 const sideInfo = p.sideName ? ` (${p.sideName})` : '';
-                return `${i + 1}. ${p.quantity}x ${p.name}${sideInfo} - ${p.price * p.quantity} so'm`;
+                return `${i + 1}. ${p.quantity}x ${p.name}${sideInfo} - ${formatCurrency(p.price * p.quantity)}`;
             })
             .join('\n');
 
@@ -452,7 +453,7 @@ ${productsList}
 💳 To'lovlar:
 ${paymentsText}
 
-💰 Jami: ${sceneState.totalAmount} so'm`;
+💰 Jami: ${formatCurrency(sceneState.totalAmount)}`;
 
         await this.safeEditOrReply(
             ctx,
@@ -554,7 +555,7 @@ ${paymentsText}
 
             await this.safeEditOrReply(
                 ctx,
-                `✅ Buyurtma muvaffaqiyatli yaratildi!\n\n🔢 Buyurtma raqami: ${orderNumber}\n\n💳 To'lovlar:\n${paymentsText}\n\n💰 Jami: ${sceneState.totalAmount} so'm\n\nRahmat!`,
+                `✅ Buyurtma muvaffaqiyatli yaratildi!\n\n🔢 Buyurtma raqami: ${orderNumber}\n\n💳 To'lovlar:\n${paymentsText}\n\n💰 Jami: ${formatCurrency(sceneState.totalAmount)} \n\nRahmat!`,
                 Markup.inlineKeyboard([
                     Markup.button.callback('🆕 Yangi buyurtma', 'START_NEW_ORDER'),
                 ]),
@@ -651,7 +652,7 @@ ${paymentsText}
 
             const sideButtons = sides.map((side) =>
                 Markup.button.callback(
-                    `${side.name} - ${side.price} so'm`,
+                    `${side.name} - ${formatCurrency(side.price)}`,
                     `SELECT_SIDE_${side.id}`,
                 ),
             );
@@ -703,7 +704,7 @@ ${paymentsText}
         if (amount > remainingAmount) {
             return {
                 isValid: false,
-                error: `❌ Kiritilgan miqdor qolgan summadan ko'p.\nMaksimal: ${remainingAmount} so'm`,
+                error: `❌ Kiritilgan miqdor qolgan summadan ko'p.\nMaksimal: ${formatCurrency(remainingAmount)}`,
             };
         }
         if (amount !== Math.floor(amount)) {
@@ -747,7 +748,7 @@ ${paymentsText}
             .map((payment, index) => {
                 const emoji = this.getPaymentTypeEmoji(payment.type);
                 const typeName = this.getPaymentTypeName(payment.type);
-                return `${index + 1}. ${emoji} ${typeName}: ${payment.amount} so'm`;
+                return `${index + 1}. ${emoji} ${typeName}: ${formatCurrency(payment.amount)}`;
             })
             .join('\n');
     }
@@ -780,7 +781,7 @@ ${paymentsText}
 
         await this.safeEditOrReply(
             ctx,
-            `💳 To'lov turi tanlang\n\n💰 Qolgan summa: ${remainingAmount} so'm`,
+            `💳 To'lov turi tanlang\n\n💰 Qolgan summa: ${formatCurrency(remainingAmount)}`,
             Markup.inlineKeyboard(
                 [
                     Markup.button.callback('💵 Naqd', 'PAYMENT_TYPE_CASH'),
@@ -813,11 +814,11 @@ ${paymentsText}
 
         await this.safeEditOrReply(
             ctx,
-            `${emoji} ${typeName} to'lov tanlandi\n\n💰 Qolgan summa: ${remainingAmount} so'm\n\n💵 To'lov miqdorini kiriting:`,
+            `${emoji} ${typeName} to'lov tanlandi\n\n💰 Qolgan summa: ${formatCurrency(remainingAmount)} \n\n💵 To'lov miqdorini kiriting:`,
             Markup.inlineKeyboard(
                 [
                     Markup.button.callback(
-                        `💯 Barcha (${remainingAmount} so'm)`,
+                        `💯 Barcha (${formatCurrency(remainingAmount)})`,
                         'PAY_ALL_REMAINING',
                     ),
                     Markup.button.callback('🔙 Orqaga', 'BACK_TO_PAYMENT_TYPE'),
@@ -878,10 +879,10 @@ ${paymentsText}
         const paymentsText = this.formatPaymentsList(payments);
         const isComplete = remainingAmount === 0;
 
-        let messageText = `💳 To'lov xulosasi:\n\n${paymentsText}\n\n💰 Jami: ${totalAmount} so'm`;
+        let messageText = `💳 To'lov xulosasi:\n\n${paymentsText}\n\n💰 Jami: ${formatCurrency(totalAmount)}`;
 
         if (remainingAmount > 0) {
-            messageText += `\n🔴 Qolgan: ${remainingAmount} so'm`;
+            messageText += `\n🔴 Qolgan: ${formatCurrency(remainingAmount)}`;
         } else {
             messageText += `\n✅ To'lov to'liq amalga oshirildi`;
         }
@@ -937,7 +938,7 @@ ${paymentsText}
 
         await this.safeEditOrReply(
             ctx,
-            `🗑️ To'lov o'chirildi: ${emoji} ${typeName} - ${removedPayment!.amount} so'm`,
+            `🗑️ To'lov o'chirildi: ${emoji} ${typeName} - ${formatCurrency(removedPayment!.amount)}`,
         );
 
         return this.showPaymentSummary(ctx);

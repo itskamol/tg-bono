@@ -12,14 +12,14 @@ interface EditCategorySceneState {
 
 @Scene('edit-category-scene')
 export class EditCategoryScene {
-    constructor(private readonly prisma: PrismaService) { }
+    constructor(private readonly prisma: PrismaService) {}
 
     @SceneEnter()
     async onSceneEnter(@Ctx() ctx: Context) {
         const sceneState = ctx.scene.state as EditCategorySceneState;
 
         if (!sceneState.categoryId) {
-            await ctx.reply('❌ Kategoriya ma\'lumotlari topilmadi.');
+            await ctx.reply("❌ Kategoriya ma'lumotlari topilmadi.");
             await ctx.scene.leave();
             return;
         }
@@ -41,7 +41,7 @@ export class EditCategoryScene {
             `✏️ Kategoriya tahrirlash\n\n📝 Joriy nomi: ${category.name}\n\nYangi nom kiriting:`,
             Markup.inlineKeyboard([
                 Markup.button.callback('❌ Bekor qilish', 'CANCEL_EDIT_CATEGORY'),
-            ])
+            ]),
         );
     }
 
@@ -54,12 +54,12 @@ export class EditCategoryScene {
             const trimmedName = text.trim();
 
             if (trimmedName.length < 2) {
-                await ctx.reply('❌ Kategoriya nomi kamida 2 ta belgidan iborat bo\'lishi kerak.');
+                await ctx.reply("❌ Kategoriya nomi kamida 2 ta belgidan iborat bo'lishi kerak.");
                 return;
             }
 
             if (trimmedName.length > 30) {
-                await ctx.reply('❌ Kategoriya nomi 30 ta belgidan ko\'p bo\'lmasligi kerak.');
+                await ctx.reply("❌ Kategoriya nomi 30 ta belgidan ko'p bo'lmasligi kerak.");
                 return;
             }
 
@@ -73,12 +73,14 @@ export class EditCategoryScene {
             const existingCategory = await this.prisma.category.findFirst({
                 where: {
                     name: { equals: trimmedName, mode: 'insensitive' },
-                    id: { not: sceneState.categoryId }
+                    id: { not: sceneState.categoryId },
                 },
             });
 
             if (existingCategory) {
-                await ctx.reply('❌ Bu nom bilan kategoriya allaqachon mavjud. Boshqa nom kiriting:');
+                await ctx.reply(
+                    '❌ Bu nom bilan kategoriya allaqachon mavjud. Boshqa nom kiriting:',
+                );
                 return;
             }
 
@@ -88,10 +90,13 @@ export class EditCategoryScene {
             // Tasdiqlash
             await ctx.reply(
                 `📋 Nom o'zgarishi:\n\n🔸 Eski nom: ${sceneState.categoryName}\n🔹 Yangi nom: ${trimmedName}\n\nTasdiqlaysizmi?`,
-                Markup.inlineKeyboard([
-                    Markup.button.callback('✅ Ha, o\'zgartirish', 'CONFIRM_NAME_CHANGE'),
-                    Markup.button.callback('❌ Bekor qilish', 'CANCEL_EDIT_CATEGORY'),
-                ], { columns: 1 })
+                Markup.inlineKeyboard(
+                    [
+                        Markup.button.callback("✅ Ha, o'zgartirish", 'CONFIRM_NAME_CHANGE'),
+                        Markup.button.callback('❌ Bekor qilish', 'CANCEL_EDIT_CATEGORY'),
+                    ],
+                    { columns: 1 },
+                ),
             );
             return;
         }
@@ -114,11 +119,11 @@ export class EditCategoryScene {
             });
 
             await ctx.editMessageText(
-                `✅ Kategoriya nomi muvaffaqiyatli o'zgartirildi!\n\n🔸 Eski nom: ${sceneState.categoryName}\n🔹 Yangi nom: ${sceneState.newName}`
+                `✅ Kategoriya nomi muvaffaqiyatli o'zgartirildi!\n\n🔸 Eski nom: ${sceneState.categoryName}\n🔹 Yangi nom: ${sceneState.newName}`,
             );
             await ctx.scene.leave();
         } catch (error) {
-            await ctx.editMessageText('❌ Nom o\'zgartirishda xatolik yuz berdi.');
+            await ctx.editMessageText("❌ Nom o'zgartirishda xatolik yuz berdi.");
             await ctx.scene.leave();
         }
     }

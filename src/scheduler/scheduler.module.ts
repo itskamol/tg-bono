@@ -10,4 +10,4 @@ import { EmailModule } from 'src/email/email.module';
     imports: [ScheduleModule.forRoot(), ReportsModule, GoogleSheetsModule, EmailModule],
     providers: [SchedulerService, EncryptionService],
 })
-export class SchedulerModule { }
+export class SchedulerModule {}

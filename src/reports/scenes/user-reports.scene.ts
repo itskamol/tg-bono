@@ -5,6 +5,7 @@ import { Context } from '../../interfaces/context.interface';
 import { ReportHelpers } from '../helpers/report.helpers';
 import { Role } from '@prisma/client';
 import { safeEditMessageText } from '../../utils/telegram.utils';
+import { formatCurrency } from 'src/utils/format.utils';
 
 @Scene('user-reports-scene')
 export class UserReportsScene {
@@ -27,7 +28,7 @@ export class UserReportsScene {
                     columns: 2, // Har bir qatordagi tugmalar soni. 2 yoki 3 qilib o'zgartirishingiz mumkin.
                 },
             ),
-            'Foydalanuvchilar hisoboti'
+            'Foydalanuvchilar hisoboti',
         );
     }
 
@@ -54,12 +55,12 @@ export class UserReportsScene {
     @Action('BACK_TO_REPORTS')
     async backToReports(@Ctx() ctx: Context) {
         await ctx.scene.leave();
-        
+
         // Show the main reports menu
         const user = ctx.user;
         const reportButtons = [
             Markup.button.callback('📊 Umumiy', 'GENERAL_REPORTS'),
-            Markup.button.callback("💳 To'lovlar", 'PAYMENT_REPORTS')
+            Markup.button.callback("💳 To'lovlar", 'PAYMENT_REPORTS'),
         ];
 
         if (user.role === Role.SUPER_ADMIN) {
@@ -75,7 +76,7 @@ export class UserReportsScene {
             Markup.inlineKeyboard(reportButtons, {
                 columns: 2,
             }),
-            'Hisobotlar'
+            'Hisobotlar',
         );
     }
 
@@ -92,7 +93,12 @@ export class UserReportsScene {
         });
 
         if (!user || user.role !== Role.SUPER_ADMIN) {
-            await safeEditMessageText(ctx, "❌ Sizda bu hisobotni ko'rish huquqi yo'q.", undefined, 'Ruxsat yo\'q');
+            await safeEditMessageText(
+                ctx,
+                "❌ Sizda bu hisobotni ko'rish huquqi yo'q.",
+                undefined,
+                "Ruxsat yo'q",
+            );
             return;
         }
 
@@ -145,7 +151,7 @@ export class UserReportsScene {
                 const revenue = user.orders.reduce((sum, order) => sum + order.total_amount, 0);
                 return `${index + 1}. ${user.full_name} (${user.branch?.name || 'N/A'}):
   • Buyurtmalar: ${user._count.orders} ta
-  • Daromad: ${revenue} so'm`;
+  • Daromad: ${formatCurrency(revenue)}`;
             })
             .join('\n\n');
 
@@ -160,12 +166,10 @@ ${activeUsersList || "Ma'lumot yo'q"}
     `;
 
         await safeEditMessageText(
-            ctx, 
-            report, 
-            Markup.inlineKeyboard([
-                Markup.button.callback('🔙 Orqaga', 'BACK_TO_REPORTS')
-            ]),
-            'Hisobot'
+            ctx,
+            report,
+            Markup.inlineKeyboard([Markup.button.callback('🔙 Orqaga', 'BACK_TO_REPORTS')]),
+            'Hisobot',
         );
     }
 }

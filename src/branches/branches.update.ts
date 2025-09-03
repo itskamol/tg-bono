@@ -7,9 +7,8 @@ import { Role } from '@prisma/client';
 import { safeEditMessageText } from '../utils/telegram.utils';
 
 @Update()
-
 export class BranchesUpdate {
-    constructor(private readonly prisma: PrismaService) { }
+    constructor(private readonly prisma: PrismaService) {}
 
     @Command('branches')
     @Roles(Role.SUPER_ADMIN)
@@ -26,29 +25,24 @@ export class BranchesUpdate {
             await safeEditMessageText(
                 ctx,
                 '❌ Hech qanday filial mavjud emas.',
-                Markup.inlineKeyboard([
-                    Markup.button.callback('➕ Filial qo\'shish', 'ADD_BRANCH'),
-                ]),
-                'Filiallar yo\'q'
+                Markup.inlineKeyboard([Markup.button.callback("➕ Filial qo'shish", 'ADD_BRANCH')]),
+                "Filiallar yo'q",
             );
             return;
         }
 
         const branchButtons = branches.map((branch) =>
-            Markup.button.callback(
-                `🏪 ${branch.name}`,
-                `VIEW_BRANCH_${branch.id}`,
-            ),
+            Markup.button.callback(`🏪 ${branch.name}`, `VIEW_BRANCH_${branch.id}`),
         );
 
         await safeEditMessageText(
             ctx,
             `🏪 Filiallar ro'yxati (${branches.length} ta):`,
-            Markup.inlineKeyboard([
-                ...branchButtons,
-                Markup.button.callback('➕ Yangi filial', 'ADD_BRANCH'),
-            ], { columns: 2 }),
-            'Filiallar ro\'yxati'
+            Markup.inlineKeyboard(
+                [...branchButtons, Markup.button.callback('➕ Yangi filial', 'ADD_BRANCH')],
+                { columns: 2 },
+            ),
+            "Filiallar ro'yxati",
         );
     }
 
@@ -69,7 +63,7 @@ export class BranchesUpdate {
         // Regex orqali branchId'ni olish
         const match = branchData.match(/^VIEW_BRANCH_(.+)$/);
         if (!match) {
-            await safeEditMessageText(ctx, '❌ Noto\'g\'ri ma\'lumot.', undefined, 'Xatolik');
+            await safeEditMessageText(ctx, "❌ Noto'g'ri ma'lumot.", undefined, 'Xatolik');
             return;
         }
 
@@ -103,12 +97,15 @@ Nima qilmoqchisiz?
         await safeEditMessageText(
             ctx,
             branchDetails,
-            Markup.inlineKeyboard([
-                Markup.button.callback('✏️ Tahrirlash', `EDIT_BRANCH_${branch.id}`),
-                Markup.button.callback('🗑️ O\'chirish', `DELETE_BRANCH_${branch.id}`),
-                Markup.button.callback('🔙 Orqaga', 'BACK_TO_BRANCHES'),
-            ], { columns: 2 }),
-            'Filial ma\'lumotlari'
+            Markup.inlineKeyboard(
+                [
+                    Markup.button.callback('✏️ Tahrirlash', `EDIT_BRANCH_${branch.id}`),
+                    Markup.button.callback("🗑️ O'chirish", `DELETE_BRANCH_${branch.id}`),
+                    Markup.button.callback('🔙 Orqaga', 'BACK_TO_BRANCHES'),
+                ],
+                { columns: 2 },
+            ),
+            "Filial ma'lumotlari",
         );
     }
 
@@ -123,7 +120,7 @@ Nima qilmoqchisiz?
         // Regex orqali branchId'ni olish
         const match = branchData.match(/^EDIT_BRANCH_(.+)$/);
         if (!match) {
-            await safeEditMessageText(ctx, '❌ Noto\'g\'ri ma\'lumot.', undefined, 'Xatolik');
+            await safeEditMessageText(ctx, "❌ Noto'g'ri ma'lumot.", undefined, 'Xatolik');
             return;
         }
 
@@ -142,7 +139,7 @@ Nima qilmoqchisiz?
         ctx.scene.state = {
             branchId,
             branchName: branch.name,
-            branchAddress: branch.address
+            branchAddress: branch.address,
         };
         await ctx.scene.enter('edit-branch-scene', ctx.scene.state);
     }
@@ -158,7 +155,7 @@ Nima qilmoqchisiz?
         // Regex orqali branchId'ni olish
         const match = branchData.match(/^DELETE_BRANCH_(.+)$/);
         if (!match) {
-            await safeEditMessageText(ctx, '❌ Noto\'g\'ri ma\'lumot.', undefined, 'Xatolik');
+            await safeEditMessageText(ctx, "❌ Noto'g'ri ma'lumot.", undefined, 'Xatolik');
             return;
         }
 
@@ -185,29 +182,24 @@ Nima qilmoqchisiz?
             await safeEditMessageText(
                 ctx,
                 '❌ Hech qanday filial mavjud emas.',
-                Markup.inlineKeyboard([
-                    Markup.button.callback('➕ Filial qo\'shish', 'ADD_BRANCH'),
-                ]),
-                'Filiallar yo\'q'
+                Markup.inlineKeyboard([Markup.button.callback("➕ Filial qo'shish", 'ADD_BRANCH')]),
+                "Filiallar yo'q",
             );
             return;
         }
 
         const branchButtons = branches.map((branch) =>
-            Markup.button.callback(
-                `🏪 ${branch.name}`,
-                `VIEW_BRANCH_${branch.id}`,
-            ),
+            Markup.button.callback(`🏪 ${branch.name}`, `VIEW_BRANCH_${branch.id}`),
         );
 
         await safeEditMessageText(
             ctx,
             `🏪 Filiallar ro'yxati (${branches.length} ta):`,
-            Markup.inlineKeyboard([
-                ...branchButtons,
-                Markup.button.callback('➕ Yangi filial', 'ADD_BRANCH'),
-            ], { columns: 2 }),
-            'Filiallar ro\'yxati'
+            Markup.inlineKeyboard(
+                [...branchButtons, Markup.button.callback('➕ Yangi filial', 'ADD_BRANCH')],
+                { columns: 2 },
+            ),
+            "Filiallar ro'yxati",
         );
     }
 }

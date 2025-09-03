@@ -2,6 +2,7 @@ import { Scene, SceneEnter, Action, Ctx } from 'nestjs-telegraf';
 import { Markup } from 'telegraf';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Context } from '../../interfaces/context.interface';
+import { safeEditMessageText } from '../../utils/telegram.utils';
 
 interface DeleteCategorySceneState {
     categoryId: string;
@@ -16,7 +17,12 @@ export class DeleteCategoryScene {
         const sceneState = ctx.scene.state as DeleteCategorySceneState;
 
         if (!sceneState.categoryId) {
-            await ctx.reply('❌ Kategoriya ma\'lumotlari topilmadi.');
+            await safeEditMessageText(
+                ctx,
+                "❌ Kategoriya ma'lumotlari topilmadi.",
+                undefined,
+                'Xatolik',
+            );
             await ctx.scene.leave();
             return;
         }
@@ -26,7 +32,7 @@ export class DeleteCategoryScene {
         });
 
         if (!category) {
-            await ctx.reply('❌ Kategoriya topilmadi.');
+            await safeEditMessageText(ctx, '❌ Kategoriya topilmadi.', undefined, 'Xatolik');
             await ctx.scene.leave();
             return;
         }
@@ -41,12 +47,17 @@ export class DeleteCategoryScene {
             warningMessage = `\n⚠️ DIQQAT: Bu kategoriya ${ordersUsingThisCategory} ta buyurtmada ishlatilgan. O'chirilsa, eski buyurtmalarda "O'chirilgan kategoriya" ko'rinadi.`;
         }
 
-        await ctx.reply(
-            `🗑️ Kategoriya o'chirish\n\n📝 Nomi: ${category.name}\n😊 ${warningMessage}\n\nHaqiqatan ham bu kategoriyani o'chirmoqchimisiz?`,
-            Markup.inlineKeyboard([
-                Markup.button.callback('✅ Ha, o\'chirish', 'CONFIRM_DELETE_CATEGORY'),
-                Markup.button.callback('❌ Yo\'q, bekor qilish', 'CANCEL_DELETE_CATEGORY'),
-            ], { columns: 1 })
+        await safeEditMessageText(
+            ctx,
+            `🗑️ Kategoriya o'chirish\n\n📝 Nomi: ${category.name}${warningMessage}\n\nHaqiqatan ham bu kategoriyani o'chirmoqchimisiz?`,
+            Markup.inlineKeyboard(
+                [
+                    Markup.button.callback("✅ Ha, o'chirish", 'CONFIRM_DELETE_CATEGORY'),
+                    Markup.button.callback("❌ Yo'q, bekor qilish", 'CANCEL_DELETE_CATEGORY'),
+                ],
+                { columns: 1 },
+            ),
+            "Kategoriya o'chirish",
         );
     }
 
@@ -60,7 +71,7 @@ export class DeleteCategoryScene {
             });
 
             if (!category) {
-                await ctx.editMessageText('❌ Kategoriya topilmadi.');
+                await safeEditMessageText(ctx, '❌ Kategoriya topilmadi.', undefined, 'Xatolik');
                 await ctx.scene.leave();
                 return;
             }
@@ -69,32 +80,43 @@ export class DeleteCategoryScene {
                 where: { id: sceneState.categoryId },
             });
 
-            await ctx.editMessageText(
-                `✅ Kategoriya muvaffaqiyatli o'chirildi!\n\n📝 Nomi: ${category.name}\n😊`
+            await safeEditMessageText(
+                ctx,
+                `✅ Kategoriya muvaffaqiyatli o'chirildi!\n\n📝 Nomi: ${category.name}`,
+                undefined,
+                'Muvaffaqiyat',
             );
             await ctx.scene.leave();
         } catch (error) {
-            let errorMessage = '❌ Kategoriya o\'chirishda xatolik yuz berdi.';
-            
+            let errorMessage = "❌ Kategoriya o'chirishda xatolik yuz berdi.";
+
             if (error instanceof Error) {
                 if (error.message.includes('foreign key')) {
-                    errorMessage = '❌ Bu kategoriya hali ishlatilayotgani uchun o\'chirib bo\'lmaydi.';
+                    errorMessage =
+                        "❌ Bu kategoriya hali ishlatilayotgani uchun o'chirib bo'lmaydi.";
                 }
             }
 
-            await ctx.editMessageText(
+            await safeEditMessageText(
+                ctx,
                 `${errorMessage}\n\nQaytadan urinib ko'ring yoki administratorga murojaat qiling.`,
                 Markup.inlineKeyboard([
                     Markup.button.callback('🔄 Qaytadan urinish', 'CONFIRM_DELETE_CATEGORY'),
                     Markup.button.callback('❌ Bekor qilish', 'CANCEL_DELETE_CATEGORY'),
-                ])
+                ]),
+                'Xatolik',
             );
         }
     }
 
     @Action('CANCEL_DELETE_CATEGORY')
     async onCancelDeleteCategory(@Ctx() ctx: Context) {
-        await ctx.editMessageText('❌ Kategoriya o\'chirish bekor qilindi.');
+        await safeEditMessageText(
+            ctx,
+            "❌ Kategoriya o'chirish bekor qilindi.",
+            undefined,
+            'Bekor qilindi',
+        );
         await ctx.scene.leave();
     }
 }

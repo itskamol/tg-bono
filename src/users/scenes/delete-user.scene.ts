@@ -7,7 +7,7 @@ import { safeEditMessageText } from '../../utils/telegram.utils';
 
 @Scene('delete-user-scene')
 export class DeleteUserScene {
-    constructor(private readonly prisma: PrismaService) { }
+    constructor(private readonly prisma: PrismaService) {}
 
     @SceneEnter()
     async onSceneEnter(@Ctx() ctx: Context) {
@@ -35,33 +35,32 @@ export class DeleteUserScene {
         // Ruxsatni tekshirish
         if (currentUser.role === Role.ADMIN) {
             if (user.branch_id !== currentUser.branch_id || user.role !== Role.CASHIER) {
-                await ctx.reply('❌ Bu foydalanuvchini o\'chirish huquqingiz yo\'q.');
+                await ctx.reply("❌ Bu foydalanuvchini o'chirish huquqingiz yo'q.");
                 await ctx.scene.leave();
                 return;
             }
         }
 
-        const roleText = {
-            [Role.SUPER_ADMIN]: 'Super Admin',
-            [Role.ADMIN]: 'Admin',
-            [Role.CASHIER]: 'Kassir',
-        }[user.role] || user.role;
+        const roleText =
+            {
+                [Role.SUPER_ADMIN]: 'Super Admin',
+                [Role.ADMIN]: 'Admin',
+                [Role.CASHIER]: 'Kassir',
+            }[user.role] || user.role;
 
         await safeEditMessageText(
             ctx,
             `⚠️ Rostdan ham "${user.full_name}" foydalanuvchisini o'chirmoqchimisiz?\n\n` +
-            `👤 To'liq ism: ${user.full_name}\n` +
-            `�  Rol: ${roleText}\n` +
-            `🏪 Filial: ${user.branch?.name || 'N/A'}`,
+                `👤 To'liq ism: ${user.full_name}\n` +
+                `�  Rol: ${roleText}\n` +
+                `🏪 Filial: ${user.branch?.name || 'N/A'}`,
             Markup.inlineKeyboard([
                 Markup.button.callback('✅ Ha', `CONFIRM_DELETE_${userId}`),
                 Markup.button.callback("❌ Yo'q", 'CANCEL_DELETE'),
             ]),
-            'O\'chirish tasdiqi'
+            "O'chirish tasdiqi",
         );
     }
-
-
 
     @Action(/CONFIRM_DELETE_(.+)/)
     async onConfirmDelete(@Ctx() ctx: Context) {
@@ -87,7 +86,7 @@ export class DeleteUserScene {
                 ctx,
                 `✅ "${user.full_name}" foydalanuvchisi muvaffaqiyatli o'chirildi.`,
                 undefined,
-                'Muvaffaqiyatli o\'chirildi'
+                "Muvaffaqiyatli o'chirildi",
             );
             await ctx.scene.leave();
         } catch (error) {
@@ -95,7 +94,7 @@ export class DeleteUserScene {
                 ctx,
                 "❌ Foydalanuvchini o'chirishda xatolik yuz berdi.",
                 undefined,
-                'Xatolik'
+                'Xatolik',
             );
             await ctx.scene.leave();
         }

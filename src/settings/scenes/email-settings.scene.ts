@@ -18,11 +18,11 @@ export class EmailSettingsScene {
     async onSceneEnter(@Ctx() ctx: Context) {
         await safeReplyOrEdit(
             ctx,
-            '📧 Email eksport sozlamalarini boshlash...\n\nSMTP host manzilini kiriting (masalan: smtp.gmail.com).',
+            "📧 Email eksport sozlamalari\n\n📨 Jo'natuvchi email manzilini kiriting (masalan: your-email@gmail.com):",
             Markup.inlineKeyboard([
-                Markup.button.callback('❌ Bekor qilish', 'cancel_email_config')
+                Markup.button.callback('❌ Bekor qilish', 'cancel_email_config'),
             ]),
-            'Email sozlamalari'
+            'Email sozlamalari',
         );
     }
 
@@ -30,96 +30,121 @@ export class EmailSettingsScene {
     async onText(@Ctx() ctx: Context, @Message('text') text: string) {
         const sceneState = ctx.scene.state as any;
 
-        if (!sceneState.host) {
-            sceneState.host = text;
-            await safeReplyOrEdit(
-                ctx,
-                `✅ Host "${text}" ga o'rnatildi.\n\nEndi SMTP portini kiriting (masalan: 587).`,
-                Markup.inlineKeyboard([
-                    Markup.button.callback('⬅️ Orqaga', 'back_to_host'),
-                    Markup.button.callback('❌ Bekor qilish', 'cancel_email_config')
-                ]),
-                'Host saqlandi'
-            );
-            return;
-        }
-
-        if (!sceneState.port) {
-            const port = parseInt(text, 10);
-            if (isNaN(port)) {
-                await safeReplyOrEdit(ctx, '❌ Noto\'g\'ri port. Iltimos, raqam kiriting.', undefined, 'Noto\'g\'ri port');
+        // Step 1: Jo'natuvchi email
+        if (!sceneState.senderEmail) {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(text.trim())) {
+                await safeReplyOrEdit(
+                    ctx,
+                    "❌ Noto'g'ri email format. To'g'ri email kiriting (masalan: your-email@gmail.com):",
+                    undefined,
+                    "Noto'g'ri email",
+                );
                 return;
             }
-            sceneState.port = port;
+            sceneState.senderEmail = text.trim();
             await safeReplyOrEdit(
                 ctx,
-                `✅ Port ${port} ga o'rnatildi.\n\nEndi foydalanuvchi nomini kiriting (jo'natuvchi email manzili).`,
+                `✅ Jo'natuvchi email: ${text.trim()}\n\n🔐 Email parolini kiriting (Gmail uchun App Password):`,
                 Markup.inlineKeyboard([
-                    Markup.button.callback('⬅️ Orqaga', 'back_to_port'),
-                    Markup.button.callback('❌ Bekor qilish', 'cancel_email_config')
+                    Markup.button.callback('⬅️ Orqaga', 'back_to_sender'),
+                    Markup.button.callback('❌ Bekor qilish', 'cancel_email_config'),
                 ]),
-                'Port saqlandi'
+                'Email saqlandi',
             );
             return;
         }
 
-        if (!sceneState.user) {
-            sceneState.user = text;
+        // Step 2: Parol
+        if (!sceneState.password) {
+            if (text.trim().length < 4) {
+                await safeReplyOrEdit(
+                    ctx,
+                    '❌ Parol juda qisqa. Kamida 4 ta belgi kiriting:',
+                    undefined,
+                    'Qisqa parol',
+                );
+                return;
+            }
+            sceneState.password = text.trim();
             await safeReplyOrEdit(
                 ctx,
-                `✅ Foydalanuvchi nomi "${text}" ga o'rnatildi.\n\nEndi parolni kiriting.`,
+                `✅ Parol saqlandi\n\n📧 Qabul qiluvchi email manzil(lar)ini kiriting.\n\nBir nechta email uchun vergul bilan ajrating:\nMasalan: admin@company.com, manager@company.com`,
                 Markup.inlineKeyboard([
-                    Markup.button.callback('⬅️ Orqaga', 'back_to_user'),
-                    Markup.button.callback('❌ Bekor qilish', 'cancel_email_config')
+                    Markup.button.callback('⬅️ Orqaga', 'back_to_password'),
+                    Markup.button.callback('❌ Bekor qilish', 'cancel_email_config'),
                 ]),
-                'Foydalanuvchi saqlandi'
+                'Parol saqlandi',
             );
             return;
         }
 
-        if (!sceneState.pass) {
-            sceneState.pass = text;
-            await safeReplyOrEdit(
-                ctx,
-                `✅ Parol qabul qilindi.\n\nNihoyat, qabul qiluvchining email manzilini kiriting.\nMasalan: john@gmail.com`,
-                Markup.inlineKeyboard([
-                    Markup.button.callback('⬅️ Orqaga', 'back_to_pass'),
-                    Markup.button.callback('❌ Bekor qilish', 'cancel_email_config')
-                ]),
-                'Parol saqlandi'
-            );
-            return;
-        }
-
-        if (!sceneState.recipient) {
+        // Step 3: Qabul qiluvchi email(lar)
+        if (!sceneState.recipients) {
             const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-            const emails = text.split(',').map((e) => e.trim());
+            const emails = text
+                .split(',')
+                .map((e) => e.trim())
+                .filter((e) => e.length > 0);
+
+            if (emails.length === 0) {
+                await safeReplyOrEdit(
+                    ctx,
+                    '❌ Kamida bitta email manzil kiriting:',
+                    undefined,
+                    "Email yo'q",
+                );
+                return;
+            }
+
             for (const email of emails) {
                 if (!emailRegex.test(email)) {
-                    await safeReplyOrEdit(ctx, `❌ Noto'g'ri email manzil: ${email}.\nIltimos, to'g'ri email kiriting.`, undefined, 'Noto\'g\'ri email');
+                    await safeReplyOrEdit(
+                        ctx,
+                        `❌ Noto'g'ri email manzil: "${email}"\nBarcha emaillarni to'g'ri formatda kiriting:`,
+                        undefined,
+                        "Noto'g'ri email",
+                    );
                     return;
                 }
             }
-            sceneState.recipient = emails.join(', ');
 
+            sceneState.recipients = emails.join(', ');
+
+            // Gmail uchun default SMTP sozlamalari
             const emailConfig = {
-                host: sceneState.host,
-                port: sceneState.port,
-                secure: sceneState.port === 465,
+                host: 'smtp.gmail.com',
+                port: 587,
+                secure: false,
                 auth: {
-                    user: sceneState.user,
-                    pass: sceneState.pass,
+                    user: sceneState.senderEmail,
+                    pass: sceneState.password,
                 },
-                recipient: sceneState.recipient,
+                recipient: sceneState.recipients,
             };
 
             const encryptedConfig = this.encryptionService.encrypt(JSON.stringify(emailConfig));
 
             // Test connection before saving
+            await safeReplyOrEdit(
+                ctx,
+                '🔄 Email ulanishini tekshirish...',
+                undefined,
+                'Tekshirish',
+            );
+
             const testResult = await this.emailService.testConnection(emailConfig);
-            
+
             if (!testResult) {
-                await safeReplyOrEdit(ctx, '❌ Email ulanishini tekshirishda xatolik yuz berdi.\nSozlamalarni tekshiring va qayta urinib ko\'ring.', undefined, 'Ulanish xatosi');
+                await safeReplyOrEdit(
+                    ctx,
+                    "❌ Email ulanishini tekshirishda xatolik!\n\n💡 Gmail uchun:\n1. 2-bosqichli tasdiqlashni yoqing\n2. App Password yarating\n3. App Password ni parol sifatida ishlating\n\nQayta urinib ko'ring:",
+                    Markup.inlineKeyboard([
+                        Markup.button.callback('⬅️ Orqaga', 'back_to_recipients'),
+                        Markup.button.callback('❌ Bekor qilish', 'cancel_email_config'),
+                    ]),
+                    'Ulanish xatosi',
+                );
                 return;
             }
 
@@ -129,73 +154,68 @@ export class EmailSettingsScene {
                 create: { key: 'email_config', value: encryptedConfig },
             });
 
-            await safeReplyOrEdit(ctx, '✅ Email eksport sozlamalari muvaffaqiyatli saqlandi va ulanish tekshirildi!', undefined, 'Sozlamalar saqlandi');
+            await safeReplyOrEdit(
+                ctx,
+                `✅ Email sozlamalari muvaffaqiyatli saqlandi!\n\n📨 Jo'natuvchi: ${sceneState.senderEmail}\n📧 Qabul qiluvchilar: ${sceneState.recipients}\n🔗 SMTP: Gmail (smtp.gmail.com:587)\n\nEndi hisobotlar avtomatik emailga yuboriladi.`,
+                undefined,
+                'Sozlamalar saqlandi',
+            );
             await ctx.scene.leave();
         }
     }
 
-    @Action('back_to_host')
-    async onBackToHost(@Ctx() ctx: Context) {
+    @Action('back_to_sender')
+    async onBackToSender(@Ctx() ctx: Context) {
         const sceneState = ctx.scene.state as any;
-        delete sceneState.host;
+        delete sceneState.senderEmail;
         await safeReplyOrEdit(
             ctx,
-            '📧 Email eksport sozlamalarini boshlash...\n\nSMTP host manzilini kiriting (masalan: smtp.gmail.com).',
+            "📧 Email eksport sozlamalari\n\n📨 Jo'natuvchi email manzilini kiriting (masalan: your-email@gmail.com):",
             Markup.inlineKeyboard([
-                Markup.button.callback('❌ Bekor qilish', 'cancel_email_config')
+                Markup.button.callback('❌ Bekor qilish', 'cancel_email_config'),
             ]),
-            'Host qaytarish'
+            'Sender qaytarish',
         );
     }
 
-    @Action('back_to_port')
-    async onBackToPort(@Ctx() ctx: Context) {
+    @Action('back_to_password')
+    async onBackToPassword(@Ctx() ctx: Context) {
         const sceneState = ctx.scene.state as any;
-        delete sceneState.port;
+        delete sceneState.password;
         await safeReplyOrEdit(
             ctx,
-            `✅ Host: "${sceneState.host}"\n\nSMTP portini kiriting (masalan: 587).`,
+            `✅ Jo'natuvchi email: ${sceneState.senderEmail}\n\n🔐 Email parolini kiriting (Gmail uchun App Password):`,
             Markup.inlineKeyboard([
-                Markup.button.callback('⬅️ Orqaga', 'back_to_host'),
-                Markup.button.callback('❌ Bekor qilish', 'cancel_email_config')
+                Markup.button.callback('⬅️ Orqaga', 'back_to_sender'),
+                Markup.button.callback('❌ Bekor qilish', 'cancel_email_config'),
             ]),
-            'Port qaytarish'
+            'Password qaytarish',
         );
     }
 
-    @Action('back_to_user')
-    async onBackToUser(@Ctx() ctx: Context) {
+    @Action('back_to_recipients')
+    async onBackToRecipients(@Ctx() ctx: Context) {
         const sceneState = ctx.scene.state as any;
-        delete sceneState.user;
+        delete sceneState.recipients;
         await safeReplyOrEdit(
             ctx,
-            `✅ Port: ${sceneState.port}\n\nFoydalanuvchi nomini kiriting (jo'natuvchi email manzili).`,
+            `✅ Parol saqlandi\n\n📧 Qabul qiluvchi email manzil(lar)ini kiriting.\n\nBir nechta email uchun vergul bilan ajrating:\nMasalan: admin@company.com, manager@company.com`,
             Markup.inlineKeyboard([
-                Markup.button.callback('⬅️ Orqaga', 'back_to_port'),
-                Markup.button.callback('❌ Bekor qilish', 'cancel_email_config')
+                Markup.button.callback('⬅️ Orqaga', 'back_to_password'),
+                Markup.button.callback('❌ Bekor qilish', 'cancel_email_config'),
             ]),
-            'User qaytarish'
-        );
-    }
-
-    @Action('back_to_pass')
-    async onBackToPass(@Ctx() ctx: Context) {
-        const sceneState = ctx.scene.state as any;
-        delete sceneState.pass;
-        await safeReplyOrEdit(
-            ctx,
-            `✅ Foydalanuvchi nomi: "${sceneState.user}"\n\nParolni kiriting.`,
-            Markup.inlineKeyboard([
-                Markup.button.callback('⬅️ Orqaga', 'back_to_user'),
-                Markup.button.callback('❌ Bekor qilish', 'cancel_email_config')
-            ]),
-            'Parol qaytarish'
+            'Recipients qaytarish',
         );
     }
 
     @Action('cancel_email_config')
     async onCancel(@Ctx() ctx: Context) {
-        await safeReplyOrEdit(ctx, '❌ Email sozlamalari bekor qilindi.', undefined, 'Bekor qilindi');
+        await safeReplyOrEdit(
+            ctx,
+            '❌ Email sozlamalari bekor qilindi.',
+            undefined,
+            'Bekor qilindi',
+        );
         await ctx.scene.leave();
     }
 }

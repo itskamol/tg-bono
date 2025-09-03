@@ -5,17 +5,7 @@ import { EditCategoryScene } from './scenes/edit-category.scene';
 import { DeleteCategoryScene } from './scenes/delete-category.scene';
 
 @Module({
-    providers: [
-        CategoriesUpdate,
-        AddCategoryScene,
-        EditCategoryScene,
-        DeleteCategoryScene,
-    ],
-    exports: [
-        CategoriesUpdate,
-        AddCategoryScene,
-        EditCategoryScene,
-        DeleteCategoryScene,
-    ],
+    providers: [CategoriesUpdate, AddCategoryScene, EditCategoryScene, DeleteCategoryScene],
+    exports: [CategoriesUpdate, AddCategoryScene, EditCategoryScene, DeleteCategoryScene],
 })
 export class CategoriesModule {}
