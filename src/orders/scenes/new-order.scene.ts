@@ -933,12 +933,12 @@ ${paymentsText}
             sceneState.payments,
         );
 
-        const emoji = this.getPaymentTypeEmoji(removedPayment!.type);
-        const typeName = this.getPaymentTypeName(removedPayment!.type);
+        const emoji = this.getPaymentTypeEmoji(removedPayment.type);
+        const typeName = this.getPaymentTypeName(removedPayment.type);
 
         await this.safeEditOrReply(
             ctx,
-            `🗑️ To'lov o'chirildi: ${emoji} ${typeName} - ${formatCurrency(removedPayment!.amount)}`,
+            `🗑️ To'lov o'chirildi: ${emoji} ${typeName} - ${formatCurrency(removedPayment.amount)}`,
         );
 
         return this.showPaymentSummary(ctx);

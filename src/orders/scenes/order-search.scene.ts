@@ -104,7 +104,7 @@ export class OrderSearchScene {
     async onDateSelection(@Ctx() ctx: Context) {
         const dateType = (ctx.callbackQuery as any).data.replace('date_', '');
 
-        let startDate = new Date();
+        const startDate = new Date();
         let endDate = new Date();
 
         switch (dateType) {
@@ -195,7 +195,7 @@ export class OrderSearchScene {
 
     private async performDateSearch(ctx: Context, startDate: Date, endDate: Date) {
         const user = ctx.user;
-        let whereClause: any = {
+        const whereClause: any = {
             created_at: {
                 gte: startDate,
                 lte: endDate,
@@ -219,7 +219,7 @@ export class OrderSearchScene {
 
     private async performCustomerSearch(ctx: Context, customerName: string) {
         const user = ctx.user;
-        let whereClause: any = {
+        const whereClause: any = {
             client_name: {
                 contains: customerName,
                 mode: 'insensitive',
@@ -243,7 +243,7 @@ export class OrderSearchScene {
 
     private async performProductSearch(ctx: Context, productName: string) {
         const user = ctx.user;
-        let whereClause: any = {
+        const whereClause: any = {
             order_products: {
                 some: {
                     OR: [
@@ -281,7 +281,7 @@ export class OrderSearchScene {
 
     private async performNumberSearch(ctx: Context, orderNumber: string) {
         const user = ctx.user;
-        let whereClause: any = {
+        const whereClause: any = {
             order_number: {
                 contains: orderNumber,
                 mode: 'insensitive',
