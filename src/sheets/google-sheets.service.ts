@@ -154,7 +154,7 @@ export class GoogleSheetsService {
                     ? order.client_birthday.toLocaleDateString('uz-UZ')
                     : 'N/A',
                 Branch: order.branch.name,
-                Cashier: order.cashier.full_name,
+                Cashier: order.cashier?.full_name || 'Noma\'lum',
                 'Total Amount': order.total_amount,
                 'Order Date': order.created_at.toLocaleString('uz-UZ'),
             };
@@ -215,7 +215,7 @@ export class GoogleSheetsService {
                                   ? order.client_birthday.toLocaleDateString('uz-UZ')
                                   : 'N/A',
                               Branch: order.branch.name,
-                              Cashier: order.cashier.full_name,
+                              Cashier: order.cashier?.full_name || 'Noma\'lum',
                               'Total Amount': order.total_amount,
                               'Order Date': order.created_at.toLocaleString('uz-UZ'),
                               Payments: order.payments
@@ -260,7 +260,7 @@ export class GoogleSheetsService {
                         ? order.client_birthday.toLocaleDateString('uz-UZ')
                         : 'N/A',
                     Branch: order.branch.name,
-                    Cashier: order.cashier.full_name,
+                    Cashier: order.cashier?.full_name || 'Noma\'lum',
                     'Total Amount': order.total_amount,
                     'Order Date': order.created_at.toLocaleString('uz-UZ'),
                     Payments: order.payments

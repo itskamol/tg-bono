@@ -39,6 +39,11 @@ export class OrdersUpdate {
 
         if (user.role === Role.SUPER_ADMIN) {
             orders = await this.prisma.order.findMany({
+                where: {
+                    cashier_id: {
+                        not: null // Faqat cashier_id mavjud bo'lgan orderlar
+                    }
+                },
                 include: {
                     branch: true,
                     cashier: true,
@@ -54,7 +59,12 @@ export class OrdersUpdate {
                 return;
             }
             orders = await this.prisma.order.findMany({
-                where: { branch_id: user.branch_id },
+                where: { 
+                    branch_id: user.branch_id,
+                    cashier_id: {
+                        not: null // Faqat cashier_id mavjud bo'lgan orderlar
+                    }
+                },
                 include: {
                     branch: true,
                     cashier: true,
@@ -245,7 +255,7 @@ ${user.role === Role.ADMIN ? `🏪 Filial: ${user.branch?.name || 'N/A'}` : '�
 ${order.client_birthday ? `🎂 Tug'ilgan kun: ${order.client_birthday.toLocaleDateString('uz-UZ')}` : ''}
 
 🏪 Filial: ${order.branch.name}
-💰 Kassir: ${order.cashier.full_name}
+💰 Kassir: ${order.cashier?.full_name || 'Noma\'lum'}
 
 💳 To'lovlar:
 ${paymentsText}

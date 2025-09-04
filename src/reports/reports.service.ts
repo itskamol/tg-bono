@@ -47,7 +47,7 @@ export class ReportsService {
                         ? o.payments.map((p) => `${p.payment_type}:${p.amount}`).join(';')
                         : 'N/A';
 
-                return `${o.order_number},${o.created_at.toISOString()},${clientName},"${o.client_phone}",${o.branch.name},${o.cashier.full_name},"${paymentTypes}",${o.total_amount}`;
+                return `${o.order_number},${o.created_at.toISOString()},${clientName},"${o.client_phone}",${o.branch.name},${o.cashier?.full_name || 'Noma\'lum'},"${paymentTypes}",${o.total_amount}`;
             })
             .join('\n');
         return header + rows;

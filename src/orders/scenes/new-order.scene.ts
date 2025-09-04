@@ -573,7 +573,7 @@ ${paymentsText}
                     clientName: createdOrder.client_name,
                     clientPhone: createdOrder.client_phone,
                     branchName: createdOrder.branch.name,
-                    cashierName: createdOrder.cashier.full_name,
+                    cashierName: createdOrder.cashier?.full_name || 'Noma\'lum',
                     products: createdOrder.order_products.map(p => ({
                         productName: p.product_name,
                         category: p.category,
@@ -1056,7 +1056,7 @@ ${paymentsText}
                 'Client Name': order.client_name,
                 'Client Phone': order.client_phone || 'Ko\'rsatilmagan',
                 'Branch': order.branch.name,
-                'Cashier': order.cashier.full_name,
+                'Cashier': order.cashier?.full_name || 'Noma\'lum',
                 'Total Amount': order.total_amount,
                 'Created At': new Date(order.created_at).toLocaleString('uz-UZ'),
                 'Products Count': order.order_products.length,
