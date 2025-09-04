@@ -54,8 +54,8 @@ model Order {
   client_birthday DateTime?
   branch          Branch          @relation(fields: [branch_id], references: [id])
   branch_id       String          @db.ObjectId
-  cashier         User            @relation(fields: [cashier_id], references: [id])
-  cashier_id      String          @db.ObjectId
+  cashier         User?           @relation(fields: [cashier_id], references: [id])
+  cashier_id      String?         @db.ObjectId
   total_amount    Float
   order_products  Order_Product[]
   payments        Payment[]

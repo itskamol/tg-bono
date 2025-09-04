@@ -15,8 +15,9 @@ import { UsersModule } from './users/users.module';
 import { CategoriesModule } from './categories/categories.module';
 import { GoogleSheetsModule } from './sheets/google-sheets.module';
 import { PrismaService } from './prisma/prisma.service';
-import { authMiddleware } from './auth/middlewares/auth.middleware';
-import { Role } from '@prisma/client';
+import { APP_GUARD } from '@nestjs/core';
+import { AuthGuard } from './auth/guards/auth.guard';
+import { userMiddleware } from './auth/middlewares/auth.middleware';
 
 @Module({
     imports: [
@@ -27,14 +28,12 @@ import { Role } from '@prisma/client';
             imports: [ConfigModule],
             useFactory: (configService: ConfigService, prismaService: PrismaService) => ({
                 token: configService.get<string>('TELEGRAM_BOT_TOKEN'),
-                // Global middleware'ni shu yerga qo'shing.
-                // Bu barcha so'rovlar uchun ishlaydi.
                 middlewares: [
                     session(),
-                    authMiddleware([Role.ADMIN, Role.SUPER_ADMIN, Role.CASHIER], prismaService),
+                    userMiddleware(prismaService),
                 ],
             }),
-            inject: [ConfigService, PrismaService], // <-- PrismaService'ni inject qiling
+            inject: [ConfigService, PrismaService],
         }),
         UsersModule,
         BranchesModule,
@@ -47,6 +46,12 @@ import { Role } from '@prisma/client';
         SettingsModule,
         CategoriesModule,
         GoogleSheetsModule,
+    ],
+    providers: [
+        {
+            provide: APP_GUARD,
+            useClass: AuthGuard,
+        },
     ],
 })
 export class AppModule { }

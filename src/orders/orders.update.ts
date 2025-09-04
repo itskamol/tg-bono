@@ -39,11 +39,6 @@ export class OrdersUpdate {
 
         if (user.role === Role.SUPER_ADMIN) {
             orders = await this.prisma.order.findMany({
-                where: {
-                    cashier_id: {
-                        not: null // Faqat cashier_id mavjud bo'lgan orderlar
-                    }
-                },
                 include: {
                     branch: true,
                     cashier: true,
@@ -60,10 +55,7 @@ export class OrdersUpdate {
             }
             orders = await this.prisma.order.findMany({
                 where: { 
-                    branch_id: user.branch_id,
-                    cashier_id: {
-                        not: null // Faqat cashier_id mavjud bo'lgan orderlar
-                    }
+                    branch_id: user.branch_id
                 },
                 include: {
                     branch: true,
