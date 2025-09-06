@@ -11,7 +11,6 @@ import { SidesUpdate } from '../sides/sides.update';
 import { OrdersUpdate } from '../orders/orders.update';
 import { ReportsUpdate } from '../reports/reports.update';
 import { SettingsUpdate } from '../settings/settings.update';
-import { withRetry } from '../common/utils/retry.util';
 
 import { Public } from 'src/auth/decorators/public.decorator';
 
@@ -124,7 +123,7 @@ Admin sizni tizimga qo'shishi kerak.
                 ['📦 Kategoriyalar', '👤 Profil'],
             ];
         } else if (user.role === Role.CASHIER) {
-            keyboardButtons = [['➕ Yangi'], ['📋 Buyurtmalar', '👤 Profil']];
+            keyboardButtons = [['➕ Yangi'], ['📋 Buyurtmalar', '📊 Hisobotlar' ,'👤 Profil']];
         }
 
         await ctx.reply(startMessage, Markup.keyboard(keyboardButtons).resize().persistent());
@@ -263,7 +262,7 @@ Admin sizni tizimga qo'shishi kerak.
 👤 Profil ma'lumotlari:
 
 📝 To'liq ism: ${user.full_name}
-🎭 Rol: ${roleText}
+🔰 Rol: ${roleText}
 🏪 Filial: ${user.branch?.name || 'Tayinlanmagan'}
 📍 Filial manzili: ${user.branch?.address || 'N/A'}
 📅 Ro'yxatdan o'tgan: ${user.created_at.toLocaleDateString('uz-UZ')}
@@ -317,6 +316,7 @@ Admin sizni tizimga qo'shishi kerak.
             currentButtonTextMap = {
                 '➕ Yangi': 'neworder',
                 '📋 Buyurtmalar': 'orders',
+                '📊 Hisobotlar': 'reports',
                 '👤 Profil': 'profile',
             };
         }

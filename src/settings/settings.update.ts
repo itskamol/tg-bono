@@ -28,7 +28,7 @@ export class SettingsUpdate {
                     Markup.button.callback('📢 Kanal/Guruh', 'configure_channel'),
                 ],
                 {
-                    columns: 2,
+                    columns: 1,
                 },
             ),
             'Sozlamalar',

@@ -14,7 +14,6 @@ import { BranchesUpdate } from 'src/branches/branches.update';
 import { OrdersUpdate } from 'src/orders/orders.update';
 import { ReportsUpdate } from 'src/reports/reports.update';
 import { SettingsUpdate } from 'src/settings/settings.update';
-import { ReportsService } from 'src/reports/reports.service';
 import { EncryptionService } from 'src/settings/encryption.service';
 import { GoogleSheetsService } from 'src/sheets/google-sheets.service';
 import { NotificationService } from 'src/notifications/notification.service';
@@ -38,7 +37,6 @@ import { NotificationService } from 'src/notifications/notification.service';
         OrdersUpdate,
         ReportsUpdate,
         SettingsUpdate,
-        ReportsService,
         EncryptionService,
         GoogleSheetsService,
         NotificationService

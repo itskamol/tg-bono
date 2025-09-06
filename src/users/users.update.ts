@@ -133,9 +133,9 @@ export class UsersUpdate {
 👤 <b>Foydalanuvchi ma'lumotlari:</b>
 
 👤 <b>To'liq ism:</b> ${user.full_name}
-🎭 <b>Rol:</b> ${roleText}
+🔰 <b>Rol:</b> ${roleText}
 🏪 <b>Filial:</b> ${user.branch?.name || 'Tayinlanmagan'}
-📱 <b>Telegram ID:</b> <code>${user.telegram_id}</code>
+🆔 <b>Telegram ID:</b> <code>${user.telegram_id}</code>
 📊 <b>Buyurtmalar:</b> ${user._count.orders} ta
 📅 <b>Ro'yxatdan o'tgan:</b> ${user.created_at.toLocaleDateString('uz-UZ')}
 

@@ -54,7 +54,7 @@ export class EditUserScene {
 
         await safeEditMessageText(
             ctx,
-            `✏️ <b>Foydalanuvchi tahrirlash</b>\n\n👤 <b>Joriy ism:</b> ${user.full_name}\n🎭 <b>Rol:</b> ${roleText}\n🏪 <b>Joriy filial:</b> ${user.branch?.name || 'Tayinlanmagan'}\n\nNimani tahrirlashni xohlaysiz?`,
+            `✏️ <b>Foydalanuvchi tahrirlash</b>\n\n👤 <b>Joriy ism:</b> ${user.full_name}\n🔰 <b>Rol:</b> ${roleText}\n🏪 <b>Joriy filial:</b> ${user.branch?.name || 'Tayinlanmagan'}\n\nNimani tahrirlashni xohlaysiz?`,
             Markup.inlineKeyboard(
                 [
                     Markup.button.callback("👤 Ismini o'zgartirish", 'EDIT_USER_NAME'),

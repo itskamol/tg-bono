@@ -1,161 +1,61 @@
-import { Update, Command, Ctx, Action } from 'nestjs-telegraf';
-import { Markup } from 'telegraf';
-import { Roles } from '../auth/decorators/roles.decorator';
+import { Update, Ctx, Action } from 'nestjs-telegraf';
 import { Context } from '../interfaces/context.interface';
 import { Role } from '@prisma/client';
-import { ReportsService } from './reports.service';
 import { safeEditMessageText } from '../utils/telegram.utils';
+import { ReportHelpers } from './helpers/report.helpers';
+import { ReportType } from './types';
 
 @Update()
 export class ReportsUpdate {
-    constructor(private readonly reportsService: ReportsService) { }
-    @Command('reports')
-    @Roles(Role.SUPER_ADMIN, Role.ADMIN)
+    constructor() {}
+
     async showReports(@Ctx() ctx: Context) {
         const user = ctx.user;
 
-        const reportButtons = [
-            Markup.button.callback('📊 Umumiy', 'GENERAL_REPORTS'),
-            Markup.button.callback("$ To'lovlar", 'PAYMENT_REPORTS'),
-        ];
+        const reportButtons = ReportHelpers.getReportTypes(user.role);
 
-        if (user.role === Role.SUPER_ADMIN) {
-            reportButtons.push(
-                Markup.button.callback('🏪 Filiallar', 'BRANCH_REPORTS'),
-                Markup.button.callback('👥 Xodimlar', 'USER_REPORTS'),
-            );
-        }
-
-        const branchInfo = user.role === Role.ADMIN ? `\n🏪 <b>Filial:</b> ${user.branch?.name || 'N/A'}` : '\n🌐 <b>Barcha filiallar</b>';
+        const branchInfo =
+            user.role === Role.ADMIN || user.role === Role.CASHIER
+                ? `\n🏪 <b>Filial:</b> ${user.branch?.name || 'N/A'}`
+                : '\n🌐 <b>Barcha filiallar</b>';
 
         await safeEditMessageText(
             ctx,
             `📊 <b>Hisobotlar bo'limi</b>${branchInfo}\n\nQaysi turdagi hisobotni ko'rmoqchisiz?`,
-            Markup.inlineKeyboard(reportButtons, {
-                columns: 2,
-            }),
+            reportButtons,
             'Hisobotlar',
         );
     }
 
-    @Action('GENERAL_REPORTS')
-    async showGeneralReports(@Ctx() ctx: Context) {
-        await ctx.scene.enter('general-reports-scene');
-    }
-
-    @Action('PAYMENT_REPORTS')
-    async showPaymentReports(@Ctx() ctx: Context) {
-        await ctx.scene.enter('payment-reports-scene');
-    }
-
-    @Action('BRANCH_REPORTS')
-    @Roles(Role.SUPER_ADMIN)
-    async showBranchReports(@Ctx() ctx: Context) {
-        await ctx.scene.enter('branch-reports-scene');
-    }
-
-    @Action('USER_REPORTS')
-    @Roles(Role.SUPER_ADMIN)
-    async showUserReports(@Ctx() ctx: Context) {
-        await ctx.scene.enter('user-reports-scene');
-    }
-
     @Action('BACK_TO_REPORTS')
     async backToReports(@Ctx() ctx: Context) {
-        return this.showReports(ctx);
-    }
+        await ctx.scene.leave();
 
-    @Command('test_sheets')
-    @Roles(Role.SUPER_ADMIN)
-    async testGoogleSheets(@Ctx() ctx: Context) {
+        const user = ctx.user;
+        const reportButtons = ReportHelpers.getReportTypes(user.role);
+
         await safeEditMessageText(
             ctx,
-            '🔄 Google Sheets ulanishini tekshiryapman...',
-            undefined,
-            'Test',
+            "📊 Hisobotlar bo'limi\n\nQaysi turdagi hisobotni ko'rmoqchisiz?",
+            reportButtons,
+            'Hisobotlar',
         );
+    }
 
-        try {
-            const user = ctx.user;
-            const result = await this.reportsService.sendReportToGoogleSheets(user, 'DAILY', true);
+    @Action(/^[A-Z_]+_REPORTS$/)
+    async showReport(@Ctx() ctx: Context) {
+        if (!ctx.callbackQuery || !('data' in ctx.callbackQuery)) return;
 
-            if (result) {
-                await safeEditMessageText(
-                    ctx,
-                    '✅ <b>Google Sheets test muvaffaqiyatli!</b> Kunlik hisobot yuborildi.',
-                    undefined,
-                    'Test natijasi',
-                );
-            } else {
-                await safeEditMessageText(
-                    ctx,
-                    '❌ <b>Google Sheets test muvaffaqiyatsiz.</b> Loglarni tekshiring.',
-                    undefined,
-                    'Test natijasi',
-                );
-            }
-        } catch (error) {
-            await safeEditMessageText(
-                ctx,
-                `❌ <b>Google Sheets test xatolik:</b> ${error.message}`,
-                undefined,
-                'Test xatolik',
-            );
+        const action = ctx.callbackQuery.data;
+        if (!action) return;
+
+        const [reportType] = action.split('_REPORTS');
+
+        if (!Object.values(ReportType).includes(reportType as ReportType)) {
+            await ctx.answerCbQuery("Noma'lum hisobot turi tanlandi.");
+            return;
         }
-    }
 
-    @Command('test_format')
-    @Roles(Role.SUPER_ADMIN, Role.ADMIN)
-    async testNewFormat(@Ctx() ctx: Context) {
-        await safeEditMessageText(
-            ctx,
-            '🔄 Yangi format test qilinmoqda...',
-            undefined,
-            'Test',
-        );
-
-        try {
-            const user = ctx.user;
-            const report = await this.reportsService.getFormattedPaymentReport(user.telegram_id, 'today', true);
-
-            await safeEditMessageText(
-                ctx,
-                report,
-                Markup.inlineKeyboard([
-                    Markup.button.callback('📊 Haftalik', 'TEST_WEEKLY'),
-                    Markup.button.callback('📈 Oylik', 'TEST_MONTHLY'),
-                    Markup.button.callback('🔄 Keng qamrov', 'TEST_COMPREHENSIVE'),
-                ], { columns: 1 }),
-                'Yangi format test',
-            );
-        } catch (error) {
-            await safeEditMessageText(
-                ctx,
-                `❌ <b>Format test xatolik:</b> ${error.message}`,
-                undefined,
-                'Test xatolik',
-            );
-        }
-    }
-
-    @Action('TEST_WEEKLY')
-    async testWeeklyFormat(@Ctx() ctx: Context) {
-        const user = ctx.user;
-        const report = await this.reportsService.getFormattedPaymentReport(user.telegram_id, 'week', true);
-        await safeEditMessageText(ctx, report, undefined, 'Haftalik test');
-    }
-
-    @Action('TEST_MONTHLY')
-    async testMonthlyFormat(@Ctx() ctx: Context) {
-        const user = ctx.user;
-        const report = await this.reportsService.getFormattedPaymentReport(user.telegram_id, 'month', true);
-        await safeEditMessageText(ctx, report, undefined, 'Oylik test');
-    }
-
-    @Action('TEST_COMPREHENSIVE')
-    async testComprehensiveFormat(@Ctx() ctx: Context) {
-        const user = ctx.user;
-        const report = await this.reportsService.getComprehensiveReport(user.telegram_id);
-        await safeEditMessageText(ctx, report, undefined, 'Keng qamrov test');
+        await ctx.scene.enter('reports-scene', { reportType });
     }
 }

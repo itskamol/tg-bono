@@ -1047,7 +1047,6 @@ ${paymentsText}
                 return `${index + 1}. ${paymentName}: ${this.formatCurrency(p.amount)}`;
             }).join('\n');
 
-            // Kategoriyalar ro'yxati
             const categories = order.order_products.map(p => p.category).join(', ');
 
             // Tomonlar ro'yxati

@@ -51,7 +51,7 @@ export class DeleteUserScene {
             ctx,
             `⚠️ Rostdan ham "<b>${user.full_name}</b>" foydalanuvchisini o'chirmoqchimisiz?\n\n` +
             `👤 <b>To'liq ism:</b> ${user.full_name}\n` +
-            `🎭 <b>Rol:</b> ${roleText}\n` +
+            `🔰 <b>Rol:</b> ${roleText}\n` +
             `🏪 <b>Filial:</b> ${user.branch?.name || 'N/A'}`,
             Markup.inlineKeyboard([
                 Markup.button.callback('✅ Ha', `CONFIRM_DELETE_${userId}`),

@@ -9,7 +9,7 @@ import { formatCurrency } from 'src/utils/format.utils';
 
 @Update()
 export class CategoriesUpdate {
-    constructor(private readonly prisma: PrismaService) { }
+    constructor(private readonly prisma: PrismaService) {}
 
     @Command('categories')
     @Roles(Role.SUPER_ADMIN)
@@ -32,7 +32,8 @@ export class CategoriesUpdate {
             Markup.button.callback(category.name, `VIEW_CATEGORY_${category.id}`),
         );
 
-        await ctx.reply(
+        await safeEditMessageText(
+            ctx,
             `📦 <b>Kategoriyalar ro'yxati (${categories.length} ta):</b>`,
             Markup.inlineKeyboard(
                 [...categoryButtons, Markup.button.callback('➕ Yangi', 'ADD_CATEGORY')],
@@ -75,8 +76,8 @@ export class CategoriesUpdate {
         const sidesInfo =
             category.sides.length > 0
                 ? category.sides
-                    .map((side) => `• ${side.name}: <b>${formatCurrency(side.price)}</b>`)
-                    .join('\n')
+                      .map((side) => `• ${side.name}: <b>${formatCurrency(side.price)}</b>`)
+                      .join('\n')
                 : "Hech qanday tomon qo'shilmagan";
 
         const categoryDetails = `
@@ -276,7 +277,6 @@ Nima qilmoqchisiz?
     @Action('BACK_TO_CATEGORIES')
     @Roles(Role.SUPER_ADMIN)
     async onBackToCategories(@Ctx() ctx: Context) {
-        // Kategoriyalar ro'yxatini qayta ko'rsatish
         const categories = await this.prisma.category.findMany({
             orderBy: { name: 'asc' },
         });
