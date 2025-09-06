@@ -8,7 +8,7 @@ import { safeEditMessageText } from '../utils/telegram.utils';
 
 @Update()
 export class BranchesUpdate {
-    constructor(private readonly prisma: PrismaService) {}
+    constructor(private readonly prisma: PrismaService) { }
 
     @Command('branches')
     @Roles(Role.SUPER_ADMIN)
@@ -37,7 +37,7 @@ export class BranchesUpdate {
 
         await safeEditMessageText(
             ctx,
-            `🏪 Filiallar ro'yxati (${branches.length} ta):`,
+            `🏪 <b>Filiallar ro'yxati (${branches.length} ta):</b>`,
             Markup.inlineKeyboard(
                 [...branchButtons, Markup.button.callback('➕ Yangi', 'ADD_BRANCH')],
                 { columns: 2 },
@@ -84,12 +84,12 @@ export class BranchesUpdate {
         }
 
         const branchDetails = `
-🏪 Filial ma'lumotlari:
+🏪 <b>Filial ma'lumotlari:</b>
 
-🏪 Nomi: ${branch.name}
-📍 Manzil: ${branch.address}
-👥 Foydalanuvchilar: ${branch._count.users} ta
-📅 Yaratilgan: ${branch.created_at.toLocaleDateString('uz-UZ')}
+🏪 <b>Nomi:</b> ${branch.name}
+📍 <b>Manzil:</b> ${branch.address}
+👥 <b>Foydalanuvchilar:</b> ${branch._count.users} ta
+📅 <b>Yaratilgan:</b> ${branch.created_at.toLocaleDateString('uz-UZ')}
 
 Nima qilmoqchisiz?
         `;
@@ -194,7 +194,7 @@ Nima qilmoqchisiz?
 
         await safeEditMessageText(
             ctx,
-            `🏪 Filiallar ro'yxati (${branches.length} ta):`,
+            `🏪 <b>Filiallar ro'yxati (${branches.length} ta):</b>`,
             Markup.inlineKeyboard(
                 [...branchButtons, Markup.button.callback('➕ Yangi', 'ADD_BRANCH')],
                 { columns: 2 },

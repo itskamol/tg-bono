@@ -9,13 +9,13 @@ import { safeEditMessageText } from '../../utils/telegram.utils';
 
 @Scene('general-reports-scene')
 export class GeneralReportsScene {
-    constructor(private readonly prisma: PrismaService) {}
+    constructor(private readonly prisma: PrismaService) { }
 
     @SceneEnter()
     async onSceneEnter(@Ctx() ctx: Context) {
         await safeEditMessageText(
             ctx,
-            '📊 Umumiy hisobotlar\n\nDavrni tanlang:',
+            '📊 <b>Umumiy hisobotlar</b>\n\nDavrni tanlang:',
             Markup.inlineKeyboard(
                 [
                     Markup.button.callback('📅 Bugun', 'GENERAL_TODAY'),
@@ -25,7 +25,7 @@ export class GeneralReportsScene {
                     Markup.button.callback('🔙 Orqaga', 'BACK_TO_REPORTS'),
                 ],
                 {
-                    columns: 2, // Har bir qatordagi tugmalar soni. 2 yoki 3 qilib o'zgartirishingiz mumkin.
+                    columns: 2,
                 },
             ),
             'Umumiy hisobotlar',
@@ -56,7 +56,6 @@ export class GeneralReportsScene {
     async backToReports(@Ctx() ctx: Context) {
         await ctx.scene.leave();
 
-        // Show the main reports menu
         const user = ctx.user;
         const reportButtons = [
             Markup.button.callback('📊 Umumiy', 'GENERAL_REPORTS'),
@@ -72,7 +71,7 @@ export class GeneralReportsScene {
 
         await safeEditMessageText(
             ctx,
-            "📊 Hisobotlar bo'limi\n\nQaysi turdagi hisobotni ko'rmoqchisiz?",
+            "📊 <b>Hisobotlar bo'limi</b>\n\nQaysi turdagi hisobotni ko'rmoqchisiz?",
             Markup.inlineKeyboard(reportButtons, {
                 columns: 2,
             }),
@@ -81,7 +80,6 @@ export class GeneralReportsScene {
     }
 
     private async generateGeneralReport(ctx: Context, period: string) {
-        // Get user from database since ctx.user might not be available in scenes
         const telegramId = ctx.from?.id;
         if (!telegramId) {
             await safeEditMessageText(ctx, '❌ Telegram ID topilmadi.', undefined, 'Xatolik');
@@ -149,26 +147,25 @@ export class GeneralReportsScene {
             }),
         ]);
 
-        // Top categories list - kategoriya bo'yicha
         const topCategoriesList = topCategories
             .map((tc) => {
                 const totalAmount = (tc._sum.price || 0) * (tc._sum.quantity || 0);
-                return `• ${tc.category}: ${formatNumber(tc._sum.quantity || 0)} ta - ${formatCurrency(totalAmount)}`;
+                return `• <b>${tc.category}</b>: ${formatNumber(tc._sum.quantity || 0)} ta - <b>${formatCurrency(totalAmount)}</b>`;
             })
             .join('\n');
 
         const report = `
-📊 ${periodName.toUpperCase()} UMUMIY HISOBOT
+📊 <b>${periodName.toUpperCase()} UMUMIY HISOBOT</b>
 
-📈 Asosiy ko'rsatkichlar:
-• Buyurtmalar soni: ${formatNumber(ordersCount)} ta
-• Jami daromad: ${formatCurrency(totalRevenue._sum.total_amount || 0)}
-• O'rtacha buyurtma: ${formatCurrency(Math.round(avgOrderValue._avg.total_amount || 0))}
+📈 <b>Asosiy ko'rsatkichlar:</b>
+• <b>Buyurtmalar soni:</b> ${formatNumber(ordersCount)} ta
+• <b>Jami daromad:</b> ${formatCurrency(totalRevenue._sum.total_amount || 0)}
+• <b>O'rtacha buyurtma:</b> ${formatCurrency(Math.round(avgOrderValue._avg.total_amount || 0))}
 
-📦 Eng ko'p sotilgan kategoriyalar:
+📦 <b>Eng ko'p sotilgan kategoriyalar:</b>
 ${topCategoriesList || "Ma'lumot yo'q"}
 
-${user.role === Role.ADMIN ? `🏪 Filial: ${user.branch?.name || 'N/A'}` : '🌐 Barcha filiallar'}
+${user.role === Role.ADMIN ? `🏪 <b>Filial:</b> ${user.branch?.name || 'N/A'}` : '🌐 <b>Barcha filiallar</b>'}
     `;
 
         await safeEditMessageText(

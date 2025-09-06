@@ -9,7 +9,7 @@ import { formatCurrency } from 'src/utils/format.utils';
 
 @Update()
 export class OrdersUpdate {
-    constructor(private readonly prisma: PrismaService) {}
+    constructor(private readonly prisma: PrismaService) { }
 
     @Command('neworder')
     @Roles(Role.CASHIER)
@@ -17,6 +17,7 @@ export class OrdersUpdate {
         if (!ctx.user.branch_id) {
             await ctx.reply(
                 '❌ Siz hech qanday filialga tayinlanmagansiz. Buyurtma yarata olmaysiz.',
+                { parse_mode: 'HTML' }
             );
             return;
         }
@@ -39,7 +40,7 @@ export class OrdersUpdate {
         // Filiallarga qarab filter qilish
         if (user.role === Role.ADMIN || user.role === Role.CASHIER) {
             if (!user.branch_id) {
-                await ctx.reply('❌ Siz hech qanday filialga tayinlanmagansiz.');
+                await ctx.reply('❌ Siz hech qanday filialga tayinlanmagansiz.', { parse_mode: 'HTML' });
                 return;
             }
             whereClause.branch_id = user.branch_id;
@@ -59,14 +60,14 @@ export class OrdersUpdate {
         });
 
         if (!orders || orders.length === 0) {
-            const branchInfo = user.role === Role.SUPER_ADMIN ? 'tizimda' : `"${user.branch?.name || 'sizning filialingizda'}"`;
-            await ctx.reply(`❌ ${branchInfo} buyurtmalar topilmadi.`);
+            const branchInfo = user.role === Role.SUPER_ADMIN ? 'tizimda' : `<b>${user.branch?.name || 'sizning filialingizda'}</b>`;
+            await ctx.reply(`❌ ${branchInfo} buyurtmalar topilmadi.`, { parse_mode: 'HTML' });
             return;
         }
 
         const orderButtons = orders.map((order) =>
             Markup.button.callback(
-                `${order.order_number} - ${formatCurrency(order.total_amount)}`,
+                `#${order.order_number} - ${formatCurrency(order.total_amount)}`,
                 `VIEW_ORDER_${order.id}`,
             ),
         );
@@ -74,11 +75,11 @@ export class OrdersUpdate {
         // Add search button at the end
         orderButtons.push(Markup.button.callback('🔍 Qidirish', 'SEARCH_ORDERS'));
 
-        const branchInfo = user.role === Role.SUPER_ADMIN ? 'Barcha filiallar' : `Filial: ${user.branch?.name || 'N/A'}`;
-        
+        const branchInfo = user.role === Role.SUPER_ADMIN ? 'Barcha filiallar' : `Filial: <b>${user.branch?.name || 'N/A'}</b>`;
+
         await safeEditMessageText(
             ctx,
-            `📋 Buyurtmalar (${orders.length} ta)\n🏪 ${branchInfo}:`,
+            `📋 <b>Buyurtmalar (${orders.length} ta)</b>\n🏪 ${branchInfo}:`,
             Markup.inlineKeyboard(orderButtons, { columns: 1 }),
         );
     }
@@ -88,10 +89,13 @@ export class OrdersUpdate {
     async userOrderHistory(@Ctx() ctx: Context) {
         const message = ctx.message;
         if (!('text' in message)) return;
-        
+
         const args = message.text.split(' ');
         if (args.length < 2) {
-            await ctx.reply('📋 Foydalanish: /user_orders [user_id yoki telegram_id]\n\nMisol: /user_orders 123456789');
+            await ctx.reply(
+                "📋 <b>Foydalanish:</b> /user_orders [user_id | telegram_id]\n\nMisol: <code>/user_orders 123456789</code>",
+                { parse_mode: 'HTML' }
+            );
             return;
         }
 
@@ -114,7 +118,7 @@ export class OrdersUpdate {
         }
 
         if (!targetUser) {
-            await ctx.reply('❌ Foydalanuvchi topilmadi.');
+            await ctx.reply('❌ <b>Foydalanuvchi topilmadi.</b>', { parse_mode: 'HTML' });
             return;
         }
 
@@ -131,7 +135,7 @@ export class OrdersUpdate {
         });
 
         if (orders.length === 0) {
-            await ctx.reply(`❌ ${targetUser.full_name} uchun buyurtmalar topilmadi.`);
+            await ctx.reply(`❌ <b>${targetUser.full_name}</b> uchun buyurtmalar topilmadi.`, { parse_mode: 'HTML' });
             return;
         }
 
@@ -145,23 +149,23 @@ export class OrdersUpdate {
             return acc;
         }, {} as Record<string, typeof orders>);
 
-        let responseMessage = `👤 ${targetUser.full_name} ning buyurtmalari:\n🏪 Joriy filial: ${targetUser.branch?.name || 'Tayinlanmagan'}\n\n`;
+        let responseMessage = `👤 <b>${targetUser.full_name}</b>ning buyurtmalari:\n🏪 Joriy filial: <b>${targetUser.branch?.name || 'Tayinlanmagan'}</b>\n\n`;
 
         Object.entries(ordersByBranch).forEach(([branchName, branchOrders]) => {
             const totalAmount = branchOrders.reduce((sum, order) => sum + order.total_amount, 0);
-            responseMessage += `🏢 ${branchName} (${branchOrders.length} ta - ${formatCurrency(totalAmount)}):\n`;
-            
+            responseMessage += `🏢 <b>${branchName}</b> (${branchOrders.length} ta - ${formatCurrency(totalAmount)}):\n`;
+
             branchOrders.slice(0, 5).forEach(order => {
-                responseMessage += `  • ${order.order_number} - ${formatCurrency(order.total_amount)} (${order.created_at.toLocaleDateString('uz-UZ')})\n`;
+                responseMessage += `  • <code>#${order.order_number}</code> - ${formatCurrency(order.total_amount)} (${order.created_at.toLocaleDateString('uz-UZ')})\n`;
             });
-            
+
             if (branchOrders.length > 5) {
                 responseMessage += `  ... va yana ${branchOrders.length - 5} ta\n`;
             }
             responseMessage += '\n';
         });
 
-        await ctx.reply(responseMessage);
+        await ctx.reply(responseMessage, { parse_mode: 'HTML' });
     }
 
     @Command('order_stats')
@@ -208,20 +212,20 @@ export class OrdersUpdate {
         ]);
 
         const statsMessage = `
-📊 Buyurtma statistikasi:
+📊 <b>Buyurtma statistikasi:</b>
 
-📅 Bugun:
-• Buyurtmalar: ${todayOrders} ta
-• Daromad: ${formatCurrency(todayRevenue._sum.total_amount) || 0}
+📅 <b>Bugun:</b>
+• Buyurtmalar: <b>${todayOrders}</b> ta
+• Daromad: <b>${formatCurrency(todayRevenue._sum.total_amount) || 0}</b>
 
-📈 Jami:
-• Buyurtmalar: ${totalOrders} ta  
-• Daromad: ${formatCurrency(totalRevenue._sum.total_amount) || 0}
+📈 <b>Jami:</b>
+• Buyurtmalar: <b>${totalOrders}</b> ta
+• Daromad: <b>${formatCurrency(totalRevenue._sum.total_amount) || 0}</b>
 
-${user.role === Role.ADMIN ? `🏪 Filial: ${user.branch?.name || 'N/A'}` : '🌐 Barcha filiallar'}
+${user.role === Role.ADMIN ? `🏪 Filial: <b>${user.branch?.name || 'N/A'}</b>` : '🌐 <b>Barcha filiallar</b>'}
     `;
 
-        await ctx.reply(statsMessage);
+        await ctx.reply(statsMessage, { parse_mode: 'HTML' });
     }
 
     @Action('SEARCH_ORDERS')
@@ -275,7 +279,7 @@ ${user.role === Role.ADMIN ? `🏪 Filial: ${user.branch?.name || 'N/A'}` : '�
         if (!order) {
             await safeEditMessageText(
                 ctx,
-                '❌ Buyurtma topilmadi.',
+                '❌ <b>Buyurtma topilmadi.</b>',
                 undefined,
                 'Buyurtma topilmadi',
             );
@@ -285,7 +289,7 @@ ${user.role === Role.ADMIN ? `🏪 Filial: ${user.branch?.name || 'N/A'}` : '�
         const products = order.order_products
             .map(
                 (op) =>
-                    `• ${op.quantity}x ${op.product_name} (${op.side_name}) - ${formatCurrency(op.price * op.quantity)}`,
+                    `• ${op.quantity}x <b>${op.product_name}</b> (${op.side_name}) - ${formatCurrency(op.price * op.quantity)}`,
             )
             .join('\n');
 
@@ -293,45 +297,45 @@ ${user.role === Role.ADMIN ? `🏪 Filial: ${user.branch?.name || 'N/A'}` : '�
         const paymentsText =
             order.payments && order.payments.length > 0
                 ? order.payments
-                      .map((payment, index) => {
-                          const emoji =
-                              {
-                                  [PaymentType.CASH]: '💵',
-                                  [PaymentType.CARD]: '💳',
-                                  [PaymentType.TRANSFER]: '📱',
-                              }[payment.payment_type] || '💰';
+                    .map((payment, index) => {
+                        const emoji =
+                        {
+                            [PaymentType.CASH]: '💵',
+                            [PaymentType.CARD]: '💳',
+                            [PaymentType.TRANSFER]: '📱',
+                        }[payment.payment_type] || '💰';
 
-                          const typeName =
-                              {
-                                  [PaymentType.CASH]: 'Naqd',
-                                  [PaymentType.CARD]: 'Karta',
-                                  [PaymentType.TRANSFER]: 'Nasiya',
-                              }[payment.payment_type] || "Noma'lum";
+                        const typeName =
+                        {
+                            [PaymentType.CASH]: 'Naqd',
+                            [PaymentType.CARD]: 'Karta',
+                            [PaymentType.TRANSFER]: 'Nasiya',
+                        }[payment.payment_type] || "Noma'lum";
 
-                          return `${index + 1}. ${emoji} ${typeName}: ${formatCurrency(payment.amount)}`;
-                      })
-                      .join('\n')
+                        return `${index + 1}. ${emoji} ${typeName}: <b>${formatCurrency(payment.amount)}</b>`;
+                    })
+                    .join('\n')
                 : "To'lov ma'lumotlari mavjud emas";
 
         const orderDetails = `
-📋 Buyurtma tafsilotlari:
+📋 <b>Buyurtma tafsilotlari:</b>
 
-🔢 Raqam: ${order.order_number}
-👤 Mijoz: ${order.client_name}
-📞 Telefon: ${order.client_phone || "Ko'rsatilmagan"}
-${order.client_birthday ? `🎂 Tug'ilgan kun: ${order.client_birthday.toLocaleDateString('uz-UZ')}` : ''}
+🔢 <b>Raqam:</b> <code>${order.order_number}</code>
+👤 <b>Mijoz:</b> ${order.client_name}
+📞 <b>Telefon:</b> ${order.client_phone || "Ko'rsatilmagan"}
+${order.client_birthday ? `🎂 <b>Tug'ilgan kun:</b> ${order.client_birthday.toLocaleDateString('uz-UZ')}` : ''}
 
-🏪 Filial: ${order.branch.name}
-💰 Kassir: ${order.cashier?.full_name || 'Noma\'lum'}
+🏪 <b>Filial:</b> ${order.branch.name}
+💰 <b>Kassir:</b> ${order.cashier?.full_name || 'Noma\'lum'}
 
-💳 To'lovlar:
+💳 <b>To'lovlar:</b>
 ${paymentsText}
 
-📦 Mahsulotlar:
+📦 <b>Mahsulotlar:</b>
 ${products}
 
-💵 Jami: ${formatCurrency(order.total_amount)}
-📅 Sana: ${order.created_at.toLocaleString('uz-UZ')}
+💵 <b>Jami:</b> ${formatCurrency(order.total_amount)}
+📅 <b>Sana:</b> ${order.created_at.toLocaleString('uz-UZ')}
     `;
 
         await safeEditMessageText(

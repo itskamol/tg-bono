@@ -2,17 +2,18 @@ import { Scene, SceneEnter, Action, Ctx } from 'nestjs-telegraf';
 import { Markup } from 'telegraf';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Context } from '../../interfaces/context.interface';
+import { safeEditMessageText } from 'src/utils/telegram.utils';
 
 @Scene('delete-branch-scene')
 export class DeleteBranchScene {
-    constructor(private readonly prisma: PrismaService) {}
+    constructor(private readonly prisma: PrismaService) { }
 
     @SceneEnter()
     async onSceneEnter(@Ctx() ctx: Context) {
         const sceneState = ctx.scene.state as { branchId: string };
 
         if (!sceneState?.branchId) {
-            await ctx.reply("❌ Filial ma'lumotlari topilmadi.");
+            await ctx.reply("❌ Filial ma'lumotlari topilmadi.", { parse_mode: 'HTML' });
             await ctx.scene.leave();
             return;
         }
@@ -27,17 +28,18 @@ export class DeleteBranchScene {
         });
 
         if (!branch) {
-            await ctx.reply('❌ Filial topilmadi.');
+            await ctx.reply('❌ Filial topilmadi.', { parse_mode: 'HTML' });
             await ctx.scene.leave();
             return;
         }
 
-        await ctx.editMessageText(
-            `⚠️ Rostdan ham "${branch.name}" filialini o'chirmoqchimisiz?\n\n` +
-                `🏪 Nomi: ${branch.name}\n` +
-                `📍 Manzil: ${branch.address}\n` +
-                `👥 Foydalanuvchilar: ${branch._count.users}\n\n` +
-                `❗️ Bu amal qaytarib bo'lmaydi va barcha bog'liq foydalanuvchilar ham o'chiriladi!`,
+        await safeEditMessageText(
+            ctx,
+            `⚠️ Rostdan ham "<b>${branch.name}</b>" filialini o'chirmoqchimisiz?\n\n` +
+            `🏪 <b>Nomi:</b> ${branch.name}\n` +
+            `📍 <b>Manzil:</b> ${branch.address}\n` +
+            `👥 <b>Foydalanuvchilar:</b> ${branch._count.users}\n\n` +
+            `❗️ Bu amal qaytarib bo'lmaydi va barcha bog'liq foydalanuvchilar ham o'chiriladi!`,
             Markup.inlineKeyboard([
                 Markup.button.callback('✅ Ha', `CONFIRM_DELETE_BRANCH_${sceneState.branchId}`),
                 Markup.button.callback("❌ Yo'q", 'CANCEL_DELETE_BRANCH'),
@@ -59,7 +61,7 @@ export class DeleteBranchScene {
             });
 
             if (!branch) {
-                await ctx.editMessageText('❌ Filial topilmadi.');
+                await safeEditMessageText(ctx, '❌ Filial topilmadi.');
                 await ctx.scene.leave();
                 return;
             }
@@ -74,19 +76,20 @@ export class DeleteBranchScene {
                 where: { id: branchId },
             });
 
-            await ctx.editMessageText(
-                `✅ "${branch.name}" filiali va unga tegishli barcha foydalanuvchilar muvaffaqiyatli o'chirildi.`,
+            await safeEditMessageText(
+                ctx,
+                `✅ "<b>${branch.name}</b>" filiali va unga tegishli barcha foydalanuvchilar muvaffaqiyatli o'chirildi.`,
             );
             await ctx.scene.leave();
         } catch {
-            await ctx.editMessageText("❌ Filialni o'chirishda xatolik yuz berdi.");
+            await safeEditMessageText(ctx, "❌ Filialni o'chirishda xatolik yuz berdi.");
             await ctx.scene.leave();
         }
     }
 
     @Action('CANCEL_DELETE_BRANCH')
     async onCancelDelete(@Ctx() ctx: Context) {
-        await ctx.editMessageText("❌ O'chirish bekor qilindi.");
+        await safeEditMessageText(ctx, "❌ O'chirish bekor qilindi.");
         await ctx.scene.leave();
     }
 }

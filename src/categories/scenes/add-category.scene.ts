@@ -2,6 +2,7 @@ import { Scene, SceneEnter, On, Message, Action, Ctx } from 'nestjs-telegraf';
 import { Markup } from 'telegraf';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Context } from '../../interfaces/context.interface';
+import { safeEditMessageText, safeReplyOrEdit } from 'src/utils/telegram.utils';
 
 interface AddCategorySceneState {
     name?: string;
@@ -10,15 +11,16 @@ interface AddCategorySceneState {
 
 @Scene('add-category-scene')
 export class AddCategoryScene {
-    constructor(private readonly prisma: PrismaService) {}
+    constructor(private readonly prisma: PrismaService) { }
 
     @SceneEnter()
     async onSceneEnter(@Ctx() ctx: Context) {
         const sceneState = ctx.scene.state as AddCategorySceneState;
         sceneState.awaitingName = true;
 
-        await ctx.reply(
-            "📦 Yangi kategoriya qo'shish\n\n📝 Kategoriya nomini kiriting:",
+        await safeReplyOrEdit(
+            ctx,
+            "📦 <b>Yangi kategoriya qo'shish</b>\n\n📝 Kategoriya nomini kiriting:",
             Markup.inlineKeyboard([
                 Markup.button.callback('❌ Bekor qilish', 'CANCEL_ADD_CATEGORY'),
             ]),
@@ -34,12 +36,12 @@ export class AddCategoryScene {
             const trimmedName = text.trim();
 
             if (trimmedName.length < 2) {
-                await ctx.reply("❌ Kategoriya nomi kamida 2 ta belgidan iborat bo'lishi kerak.");
+                await safeReplyOrEdit(ctx, "❌ Kategoriya nomi kamida 2 ta belgidan iborat bo'lishi kerak.");
                 return;
             }
 
             if (trimmedName.length > 30) {
-                await ctx.reply("❌ Kategoriya nomi 30 ta belgidan ko'p bo'lmasligi kerak.");
+                await safeReplyOrEdit(ctx, "❌ Kategoriya nomi 30 ta belgidan ko'p bo'lmasligi kerak.");
                 return;
             }
 
@@ -49,7 +51,8 @@ export class AddCategoryScene {
             });
 
             if (existingCategory) {
-                await ctx.reply(
+                await safeReplyOrEdit(
+                    ctx,
                     '❌ Bu nom bilan kategoriya allaqachon mavjud. Boshqa nom kiriting:',
                 );
                 return;
@@ -59,8 +62,9 @@ export class AddCategoryScene {
             sceneState.awaitingName = false;
 
             // Tasdiqlash
-            await ctx.reply(
-                `📋 Yangi kategoriya ma'lumotlari:\n\n📝 Nomi: ${trimmedName}\n\nTasdiqlaysizmi?`,
+            await safeReplyOrEdit(
+                ctx,
+                `📋 <b>Yangi kategoriya ma'lumotlari:</b>\n\n📝 <b>Nomi:</b> ${trimmedName}\n\nTasdiqlaysizmi?`,
                 Markup.inlineKeyboard(
                     [
                         Markup.button.callback("✅ Ha, qo'shish", 'CONFIRM_ADD_CATEGORY'),
@@ -80,8 +84,9 @@ export class AddCategoryScene {
         sceneState.awaitingName = true;
         sceneState.name = undefined;
 
-        await ctx.editMessageText(
-            "📦 Yangi kategoriya qo'shish\n\n📝 Kategoriya nomini kiriting:",
+        await safeEditMessageText(
+            ctx,
+            "📦 <b>Yangi kategoriya qo'shish</b>\n\n📝 Kategoriya nomini kiriting:",
             Markup.inlineKeyboard([
                 Markup.button.callback('❌ Bekor qilish', 'CANCEL_ADD_CATEGORY'),
             ]),
@@ -93,7 +98,7 @@ export class AddCategoryScene {
         const sceneState = ctx.scene.state as AddCategorySceneState;
 
         if (!sceneState.name) {
-            await ctx.editMessageText("❌ Ma'lumotlar noto'g'ri.");
+            await safeEditMessageText(ctx, "❌ Ma'lumotlar noto'g'ri.");
             await ctx.scene.leave();
             return;
         }
@@ -105,8 +110,9 @@ export class AddCategoryScene {
                 },
             });
 
-            await ctx.editMessageText(
-                `✅ Yangi kategoriya muvaffaqiyatli qo'shildi!\n\n📝 Nomi: ${newCategory.name}`,
+            await safeEditMessageText(
+                ctx,
+                `✅ <b>Yangi kategoriya muvaffaqiyatli qo'shildi!</b>\n\n📝 <b>Nomi:</b> ${newCategory.name}`,
             );
             await ctx.scene.leave();
         } catch (error) {
@@ -120,7 +126,8 @@ export class AddCategoryScene {
                 }
             }
 
-            await ctx.editMessageText(
+            await safeEditMessageText(
+                ctx,
                 `${errorMessage}\n\nQaytadan urinib ko'ring.`,
                 Markup.inlineKeyboard([
                     Markup.button.callback('🔄 Qaytadan', 'RETRY_ADD_CATEGORY'),
@@ -136,8 +143,9 @@ export class AddCategoryScene {
         sceneState.awaitingName = true;
         sceneState.name = undefined;
 
-        await ctx.editMessageText(
-            "📦 Yangi kategoriya qo'shish\n\n📝 Kategoriya nomini kiriting:",
+        await safeEditMessageText(
+            ctx,
+            "📦 <b>Yangi kategoriya qo'shish</b>\n\n📝 Kategoriya nomini kiriting:",
             Markup.inlineKeyboard([
                 Markup.button.callback('❌ Bekor qilish', 'CANCEL_ADD_CATEGORY'),
             ]),
@@ -146,7 +154,7 @@ export class AddCategoryScene {
 
     @Action('CANCEL_ADD_CATEGORY')
     async onCancelAddCategory(@Ctx() ctx: Context) {
-        await ctx.editMessageText("❌ Kategoriya qo'shish bekor qilindi.");
+        await safeEditMessageText(ctx, "❌ Kategoriya qo'shish bekor qilindi.");
         await ctx.scene.leave();
     }
 }

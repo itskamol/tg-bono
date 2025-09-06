@@ -12,13 +12,13 @@ export class GoogleSheetsSettingsScene {
         private readonly prisma: PrismaService,
         private readonly encryptionService: EncryptionService,
         private readonly googleSheetsService: GoogleSheetsService,
-    ) {}
+    ) { }
 
     @SceneEnter()
     async onSceneEnter(@Ctx() ctx: Context) {
         await safeReplyOrEdit(
             ctx,
-            '📊 Google Sheets eksport sozlamalarini boshlash...\n\nGoogle Sheet ID sini kiriting.',
+            '📊 <b>Google Sheets eksport sozlamalari</b>\n\nGoogle Sheet ID sini kiriting.',
             Markup.inlineKeyboard([
                 Markup.button.callback('❌ Bekor qilish', 'cancel_sheets_config'),
             ]),
@@ -34,7 +34,7 @@ export class GoogleSheetsSettingsScene {
             sceneState.sheetId = text;
             await safeReplyOrEdit(
                 ctx,
-                `✅ Sheet ID o'rnatildi.\n\nEndi Service Account JSON faylining to'liq mazmunini joylashtiring.`,
+                `✅ <b>Sheet ID o'rnatildi.</b>\n\nEndi Service Account JSON faylining to'liq mazmunini joylashtiring.`,
                 Markup.inlineKeyboard([
                     Markup.button.callback('⬅️ Orqaga', 'back_to_sheet_id'),
                     Markup.button.callback('❌ Bekor qilish', 'cancel_sheets_config'),
@@ -46,12 +46,11 @@ export class GoogleSheetsSettingsScene {
 
         if (!sceneState.serviceAccountJson) {
             try {
-                // Validate that the input is a valid JSON
                 const parsedJson = JSON.parse(text);
                 if (parsedJson.type !== 'service_account' || !parsedJson.private_key) {
                     await safeReplyOrEdit(
                         ctx,
-                        '❌ Noto\'g\'ri Service Account JSON.\nUnda "type": "service_account" va "private_key" bo\'lishi kerak.\nIltimos, qayta urinib ko\'ring.',
+                        '❌ <b>Noto\'g\'ri Service Account JSON.</b>\nUnda <code>"type": "service_account"</code> va <code>"private_key"</code> bo\'lishi kerak.\nIltimos, qayta urinib ko\'ring.',
                         undefined,
                         "Noto'g'ri JSON",
                     );
@@ -64,7 +63,6 @@ export class GoogleSheetsSettingsScene {
                     credentials: text,
                 };
 
-                // Test connection before saving
                 await safeReplyOrEdit(
                     ctx,
                     '🔄 Google Sheets ulanishini tekshiryapman...',
@@ -80,7 +78,7 @@ export class GoogleSheetsSettingsScene {
                 if (!testResult.success) {
                     await safeReplyOrEdit(
                         ctx,
-                        `❌ Google Sheets ulanish xatosi:\n\n${testResult.error}`,
+                        `❌ <b>Google Sheets ulanish xatosi:</b>\n\n<pre>${testResult.error}</pre>`,
                         undefined,
                         'Ulanish xatosi',
                     );
@@ -99,7 +97,7 @@ export class GoogleSheetsSettingsScene {
 
                 await safeReplyOrEdit(
                     ctx,
-                    '✅ Google Sheets eksport sozlamalari muvaffaqiyatli saqlandi va ulanish tekshirildi!',
+                    '✅ <b>Google Sheets eksport sozlamalari muvaffaqiyatli saqlandi va ulanish tekshirildi!</b>',
                     undefined,
                     'Sozlamalar saqlandi',
                 );
@@ -124,14 +122,7 @@ export class GoogleSheetsSettingsScene {
         const sceneState = ctx.scene.state as any;
         delete sceneState.sheetId;
         delete sceneState.serviceAccountJson;
-        await safeReplyOrEdit(
-            ctx,
-            '📊 Google Sheets eksport sozlamalarini boshlash...\n\nGoogle Sheet ID sini kiriting.',
-            Markup.inlineKeyboard([
-                Markup.button.callback('❌ Bekor qilish', 'cancel_sheets_config'),
-            ]),
-            'Sheet ID qaytarish',
-        );
+        await this.onSceneEnter(ctx);
     }
 
     @Action('cancel_sheets_config')

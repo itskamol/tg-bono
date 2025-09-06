@@ -5,6 +5,7 @@ import { PrismaService } from '../prisma/prisma.service';
 import { Context } from '../interfaces/context.interface';
 import { Role } from '@prisma/client';
 import { formatCurrency } from 'src/utils/format.utils';
+import { safeEditMessageText } from 'src/utils/telegram.utils';
 
 @Update()
 export class SidesUpdate {
@@ -20,7 +21,9 @@ export class SidesUpdate {
         if (!sides || sides.length === 0) {
             await ctx.reply(
                 '❌ Hech qanday tomon mavjud emas.',
-                Markup.inlineKeyboard([Markup.button.callback("➕ Tomon qo'shish", 'ADD_SIDE')]),
+                {
+                    parse_mode: 'HTML', ...Markup.inlineKeyboard([Markup.button.callback("➕ Tomon qo'shish", 'ADD_SIDE')])
+                },
             );
             return;
         }
@@ -33,11 +36,13 @@ export class SidesUpdate {
         );
 
         await ctx.reply(
-            `🔲 Tomonlar ro'yxati (${sides.length} ta):`,
-            Markup.inlineKeyboard(
-                [...sideButtons, Markup.button.callback('➕ Yangi', 'ADD_SIDE')],
-                { columns: 1 },
-            ),
+            `🔲 <b>Tomonlar ro'yxati (${sides.length} ta):</b>`,
+            {
+                parse_mode: 'HTML', ...Markup.inlineKeyboard(
+                    [...sideButtons, Markup.button.callback('➕ Yangi', 'ADD_SIDE')],
+                    { columns: 1 },
+                )
+            },
         );
     }
 
@@ -55,10 +60,9 @@ export class SidesUpdate {
         }
         const sideData = ctx.callbackQuery.data;
 
-        // Regex orqali sideId'ni olish
         const match = sideData.match(/^VIEW_SIDE_(.+)$/);
         if (!match) {
-            await ctx.editMessageText("❌ Noto'g'ri ma'lumot.");
+            await safeEditMessageText(ctx, "❌ Noto'g'ri ma'lumot.");
             return;
         }
 
@@ -69,21 +73,22 @@ export class SidesUpdate {
         });
 
         if (!side) {
-            await ctx.editMessageText('❌ Tomon topilmadi.');
+            await safeEditMessageText(ctx, '❌ Tomon topilmadi.');
             return;
         }
 
         const sideDetails = `
-🔲 Tomon ma'lumotlari:
+🔲 <b>Tomon ma'lumotlari:</b>
 
-📝 Nomi: ${side.name}
-💰 Narxi: ${formatCurrency(side.price)}
-📅 Yaratilgan: ${side.created_at.toLocaleDateString('uz-UZ')}
+📝 <b>Nomi:</b> ${side.name}
+💰 <b>Narxi:</b> ${formatCurrency(side.price)}
+📅 <b>Yaratilgan:</b> ${side.created_at.toLocaleDateString('uz-UZ')}
 
 Nima qilmoqchisiz?
         `;
 
-        await ctx.editMessageText(
+        await safeEditMessageText(
+            ctx,
             sideDetails,
             Markup.inlineKeyboard(
                 [
@@ -104,10 +109,9 @@ Nima qilmoqchisiz?
         }
         const sideData = ctx.callbackQuery.data;
 
-        // Regex orqali sideId'ni olish
         const match = sideData.match(/^EDIT_SIDE_(.+)$/);
         if (!match) {
-            await ctx.editMessageText("❌ Noto'g'ri ma'lumot.");
+            await safeEditMessageText(ctx, "❌ Noto'g'ri ma'lumot.");
             return;
         }
 
@@ -118,11 +122,10 @@ Nima qilmoqchisiz?
         });
 
         if (!side) {
-            await ctx.editMessageText('❌ Tomon topilmadi.');
+            await safeEditMessageText(ctx, '❌ Tomon topilmadi.');
             return;
         }
 
-        // Scene state'ga side ma'lumotlarini saqlash
         ctx.scene.state = { sideId, sideName: side.name, sidePrice: side.price };
 
         await ctx.scene.enter('edit-side-scene', ctx.scene.state);
@@ -136,16 +139,14 @@ Nima qilmoqchisiz?
         }
         const sideData = ctx.callbackQuery.data;
 
-        // Regex orqali sideId'ni olish
         const match = sideData.match(/^DELETE_SIDE_(.+)$/);
         if (!match) {
-            await ctx.editMessageText("❌ Noto'g'ri ma'lumot.");
+            await safeEditMessageText(ctx, "❌ Noto'g'ri ma'lumot.");
             return;
         }
 
         const sideId = match[1];
 
-        // Scene state'ga side ID'ni saqlash
         ctx.scene.state = { sideId };
         await ctx.scene.enter('delete-side-scene', ctx.scene.state);
     }
@@ -160,18 +161,18 @@ Nima qilmoqchisiz?
 
         const match = sideData.match(/^BACK_TO_SIDES_(.+)$/);
         if (!match) {
-            await ctx.editMessageText("❌ Noto'g'ri ma'lumot.");
+            await safeEditMessageText(ctx, "❌ Noto'g'ri ma'lumot.");
             return;
         }
         const categoryId = match[1];
-        // Sides ro'yxatini qayta ko'rsatish
         const sides = await this.prisma.side.findMany({
             where: { category_id: categoryId },
             orderBy: { price: 'asc' },
         });
 
         if (!sides || sides.length === 0) {
-            await ctx.editMessageText(
+            await safeEditMessageText(
+                ctx,
                 '❌ Hech qanday tomon mavjud emas.',
                 Markup.inlineKeyboard([Markup.button.callback("➕ Tomon qo'shish", 'ADD_SIDE')]),
             );
@@ -185,8 +186,9 @@ Nima qilmoqchisiz?
             ),
         );
 
-        await ctx.editMessageText(
-            `🔲 Tomonlar ro'yxati (${sides.length} ta):`,
+        await safeEditMessageText(
+            ctx,
+            `🔲 <b>Tomonlar ro'yxati (${sides.length} ta):</b>`,
             Markup.inlineKeyboard(
                 [...sideButtons, Markup.button.callback('➕ Yangi', 'ADD_SIDE')],
                 { columns: 1 },

@@ -18,14 +18,14 @@ interface EditUserSceneState {
 
 @Scene('edit-user-scene')
 export class EditUserScene {
-    constructor(private readonly prisma: PrismaService) {}
+    constructor(private readonly prisma: PrismaService) { }
 
     @SceneEnter()
     async onSceneEnter(@Ctx() ctx: Context) {
         const sceneState = ctx.scene.state as EditUserSceneState;
 
         if (!sceneState.userId) {
-            await ctx.reply("❌ Foydalanuvchi ma'lumotlari topilmadi.");
+            await ctx.reply("❌ Foydalanuvchi ma'lumotlari topilmadi.", { parse_mode: 'HTML' });
             await ctx.scene.leave();
             return;
         }
@@ -36,7 +36,7 @@ export class EditUserScene {
         });
 
         if (!user) {
-            await ctx.reply('❌ Foydalanuvchi topilmadi.');
+            await ctx.reply('❌ Foydalanuvchi topilmadi.', { parse_mode: 'HTML' });
             await ctx.scene.leave();
             return;
         }
@@ -46,15 +46,15 @@ export class EditUserScene {
         sceneState.userRole = user.role;
 
         const roleText =
-            {
-                [Role.SUPER_ADMIN]: '👑 Super Admin',
-                [Role.ADMIN]: '👨‍💼 Admin',
-                [Role.CASHIER]: '💰 Kassir',
-            }[user.role] || user.role;
+        {
+            [Role.SUPER_ADMIN]: '👑 Super Admin',
+            [Role.ADMIN]: '👨‍💼 Admin',
+            [Role.CASHIER]: '💰 Kassir',
+        }[user.role] || user.role;
 
         await safeEditMessageText(
             ctx,
-            `✏️ Foydalanuvchi tahrirlash\n\n👤 Joriy ism: ${user.full_name}\n🎭 Rol: ${roleText}\n🏪 Joriy filial: ${user.branch?.name || 'Tayinlanmagan'}\n\nNimani tahrirlashni xohlaysiz?`,
+            `✏️ <b>Foydalanuvchi tahrirlash</b>\n\n👤 <b>Joriy ism:</b> ${user.full_name}\n🎭 <b>Rol:</b> ${roleText}\n🏪 <b>Joriy filial:</b> ${user.branch?.name || 'Tayinlanmagan'}\n\nNimani tahrirlashni xohlaysiz?`,
             Markup.inlineKeyboard(
                 [
                     Markup.button.callback("👤 Ismini o'zgartirish", 'EDIT_USER_NAME'),
@@ -74,7 +74,7 @@ export class EditUserScene {
 
         await safeEditMessageText(
             ctx,
-            `👤 Yangi ism kiriting:\n\n🔸 Joriy ism: ${sceneState.userName}`,
+            `👤 <b>Yangi ism kiriting:</b>\n\n🔸 <b>Joriy ism:</b> ${sceneState.userName}`,
             Markup.inlineKeyboard([
                 Markup.button.callback('🔙 Orqaga', 'BACK_TO_EDIT_MENU'),
                 Markup.button.callback('❌ Bekor qilish', 'CANCEL_EDIT_USER'),
@@ -111,7 +111,7 @@ export class EditUserScene {
 
         await safeEditMessageText(
             ctx,
-            `🏪 Yangi filial tanlang:\n\n🔸 Joriy filial: ${sceneState.userBranchId ? 'Mavjud' : 'Tayinlanmagan'}`,
+            `🏪 <b>Yangi filial tanlang:</b>\n\n🔸 <b>Joriy filial:</b> ${sceneState.userBranchId ? (await this.prisma.branch.findUnique({ where: { id: sceneState.userBranchId } }))?.name : 'Tayinlanmagan'}`,
             Markup.inlineKeyboard(
                 [
                     ...branchButtons,
@@ -128,40 +128,39 @@ export class EditUserScene {
     async onText(@Ctx() ctx: Context, @Message('text') text: string) {
         const sceneState = ctx.scene.state as EditUserSceneState;
 
-        // Ism tahrirlash
         if (sceneState.editingName) {
             const trimmedName = text.trim();
 
             if (trimmedName.length < 2) {
-                await ctx.reply("❌ Ism kamida 2 ta belgidan iborat bo'lishi kerak.");
+                await ctx.reply("❌ Ism kamida 2 ta belgidan iborat bo'lishi kerak.", { parse_mode: 'HTML' });
                 return;
             }
 
             if (trimmedName.length > 50) {
-                await ctx.reply("❌ Ism 50 ta belgidan ko'p bo'lmasligi kerak.");
+                await ctx.reply("❌ Ism 50 ta belgidan ko'p bo'lmasligi kerak.", { parse_mode: 'HTML' });
                 return;
             }
 
-            // Agar ism o'zgarmagan bo'lsa
             if (trimmedName.toLowerCase() === sceneState.userName.toLowerCase()) {
-                await ctx.reply('❌ Yangi ism joriy ism bilan bir xil. Boshqa ism kiriting:');
+                await ctx.reply('❌ Yangi ism joriy ism bilan bir xil. Boshqa ism kiriting:', { parse_mode: 'HTML' });
                 return;
             }
 
             sceneState.newName = trimmedName;
             sceneState.editingName = false;
 
-            // Tasdiqlash
             await ctx.reply(
-                `📋 Ism o'zgarishi:\n\n🔸 Eski ism: ${sceneState.userName}\n🔹 Yangi ism: ${trimmedName}\n\nTasdiqlaysizmi?`,
-                Markup.inlineKeyboard(
-                    [
-                        Markup.button.callback("✅ Ha, o'zgartirish", 'CONFIRM_NAME_CHANGE'),
-                        Markup.button.callback('🔙 Orqaga', 'BACK_TO_EDIT_MENU'),
-                        Markup.button.callback('❌ Bekor qilish', 'CANCEL_EDIT_USER'),
-                    ],
-                    { columns: 1 },
-                ),
+                `📋 <b>Ism o'zgarishi:</b>\n\n🔸 <b>Eski ism:</b> ${sceneState.userName}\n🔹 <b>Yangi ism:</b> ${trimmedName}\n\nTasdiqlaysizmi?`,
+                {
+                    parse_mode: 'HTML', ...Markup.inlineKeyboard(
+                        [
+                            Markup.button.callback("✅ Ha, o'zgartirish", 'CONFIRM_NAME_CHANGE'),
+                            Markup.button.callback('🔙 Orqaga', 'BACK_TO_EDIT_MENU'),
+                            Markup.button.callback('❌ Bekor qilish', 'CANCEL_EDIT_USER'),
+                        ],
+                        { columns: 1 },
+                    )
+                },
             );
             return;
         }
@@ -174,7 +173,6 @@ export class EditUserScene {
         }
         const branchData = ctx.callbackQuery.data;
 
-        // Regex orqali branchId'ni olish
         const match = branchData.match(/^SELECT_BRANCH_(.+)$/);
         if (!match) {
             await safeEditMessageText(ctx, "❌ Noto'g'ri ma'lumot.", undefined, 'Xatolik');
@@ -193,7 +191,6 @@ export class EditUserScene {
             return;
         }
 
-        // Agar filial o'zgarmagan bo'lsa
         if (branchId === sceneState.userBranchId) {
             await ctx.answerCbQuery('❌ Bu filial allaqachon tanlangan. Boshqa filial tanlang.');
             return;
@@ -206,10 +203,9 @@ export class EditUserScene {
             ? await this.prisma.branch.findUnique({ where: { id: sceneState.userBranchId } })
             : null;
 
-        // Tasdiqlash
         await safeEditMessageText(
             ctx,
-            `📋 Filial o'zgarishi:\n\n🔸 Eski filial: ${currentBranch?.name || 'Tayinlanmagan'}\n🔹 Yangi filial: ${branch.name}\n\nTasdiqlaysizmi?`,
+            `📋 <b>Filial o'zgarishi:</b>\n\n🔸 <b>Eski filial:</b> ${currentBranch?.name || 'Tayinlanmagan'}\n🔹 <b>Yangi filial:</b> ${branch.name}\n\nTasdiqlaysizmi?`,
             Markup.inlineKeyboard(
                 [
                     Markup.button.callback("✅ Ha, o'zgartirish", 'CONFIRM_BRANCH_CHANGE'),
@@ -240,7 +236,7 @@ export class EditUserScene {
 
             await safeEditMessageText(
                 ctx,
-                `✅ Foydalanuvchi ismi muvaffaqiyatli o'zgartirildi!\n\n🔸 Eski ism: ${sceneState.userName}\n🔹 Yangi ism: ${sceneState.newName}`,
+                `✅ <b>Foydalanuvchi ismi muvaffaqiyatli o'zgartirildi!</b>\n\n🔸 <b>Eski ism:</b> ${sceneState.userName}\n🔹 <b>Yangi ism:</b> ${sceneState.newName}`,
                 undefined,
                 "Ism o'zgartirildi",
             );
@@ -282,22 +278,19 @@ export class EditUserScene {
                 return;
             }
 
-            // Eski filial ma'lumotlarini olish
             const currentBranch = sceneState.userBranchId
                 ? await this.prisma.branch.findUnique({ where: { id: sceneState.userBranchId } })
                 : null;
 
-            // Eski filialdagi orderlar sonini hisoblash
-            const oldBranchOrdersCount = sceneState.userBranchId 
+            const oldBranchOrdersCount = sceneState.userBranchId
                 ? await this.prisma.order.count({
-                    where: { 
+                    where: {
                         cashier_id: sceneState.userId,
-                        branch_id: sceneState.userBranchId 
+                        branch_id: sceneState.userBranchId
                     }
                 })
                 : 0;
 
-            // User filialini o'zgartirish
             await this.prisma.user.update({
                 where: { id: sceneState.userId },
                 data: { branch_id: sceneState.newBranchId },
@@ -305,12 +298,12 @@ export class EditUserScene {
 
             let warningMessage = '';
             if (oldBranchOrdersCount > 0) {
-                warningMessage = `\n\n⚠️ DIQQAT: Bu foydalanuvchining eski filialdagi ${oldBranchOrdersCount} ta buyurtmasi mavjud. Ular yangi filialda ko'rinmaydi, lekin ma'lumotlar bazasida saqlanadi.`;
+                warningMessage = `\n\n⚠️ <b>DIQQAT:</b> Bu foydalanuvchining eski filialdagi <b>${oldBranchOrdersCount}</b> ta buyurtmasi mavjud. Ular yangi filialda ko'rinmaydi, lekin ma'lumotlar bazasida saqlanadi.`;
             }
 
             await safeEditMessageText(
                 ctx,
-                `✅ Foydalanuvchi filiali muvaffaqiyatli o'zgartirildi!\n\n🔸 Eski filial: ${currentBranch?.name || 'Tayinlanmagan'}\n🔹 Yangi filial: ${newBranch.name}${warningMessage}`,
+                `✅ <b>Foydalanuvchi filiali muvaffaqiyatli o'zgartirildi!</b>\n\n🔸 <b>Eski filial:</b> ${currentBranch?.name || 'Tayinlanmagan'}\n🔹 <b>Yangi filial:</b> ${newBranch.name}${warningMessage}`,
                 undefined,
                 "Filial o'zgartirildi",
             );
@@ -334,42 +327,7 @@ export class EditUserScene {
         sceneState.newName = undefined;
         sceneState.newBranchId = undefined;
 
-        const user = await this.prisma.user.findUnique({
-            where: { id: sceneState.userId },
-            include: { branch: true },
-        });
-
-        if (!user) {
-            await safeEditMessageText(
-                ctx,
-                '❌ Foydalanuvchi topilmadi.',
-                undefined,
-                'Foydalanuvchi topilmadi',
-            );
-            await ctx.scene.leave();
-            return;
-        }
-
-        const roleText =
-            {
-                [Role.SUPER_ADMIN]: '👑 Super Admin',
-                [Role.ADMIN]: '👨‍💼 Admin',
-                [Role.CASHIER]: '💰 Kassir',
-            }[user.role] || user.role;
-
-        await safeEditMessageText(
-            ctx,
-            `✏️ Foydalanuvchi tahrirlash\n\n👤 Joriy ism: ${user.full_name}\n🎭 Rol: ${roleText}\n🏪 Joriy filial: ${user.branch?.name || 'Tayinlanmagan'}\n\nNimani tahrirlashni xohlaysiz?`,
-            Markup.inlineKeyboard(
-                [
-                    Markup.button.callback("👤 Ismini o'zgartirish", 'EDIT_USER_NAME'),
-                    Markup.button.callback("🏪 Filialini o'zgartirish", 'EDIT_USER_BRANCH'),
-                    Markup.button.callback('❌ Bekor qilish', 'CANCEL_EDIT_USER'),
-                ],
-                { columns: 1 },
-            ),
-            'Tahrirlash menyusi',
-        );
+        await this.onSceneEnter(ctx);
     }
 
     @Action('CANCEL_EDIT_USER')

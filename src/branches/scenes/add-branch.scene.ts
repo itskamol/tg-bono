@@ -11,13 +11,13 @@ interface AddBranchSceneState {
 
 @Scene('add-branch-scene')
 export class AddBranchScene {
-    constructor(private readonly prisma: PrismaService) {}
+    constructor(private readonly prisma: PrismaService) { }
 
     @SceneEnter()
     async onSceneEnter(@Ctx() ctx: Context) {
         await safeEditMessageText(
             ctx,
-            '🏪 Yangi filial yaratish\n\nFilial nomini kiriting:',
+            '🏪 <b>Yangi filial yaratish</b>\n\nFilial nomini kiriting:',
             Markup.inlineKeyboard([Markup.button.callback('❌ Bekor qilish', 'CANCEL_ADD_BRANCH')]),
             'Yangi filial',
         );
@@ -47,7 +47,7 @@ export class AddBranchScene {
             sceneState.name = text;
             await safeEditMessageText(
                 ctx,
-                '✅ Filial nomi saqlandi.\n\n📍 Filial manzilini kiriting:',
+                `✅ Filial nomi saqlandi: <b>${text}</b>\n\n📍 Filial manzilini kiriting:`,
                 Markup.inlineKeyboard([
                     Markup.button.callback('⏭️ Skip', 'SKIP_ADDRESS'),
                     Markup.button.callback('❌ Bekor qilish', 'CANCEL_ADD_BRANCH'),
@@ -71,9 +71,9 @@ export class AddBranchScene {
 
                 await safeEditMessageText(
                     ctx,
-                    `✅ Filial muvaffaqiyatli yaratildi!\n\n` +
-                        `🏪 Nomi: ${newBranch.name}\n` +
-                        `📍 Manzil: ${newBranch.address}`,
+                    `✅ <b>Filial muvaffaqiyatli yaratildi!</b>\n\n` +
+                    `🏪 <b>Nomi:</b> ${newBranch.name}\n` +
+                    `📍 <b>Manzil:</b> ${newBranch.address}`,
                     undefined,
                     'Filial yaratildi',
                 );
@@ -111,9 +111,9 @@ export class AddBranchScene {
 
             await safeEditMessageText(
                 ctx,
-                `✅ Filial muvaffaqiyatli yaratildi!\n\n` +
-                    `🏪 Nomi: ${newBranch.name}\n` +
-                    `📍 Manzil: ${newBranch.address}`,
+                `✅ <b>Filial muvaffaqiyatli yaratildi!</b>\n\n` +
+                `🏪 <b>Nomi:</b> ${newBranch.name}\n` +
+                `📍 <b>Manzil:</b> ${newBranch.address}`,
                 undefined,
                 'Filial yaratildi',
             );

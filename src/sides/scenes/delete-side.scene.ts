@@ -3,6 +3,7 @@ import { Markup } from 'telegraf';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Context } from '../../interfaces/context.interface';
 import { formatCurrency } from 'src/utils/format.utils';
+import { safeEditMessageText, safeReplyOrEdit } from 'src/utils/telegram.utils';
 
 interface DeleteSideSceneState {
     sideId: string;
@@ -10,14 +11,14 @@ interface DeleteSideSceneState {
 
 @Scene('delete-side-scene')
 export class DeleteSideScene {
-    constructor(private readonly prisma: PrismaService) {}
+    constructor(private readonly prisma: PrismaService) { }
 
     @SceneEnter()
     async onSceneEnter(@Ctx() ctx: Context) {
         const sceneState = ctx.scene.state as DeleteSideSceneState;
 
         if (!sceneState.sideId) {
-            await ctx.reply("❌ Tomon ma'lumotlari topilmadi.");
+            await safeReplyOrEdit(ctx, "❌ Tomon ma'lumotlari topilmadi.");
             await ctx.scene.leave();
             return;
         }
@@ -27,23 +28,23 @@ export class DeleteSideScene {
         });
 
         if (!side) {
-            await ctx.reply('❌ Tomon topilmadi.');
+            await safeReplyOrEdit(ctx, '❌ Tomon topilmadi.');
             await ctx.scene.leave();
             return;
         }
 
-        // Tomon ishlatilayotganligini tekshirish
         const ordersUsingThisSide = await this.prisma.order_Product.count({
             where: { side_name: side.name },
         });
 
         let warningMessage = '';
         if (ordersUsingThisSide > 0) {
-            warningMessage = `\n⚠️ DIQQAT: Bu tomon ${ordersUsingThisSide} ta buyurtmada ishlatilgan. O'chirilsa, eski buyurtmalarda "O'chirilgan tomon" ko'rinadi.`;
+            warningMessage = `\n⚠️ <b>DIQQAT:</b> Bu tomon <b>${ordersUsingThisSide}</b> ta buyurtmada ishlatilgan. O'chirilsa, eski buyurtmalarda "O'chirilgan tomon" ko'rinadi.`;
         }
 
-        await ctx.reply(
-            `🗑️ Tomon o'chirish\n\n📝 Nomi: ${side.name}\n💰 Narxi: ${formatCurrency(side.price)} ${warningMessage}\n\nHaqiqatan ham bu tomonni o'chirmoqchimisiz?`,
+        await safeReplyOrEdit(
+            ctx,
+            `🗑️ <b>Tomon o'chirish</b>\n\n📝 <b>Nomi:</b> ${side.name}\n💰 <b>Narxi:</b> ${formatCurrency(side.price)} ${warningMessage}\n\nHaqiqatan ham bu tomonni o'chirmoqchimisiz?`,
             Markup.inlineKeyboard(
                 [
                     Markup.button.callback("✅ Ha, o'chirish", 'CONFIRM_DELETE_SIDE'),
@@ -64,7 +65,7 @@ export class DeleteSideScene {
             });
 
             if (!side) {
-                await ctx.editMessageText('❌ Tomon topilmadi.');
+                await safeEditMessageText(ctx, '❌ Tomon topilmadi.');
                 await ctx.scene.leave();
                 return;
             }
@@ -73,8 +74,9 @@ export class DeleteSideScene {
                 where: { id: sceneState.sideId },
             });
 
-            await ctx.editMessageText(
-                `✅ Tomon muvaffaqiyatli o'chirildi!\n\n📝 O'chirilgan tomon: ${side.name}\n💰 Narxi: ${formatCurrency(side.price)}`,
+            await safeEditMessageText(
+                ctx,
+                `✅ <b>Tomon muvaffaqiyatli o'chirildi!</b>\n\n📝 <b>O'chirilgan tomon:</b> ${side.name}\n💰 <b>Narxi:</b> ${formatCurrency(side.price)}`,
             );
             await ctx.scene.leave();
         } catch (error) {
@@ -87,7 +89,8 @@ export class DeleteSideScene {
                 }
             }
 
-            await ctx.editMessageText(
+            await safeEditMessageText(
+                ctx,
                 `${errorMessage}\n\nQaytadan urinib ko'ring yoki administratorga murojaat qiling.`,
                 Markup.inlineKeyboard([
                     Markup.button.callback('🔄 Qaytadan urinish', 'CONFIRM_DELETE_SIDE'),
@@ -99,7 +102,7 @@ export class DeleteSideScene {
 
     @Action('CANCEL_DELETE_SIDE')
     async onCancelDeleteSide(@Ctx() ctx: Context) {
-        await ctx.editMessageText("❌ Tomon o'chirish bekor qilindi.");
+        await safeEditMessageText(ctx, "❌ Tomon o'chirish bekor qilindi.");
         await ctx.scene.leave();
     }
 }

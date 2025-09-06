@@ -14,23 +14,23 @@ export class ChannelSettingsScene {
 
     @SceneEnter()
     async onSceneEnter(@Ctx() ctx: Context) {
-        const helpMessage = `📢 Kanal/Guruh sozlamalari
+        const helpMessage = `📢 <b>Kanal/Guruh sozlamalari</b>
 
-🆔 Kanal yoki guruh Chat ID sini kiriting:
+🆔 Kanal yoki guruh <b>Chat ID</b> sini kiriting:
 
-💡 Chat ID ni olish usullari:
+💡 <b>Chat ID ni olish usullari:</b>
 
-1️⃣ Eng oson usul:
+1️⃣ <b>Eng oson usul:</b>
    • Botni kanal/guruhga admin qiling
-   • Kanal/guruhda /getchatid yuboring
+   • Kanal/guruhda <code>/getchatid</code> yuboring
    • Chat ID ni nusxalab oling
 
-2️⃣ Boshqa usullar:
+2️⃣ <b>Boshqa usullar:</b>
    • @userinfobot dan foydalaning
    • @RawDataBot dan foydalaning
    • Telegram Web URL dan oling
 
-📝 Misol: -1001234567890`;
+📝 <b>Misol:</b> <code>-1001234567890</code>`;
 
         await safeReplyOrEdit(
             ctx,
@@ -47,14 +47,12 @@ export class ChannelSettingsScene {
         const sceneState = ctx.scene.state as any;
 
         if (!sceneState.chatId) {
-            // Chat ID validation
             const chatId = text.trim();
 
-            // Chat ID should be a number (negative for groups/channels)
             if (!/^-?\d+$/.test(chatId)) {
                 await safeReplyOrEdit(
                     ctx,
-                    '❌ Noto\'g\'ri Chat ID formati.\n\nChat ID raqam bo\'lishi kerak (masalan: -1001234567890)',
+                    '❌ <b>Noto\'g\'ri Chat ID formati.</b>\n\nChat ID raqam bo\'lishi kerak (masalan: <code>-1001234567890</code>)',
                     undefined,
                     'Noto\'g\'ri format',
                 );
@@ -63,7 +61,6 @@ export class ChannelSettingsScene {
 
             sceneState.chatId = chatId;
 
-            // Test bot permissions in the chat
             await safeReplyOrEdit(
                 ctx,
                 '🔄 Chat ID tekshirilmoqda va bot ruxsatlari sinovdan o\'tkazilmoqda...',
@@ -72,10 +69,8 @@ export class ChannelSettingsScene {
             );
 
             try {
-                // Try to get chat info
                 const chatInfo = await ctx.telegram.getChat(chatId);
 
-                // Try to send a test message
                 const testMessage = '🧪 Bot sozlamalari test xabari\n\n✅ Bot muvaffaqiyatli ulandi!';
                 await ctx.telegram.sendMessage(chatId, testMessage);
 
@@ -84,7 +79,7 @@ export class ChannelSettingsScene {
 
                 await safeReplyOrEdit(
                     ctx,
-                    `✅ Chat topildi va test xabari yuborildi!\n\n📝 Chat nomi: ${sceneState.chatTitle}\n📊 Turi: ${sceneState.chatType}\n🆔 ID: ${chatId}\n\n📢 Yangi orderlar uchun xabar yuborishni yoqasizmi?`,
+                    `✅ <b>Chat topildi va test xabari yuborildi!</b>\n\n📝 <b>Chat nomi:</b> ${sceneState.chatTitle}\n📊 <b>Turi:</b> ${sceneState.chatType}\n🆔 <b>ID:</b> <code>${chatId}</code>\n\n📢 Yangi orderlar uchun xabar yuborishni yoqasizmi?`,
                     Markup.inlineKeyboard([
                         [Markup.button.callback('✅ Ha, yoqish', 'enable_notifications')],
                         [Markup.button.callback('❌ Yo\'q, o\'chirish', 'disable_notifications')],
@@ -94,7 +89,7 @@ export class ChannelSettingsScene {
                     'Chat topildi',
                 );
             } catch (error) {
-                let errorMessage = '❌ Chat ID bilan bog\'lanishda xatolik:';
+                let errorMessage = '❌ <b>Chat ID bilan bog\'lanishda xatolik:</b>';
 
                 if (error instanceof Error) {
                     if (error.message.includes('chat not found')) {
@@ -160,7 +155,7 @@ export class ChannelSettingsScene {
 
             await safeReplyOrEdit(
                 ctx,
-                `${statusEmoji} Kanal/Guruh sozlamalari muvaffaqiyatli saqlandi!\n\n📝 Chat: ${sceneState.chatTitle}\n🆔 ID: ${sceneState.chatId}\n📢 Xabarlar: ${statusText}\n\n${enabled ? '🎉 Endi yangi orderlar avtomatik ravishda kanalga/guruhga yuboriladi!' : '⚠️ Order xabarlari o\'chirildi.'}`,
+                `${statusEmoji} <b>Kanal/Guruh sozlamalari muvaffaqiyatli saqlandi!</b>\n\n📝 <b>Chat:</b> ${sceneState.chatTitle}\n🆔 <b>ID:</b> <code>${sceneState.chatId}</code>\n📢 <b>Xabarlar:</b> ${statusText}\n\n${enabled ? '🎉 Endi yangi orderlar avtomatik ravishda kanalga/guruhga yuboriladi!' : '⚠️ Order xabarlari o\'chirildi.'}`,
                 undefined,
                 'Sozlamalar saqlandi',
             );
@@ -185,14 +180,7 @@ export class ChannelSettingsScene {
         delete sceneState.chatTitle;
         delete sceneState.chatType;
 
-        await safeReplyOrEdit(
-            ctx,
-            '📢 Kanal/Guruh sozlamalari\n\n🆔 Kanal yoki guruh Chat ID sini kiriting:\n\n💡 Chat ID ni olish uchun:\n1. Botni kanal/guruhga admin qiling\n2. @userinfobot dan foydalaning\n3. Yoki kanal/guruh linkidan ID ni oling',
-            Markup.inlineKeyboard([
-                Markup.button.callback('❌ Bekor qilish', 'cancel_channel_config'),
-            ]),
-            'Chat ID qaytarish',
-        );
+        await this.onSceneEnter(ctx);
     }
 
     @Action('retry_chat_id')

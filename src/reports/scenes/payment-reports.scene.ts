@@ -6,19 +6,14 @@ import { ReportHelpers } from '../helpers/report.helpers';
 import { ReportFormatter, ReportSummary, PaymentReportData } from '../helpers/report-formatter.helper';
 import { Role } from '@prisma/client';
 import { safeEditMessageText } from '../../utils/telegram.utils';
-import { formatCurrency } from 'src/utils/format.utils';
 
 @Scene('payment-reports-scene')
 export class PaymentReportsScene {
-    constructor(private readonly prisma: PrismaService) {}
+    constructor(private readonly prisma: PrismaService) { }
 
     @SceneEnter()
     async onSceneEnter(@Ctx() ctx: Context) {
-        const menuText = `🏦 ═══════════════════════════════
-💳 TO'LOV TURLARI HISOBOTI
-📊 ═══════════════════════════════
-
-Qaysi davr uchun hisobot kerak?`;
+        const menuText = `🏦 <b>TO'LOV TURLARI HISOBOTI</b> 🏦\n\nQaysi davr uchun hisobot kerak?`;
 
         await safeEditMessageText(
             ctx,
@@ -69,7 +64,6 @@ Qaysi davr uchun hisobot kerak?`;
     async backToReports(@Ctx() ctx: Context) {
         await ctx.scene.leave();
 
-        // Show the main reports menu
         const user = ctx.user;
         const reportButtons = [
             Markup.button.callback('📊 Umumiy', 'GENERAL_REPORTS'),
@@ -85,7 +79,7 @@ Qaysi davr uchun hisobot kerak?`;
 
         await safeEditMessageText(
             ctx,
-            "📊 Hisobotlar bo'limi\n\nQaysi turdagi hisobotni ko'rmoqchisiz?",
+            "📊 <b>Hisobotlar bo'limi</b>\n\nQaysi turdagi hisobotni ko'rmoqchisiz?",
             Markup.inlineKeyboard(reportButtons, {
                 columns: 2,
             }),
@@ -94,7 +88,6 @@ Qaysi davr uchun hisobot kerak?`;
     }
 
     private async generatePaymentReport(ctx: Context, period: string, detailed: boolean = false) {
-        // Show loading message
         await safeEditMessageText(
             ctx,
             '🔄 Hisobot tayyorlanmoqda...',
@@ -102,7 +95,6 @@ Qaysi davr uchun hisobot kerak?`;
             'Yuklanmoqda',
         );
 
-        // Get user from database since ctx.user might not be available in scenes
         const telegramId = ctx.from?.id;
         if (!telegramId) {
             await safeEditMessageText(ctx, '❌ Telegram ID topilmadi.', undefined, 'Xatolik');
@@ -132,7 +124,6 @@ Qaysi davr uchun hisobot kerak?`;
         }
 
         try {
-            // Get payment statistics from Payment model
             const [paymentStats, totalRevenue, totalTransactions] = await Promise.all([
                 this.prisma.payment.groupBy({
                     by: ['payment_type'],
@@ -159,7 +150,6 @@ Qaysi davr uchun hisobot kerak?`;
                 }),
             ]);
 
-            // Transform data for the formatter
             const totalAmount = totalRevenue._sum.amount || 0;
             const paymentData: PaymentReportData[] = paymentStats.map((ps) => {
                 const sumAmount = ps._sum.amount || 0;
@@ -177,7 +167,6 @@ Qaysi davr uchun hisobot kerak?`;
                 };
             });
 
-            // Sort by total amount descending
             paymentData.sort((a, b) => b.totalAmount - a.totalAmount);
 
             const reportSummary: ReportSummary = {
@@ -185,15 +174,13 @@ Qaysi davr uchun hisobot kerak?`;
                 totalTransactions,
                 paymentData,
                 periodName,
-                branchInfo: user.role === Role.ADMIN ? `🏪 Filial: ${user.branch?.name || 'N/A'}` : undefined,
+                branchInfo: user.role === Role.ADMIN ? `🏪 <b>Filial:</b> ${user.branch?.name || 'N/A'}` : undefined,
             };
 
-            // Generate report using the appropriate formatter
-            const report = detailed 
+            const report = detailed
                 ? ReportFormatter.formatDetailedPaymentReport(reportSummary)
                 : ReportFormatter.formatPaymentReport(reportSummary);
 
-            // Create action buttons
             const buttons = [
                 Markup.button.callback('🔄 Yangilash', `PAYMENT_${period.toUpperCase()}`),
                 Markup.button.callback('🔙 Orqaga', 'BACK_TO_REPORTS'),

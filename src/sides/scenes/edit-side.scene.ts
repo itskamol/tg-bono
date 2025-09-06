@@ -3,6 +3,7 @@ import { Markup } from 'telegraf';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Context } from '../../interfaces/context.interface';
 import { formatCurrency } from 'src/utils/format.utils';
+import { safeEditMessageText, safeReplyOrEdit } from 'src/utils/telegram.utils';
 
 interface EditSideSceneState {
     sideId: string;
@@ -17,13 +18,13 @@ interface EditSideSceneState {
 
 @Scene('edit-side-scene')
 export class EditSideScene {
-    constructor(private readonly prisma: PrismaService) {}
+    constructor(private readonly prisma: PrismaService) { }
 
     @SceneEnter()
     async onSceneEnter(@Ctx() ctx: Context) {
         const sceneState = ctx.scene.state as EditSideSceneState;
         if (!sceneState.sideId) {
-            await ctx.reply("❌ Tomon ma'lumotlari topilmadi.");
+            await safeReplyOrEdit(ctx, "❌ Tomon ma'lumotlari topilmadi.");
             await ctx.scene.leave();
             return;
         }
@@ -33,7 +34,7 @@ export class EditSideScene {
         });
 
         if (!side) {
-            await ctx.reply('❌ Tomon topilmadi.');
+            await safeReplyOrEdit(ctx, '❌ Tomon topilmadi.');
             await ctx.scene.leave();
             return;
         }
@@ -42,8 +43,9 @@ export class EditSideScene {
         sceneState.sidePrice = side.price;
         sceneState.categoryId = side.category_id;
 
-        await ctx.reply(
-            `✏️ Tomon tahrirlash\n\n📝 Joriy nomi: ${side.name}\n💰 Joriy narxi: ${formatCurrency(side.price)} \n\nNimani tahrirlashni xohlaysiz?`,
+        await safeReplyOrEdit(
+            ctx,
+            `✏️ <b>Tomon tahrirlash</b>\n\n📝 <b>Joriy nomi:</b> ${side.name}\n💰 <b>Joriy narxi:</b> ${formatCurrency(side.price)} \n\nNimani tahrirlashni xohlaysiz?`,
             Markup.inlineKeyboard(
                 [
                     Markup.button.callback("📝 Nomini o'zgartirish", 'EDIT_SIDE_NAME'),
@@ -60,8 +62,9 @@ export class EditSideScene {
         const sceneState = ctx.scene.state as EditSideSceneState;
         sceneState.editingName = true;
 
-        await ctx.editMessageText(
-            `📝 Yangi nom kiriting:\n\n🔸 Joriy nom: ${sceneState.sideName}`,
+        await safeEditMessageText(
+            ctx,
+            `📝 <b>Yangi nom kiriting:</b>\n\n🔸 <b>Joriy nom:</b> ${sceneState.sideName}`,
             Markup.inlineKeyboard([
                 Markup.button.callback('🔙 Orqaga', 'BACK_TO_EDIT_MENU'),
                 Markup.button.callback('❌ Bekor qilish', 'CANCEL_EDIT_SIDE'),
@@ -74,8 +77,9 @@ export class EditSideScene {
         const sceneState = ctx.scene.state as EditSideSceneState;
         sceneState.editingPrice = true;
 
-        await ctx.editMessageText(
-            `💰 Yangi narx kiriting (so'mda):\n\n🔸 Joriy narx: ${formatCurrency(sceneState.sidePrice)}`,
+        await safeEditMessageText(
+            ctx,
+            `💰 <b>Yangi narx kiriting (so'mda):</b>\n\n🔸 <b>Joriy narx:</b> ${formatCurrency(sceneState.sidePrice)}`,
             Markup.inlineKeyboard([
                 Markup.button.callback('🔙 Orqaga', 'BACK_TO_EDIT_MENU'),
                 Markup.button.callback('❌ Bekor qilish', 'CANCEL_EDIT_SIDE'),
@@ -87,27 +91,24 @@ export class EditSideScene {
     async onText(@Ctx() ctx: Context, @Message('text') text: string) {
         const sceneState = ctx.scene.state as EditSideSceneState;
 
-        // Nom tahrirlash
         if (sceneState.editingName) {
             const trimmedName = text.trim();
 
             if (trimmedName.length < 2) {
-                await ctx.reply("❌ Tomon nomi kamida 2 ta belgidan iborat bo'lishi kerak.");
+                await ctx.reply("❌ Tomon nomi kamida 2 ta belgidan iborat bo'lishi kerak.", { parse_mode: 'HTML' });
                 return;
             }
 
             if (trimmedName.length > 50) {
-                await ctx.reply("❌ Tomon nomi 50 ta belgidan ko'p bo'lmasligi kerak.");
+                await ctx.reply("❌ Tomon nomi 50 ta belgidan ko'p bo'lmasligi kerak.", { parse_mode: 'HTML' });
                 return;
             }
 
-            // Agar nom o'zgarmagan bo'lsa
             if (trimmedName.toLowerCase() === sceneState.sideName.toLowerCase()) {
-                await ctx.reply('❌ Yangi nom joriy nom bilan bir xil. Boshqa nom kiriting:');
+                await ctx.reply('❌ Yangi nom joriy nom bilan bir xil. Boshqa nom kiriting:', { parse_mode: 'HTML' });
                 return;
             }
 
-            // Tomon nomi mavjudligini tekshirish (shu kategoriyada)
             const existingSide = await this.prisma.side.findFirst({
                 where: {
                     name: { equals: trimmedName, mode: 'insensitive' },
@@ -117,72 +118,72 @@ export class EditSideScene {
             });
 
             if (existingSide) {
-                await ctx.reply('❌ Bu nom bilan tomon allaqachon mavjud. Boshqa nom kiriting:');
+                await ctx.reply('❌ Bu nom bilan tomon allaqachon mavjud. Boshqa nom kiriting:', { parse_mode: 'HTML' });
                 return;
             }
 
             sceneState.newName = trimmedName;
             sceneState.editingName = false;
 
-            // Tasdiqlash
             await ctx.reply(
-                `📋 Nom o'zgarishi:\n\n🔸 Eski nom: ${sceneState.sideName}\n🔹 Yangi nom: ${trimmedName}\n\nTasdiqlaysizmi?`,
-                Markup.inlineKeyboard(
-                    [
-                        Markup.button.callback("✅ Ha, o'zgartirish", 'CONFIRM_NAME_CHANGE'),
-                        Markup.button.callback('🔙 Orqaga', 'BACK_TO_EDIT_MENU'),
-                        Markup.button.callback('❌ Bekor qilish', 'CANCEL_EDIT_SIDE'),
-                    ],
-                    { columns: 1 },
-                ),
+                `📋 <b>Nom o'zgarishi:</b>\n\n🔸 <b>Eski nom:</b> ${sceneState.sideName}\n🔹 <b>Yangi nom:</b> ${trimmedName}\n\nTasdiqlaysizmi?`,
+                {
+                    parse_mode: 'HTML', ...Markup.inlineKeyboard(
+                        [
+                            Markup.button.callback("✅ Ha, o'zgartirish", 'CONFIRM_NAME_CHANGE'),
+                            Markup.button.callback('🔙 Orqaga', 'BACK_TO_EDIT_MENU'),
+                            Markup.button.callback('❌ Bekor qilish', 'CANCEL_EDIT_SIDE'),
+                        ],
+                        { columns: 1 },
+                    )
+                },
             );
             return;
         }
 
-        // Narx tahrirlash
         if (sceneState.editingPrice) {
             const price = parseFloat(text);
 
             if (isNaN(price)) {
-                await ctx.reply("❌ Noto'g'ri narx formati. Faqat raqam kiriting:");
+                await ctx.reply("❌ Noto'g'ri narx formati. Faqat raqam kiriting:", { parse_mode: 'HTML' });
                 return;
             }
 
             if (price <= 0) {
-                await ctx.reply("❌ Narx 0 dan katta bo'lishi kerak:");
+                await ctx.reply("❌ Narx 0 dan katta bo'lishi kerak:", { parse_mode: 'HTML' });
                 return;
             }
 
             if (price > 10000000) {
-                // 10 million limit
-                await ctx.reply("❌ Narx juda katta. Maksimal: 10,000,000 so'm");
+                await ctx.reply("❌ Narx juda katta. Maksimal: 10,000,000 so'm", { parse_mode: 'HTML' });
                 return;
             }
 
             if (price !== Math.floor(price)) {
-                await ctx.reply('❌ Faqat butun sonlar qabul qilinadi:');
+                await ctx.reply('❌ Faqat butun sonlar qabul qilinadi:', { parse_mode: 'HTML' });
                 return;
             }
 
             if (price === sceneState.sidePrice) {
-                await ctx.reply('❌ Yangi narx joriy narx bilan bir xil. Boshqa narx kiriting:');
+                await ctx.reply('❌ Yangi narx joriy narx bilan bir xil. Boshqa narx kiriting:', { parse_mode: 'HTML' });
                 return;
             }
 
             sceneState.newPrice = price;
             sceneState.editingPrice = false;
 
-            // Tasdiqlash
             await ctx.reply(
-                `📋 Narx o'zgarishi:\n\n🔸 Eski narx: ${formatCurrency(sceneState.sidePrice)} \n🔹 Yangi narx: ${formatCurrency(price)} \n\nTasdiqlaysizmi?`,
-                Markup.inlineKeyboard(
-                    [
-                        Markup.button.callback("✅ Ha, o'zgartirish", 'CONFIRM_PRICE_CHANGE'),
-                        Markup.button.callback('🔙 Orqaga', 'BACK_TO_EDIT_MENU'),
-                        Markup.button.callback('❌ Bekor qilish', 'CANCEL_EDIT_SIDE'),
-                    ],
-                    { columns: 1 },
-                ),
+                `📋 <b>Narx o'zgarishi:</b>\n\n🔸 <b>Eski narx:</b> ${formatCurrency(sceneState.sidePrice)} \n🔹 <b>Yangi narx:</b> ${formatCurrency(price)} \n\nTasdiqlaysizmi?`,
+                {
+                    parse_mode: 'HTML', ...Markup.inlineKeyboard(
+                        [
+                            Markup.button.callback("✅ Ha, o'zgartirish", 'CONFIRM_PRICE_CHANGE'),
+                            Markup.button.callback('🔙 Orqaga', 'BACK_TO_EDIT_MENU'),
+                            Markup.button.callback('❌ Bekor qilish', 'CANCEL_EDIT_SIDE'),
+                        ],
+                        { columns: 1 },
+                    )
+                },
             );
             return;
         }
@@ -193,7 +194,7 @@ export class EditSideScene {
         const sceneState = ctx.scene.state as EditSideSceneState;
 
         if (!sceneState.newName) {
-            await ctx.editMessageText('❌ Yangi nom topilmadi.');
+            await safeEditMessageText(ctx, '❌ Yangi nom topilmadi.');
             await ctx.scene.leave();
             return;
         }
@@ -204,12 +205,13 @@ export class EditSideScene {
                 data: { name: sceneState.newName },
             });
 
-            await ctx.editMessageText(
-                `✅ Tomon nomi muvaffaqiyatli o'zgartirildi!\n\n🔸 Eski nom: ${sceneState.sideName}\n🔹 Yangi nom: ${sceneState.newName}`,
+            await safeEditMessageText(
+                ctx,
+                `✅ <b>Tomon nomi muvaffaqiyatli o'zgartirildi!</b>\n\n🔸 <b>Eski nom:</b> ${sceneState.sideName}\n🔹 <b>Yangi nom:</b> ${sceneState.newName}`,
             );
             await ctx.scene.leave();
         } catch (error) {
-            await ctx.editMessageText("❌ Nom o'zgartirishda xatolik yuz berdi.");
+            await safeEditMessageText(ctx, "❌ Nom o'zgartirishda xatolik yuz berdi.");
             await ctx.scene.leave();
         }
     }
@@ -219,7 +221,7 @@ export class EditSideScene {
         const sceneState = ctx.scene.state as EditSideSceneState;
 
         if (!sceneState.newPrice) {
-            await ctx.editMessageText('❌ Yangi narx topilmadi.');
+            await safeEditMessageText(ctx, '❌ Yangi narx topilmadi.');
             await ctx.scene.leave();
             return;
         }
@@ -230,12 +232,13 @@ export class EditSideScene {
                 data: { price: sceneState.newPrice },
             });
 
-            await ctx.editMessageText(
-                `✅ Tomon narxi muvaffaqiyatli o'zgartirildi!\n\n🔸 Eski narx: ${formatCurrency(sceneState.sidePrice)} \n🔹 Yangi narx: ${formatCurrency(sceneState.newPrice)}`,
+            await safeEditMessageText(
+                ctx,
+                `✅ <b>Tomon narxi muvaffaqiyatli o'zgartirildi!</b>\n\n🔸 <b>Eski narx:</b> ${formatCurrency(sceneState.sidePrice)} \n🔹 <b>Yangi narx:</b> ${formatCurrency(sceneState.newPrice)}`,
             );
             await ctx.scene.leave();
         } catch (error) {
-            await ctx.editMessageText("❌ Narx o'zgartirishda xatolik yuz berdi.");
+            await safeEditMessageText(ctx, "❌ Narx o'zgartirishda xatolik yuz berdi.");
             await ctx.scene.leave();
         }
     }
@@ -248,22 +251,12 @@ export class EditSideScene {
         sceneState.newName = undefined;
         sceneState.newPrice = undefined;
 
-        await ctx.editMessageText(
-            `✏️ Tomon tahrirlash\n\n📝 Joriy nomi: ${sceneState.sideName}\n💰 Joriy narxi: ${formatCurrency(sceneState.sidePrice)} \n\nNimani tahrirlashni xohlaysiz?`,
-            Markup.inlineKeyboard(
-                [
-                    Markup.button.callback("📝 Nomini o'zgartirish", 'EDIT_SIDE_NAME'),
-                    Markup.button.callback("💰 Narxini o'zgartirish", 'EDIT_SIDE_PRICE'),
-                    Markup.button.callback('❌ Bekor qilish', 'CANCEL_EDIT_SIDE'),
-                ],
-                { columns: 1 },
-            ),
-        );
+        await this.onSceneEnter(ctx);
     }
 
     @Action('CANCEL_EDIT_SIDE')
     async onCancelEditSide(@Ctx() ctx: Context) {
-        await ctx.editMessageText('❌ Tomon tahrirlash bekor qilindi.');
+        await safeEditMessageText(ctx, '❌ Tomon tahrirlash bekor qilindi.');
         await ctx.scene.leave();
     }
 }

@@ -8,7 +8,7 @@ import { safeEditMessageText } from '../utils/telegram.utils';
 
 @Update()
 export class ReportsUpdate {
-    constructor(private readonly reportsService: ReportsService) {}
+    constructor(private readonly reportsService: ReportsService) { }
     @Command('reports')
     @Roles(Role.SUPER_ADMIN, Role.ADMIN)
     async showReports(@Ctx() ctx: Context) {
@@ -26,11 +26,11 @@ export class ReportsUpdate {
             );
         }
 
-        const branchInfo = user.role === Role.ADMIN ? `\n🏪 Filial: ${user.branch?.name || 'N/A'}` : '\n🌐 Barcha filiallar';
+        const branchInfo = user.role === Role.ADMIN ? `\n🏪 <b>Filial:</b> ${user.branch?.name || 'N/A'}` : '\n🌐 <b>Barcha filiallar</b>';
 
         await safeEditMessageText(
             ctx,
-            `📊 Hisobotlar bo'limi${branchInfo}\n\nQaysi turdagi hisobotni ko'rmoqchisiz?`,
+            `📊 <b>Hisobotlar bo'limi</b>${branchInfo}\n\nQaysi turdagi hisobotni ko'rmoqchisiz?`,
             Markup.inlineKeyboard(reportButtons, {
                 columns: 2,
             }),
@@ -82,14 +82,14 @@ export class ReportsUpdate {
             if (result) {
                 await safeEditMessageText(
                     ctx,
-                    '✅ Google Sheets test muvaffaqiyatli! Kunlik hisobot yuborildi.',
+                    '✅ <b>Google Sheets test muvaffaqiyatli!</b> Kunlik hisobot yuborildi.',
                     undefined,
                     'Test natijasi',
                 );
             } else {
                 await safeEditMessageText(
                     ctx,
-                    '❌ Google Sheets test muvaffaqiyatsiz. Loglarni tekshiring.',
+                    '❌ <b>Google Sheets test muvaffaqiyatsiz.</b> Loglarni tekshiring.',
                     undefined,
                     'Test natijasi',
                 );
@@ -97,7 +97,7 @@ export class ReportsUpdate {
         } catch (error) {
             await safeEditMessageText(
                 ctx,
-                `❌ Google Sheets test xatolik: ${error.message}`,
+                `❌ <b>Google Sheets test xatolik:</b> ${error.message}`,
                 undefined,
                 'Test xatolik',
             );
@@ -131,7 +131,7 @@ export class ReportsUpdate {
         } catch (error) {
             await safeEditMessageText(
                 ctx,
-                `❌ Format test xatolik: ${error.message}`,
+                `❌ <b>Format test xatolik:</b> ${error.message}`,
                 undefined,
                 'Test xatolik',
             );

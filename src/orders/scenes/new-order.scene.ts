@@ -54,7 +54,7 @@ export class NewOrderScene {
 
         await this.safeEditOrReply(
             ctx,
-            '🛒 Yangi buyurtma yaratish\n\n👤 Mijozning ismini kiriting:',
+            "🛒 <b>Yangi buyurtma yaratish</b>\n\n👤 Mijozning ismini kiriting:",
             Markup.inlineKeyboard([Markup.button.callback('❌ Bekor qilish', 'CANCEL_ORDER')]),
         );
     }
@@ -73,7 +73,7 @@ export class NewOrderScene {
             sceneState.clientName = text;
             await this.safeEditOrReply(
                 ctx,
-                `✅ Mijoz ismi: ${text}\n\n📞 Mijozning telefon raqamini kiriting:`,
+                `✅ Mijoz ismi: <b>${text}</b>\n\n📞 Mijozning telefon raqamini kiriting:`,
                 Markup.inlineKeyboard([
                     Markup.button.callback("⏭️ O'tkazib yuborish", 'SKIP_PHONE'),
                     Markup.button.callback('❌ Bekor qilish', 'CANCEL_ORDER'),
@@ -95,7 +95,7 @@ export class NewOrderScene {
             sceneState.clientPhone = text;
             await this.safeEditOrReply(
                 ctx,
-                `✅ Telefon: ${text}\n\n🎂 Mijozning tug'ilgan kunini kiriting (YYYY-MM-DD):`,
+                `✅ Telefon: <b>${text}</b>\n\n🎂 Mijozning tug'ilgan kunini kiriting (<code>YYYY-MM-DD</code>):`,
                 Markup.inlineKeyboard([
                     Markup.button.callback("⏭️ O'tkazib yuborish", 'SKIP_BIRTHDAY'),
                     Markup.button.callback('❌ Bekor qilish', 'CANCEL_ORDER'),
@@ -109,7 +109,7 @@ export class NewOrderScene {
             if (!/^\d{4}-\d{2}-\d{2}$/.test(text)) {
                 await this.safeEditOrReply(
                     ctx,
-                    "❌ Noto'g'ri sana formati. YYYY-MM-DD formatida kiriting (masalan: 1990-05-15):",
+                    "❌ Noto'g'ri sana formati. <code>YYYY-MM-DD</code> formatida kiriting (masalan: <code>1990-05-15</code>):",
                 );
                 return;
             }
@@ -123,7 +123,7 @@ export class NewOrderScene {
             sceneState.clientBirthday = birthday;
             await this.safeEditOrReply(
                 ctx,
-                `✅ Tug'ilgan kun: ${text}\n\n📦 Endi mahsulot qo'shamiz.`,
+                `✅ Tug'ilgan kun: <b>${text}</b>\n\n📦 Endi mahsulot qo'shamiz.`,
             );
             return this.showProductTypes(ctx);
         }
@@ -138,7 +138,7 @@ export class NewOrderScene {
                 sceneState.awaitingProductPrice = true;
                 await this.safeEditOrReply(
                     ctx,
-                    `✅ Mahsulot nomi: ${text}\n\n💰 Narxini kiriting (so'mda):`,
+                    `✅ Mahsulot nomi: <b>${text}</b>\n\n💰 Narxini kiriting (so'mda):`,
                     Markup.inlineKeyboard([
                         Markup.button.callback('🔙 Orqaga', 'BACK_TO_TYPES'),
                         Markup.button.callback('❌ Bekor qilish', 'CANCEL_ORDER'),
@@ -171,7 +171,7 @@ export class NewOrderScene {
 
             await this.safeEditOrReply(
                 ctx,
-                `✅ "${productName}" qo'shildi.\n💰 Narx: ${formatCurrency(price)}`,
+                `✅ "<b>${productName}</b>" qo'shildi.\n💰 Narx: <b>${formatCurrency(price)}</b>`,
             );
             return this.showOrderSummary(ctx);
         }
@@ -213,16 +213,16 @@ export class NewOrderScene {
         const productsList = sceneState.products
             .map((p, i) => {
                 const sideInfo = p.sideName ? ` (${p.sideName})` : '';
-                return `${i + 1}. ${p.quantity}x ${p.name}${sideInfo} - ${formatCurrency(p.price * p.quantity)}`;
+                return `${i + 1}. ${p.quantity}x <b>${p.name}</b>${sideInfo} - <b>${formatCurrency(p.price * p.quantity)}</b>`;
             })
             .join('\n');
 
-        const messageText = `✅ Mahsulot qo'shildi!
+        const messageText = `✅ <b>Mahsulot qo'shildi!</b>
 
-📦 Joriy mahsulotlar:
+📦 <b>Joriy mahsulotlar:</b>
 ${productsList}
 
-💰 Jami: ${formatCurrency(total)}
+💰 <b>Jami:</b> ${formatCurrency(total)}
 
 Yana mahsulot qo'shasizmi?`;
 
@@ -249,7 +249,7 @@ Yana mahsulot qo'shasizmi?`;
         sceneState.phoneSkipped = true;
         await this.safeEditOrReply(
             ctx,
-            `⏭️ Telefon raqami o'tkazib yuborildi.\n\n🎂 Mijozning tug'ilgan kunini kiriting (YYYY-MM-DD):`,
+            `⏭️ Telefon raqami o'tkazib yuborildi.\n\n🎂 Mijozning tug'ilgan kunini kiriting (<code>YYYY-MM-DD</code>):`,
             Markup.inlineKeyboard([
                 Markup.button.callback("⏭️ O'tkazib yuborish", 'SKIP_BIRTHDAY'),
                 Markup.button.callback('❌ Bekor qilish', 'CANCEL_ORDER'),
@@ -286,7 +286,7 @@ Yana mahsulot qo'shasizmi?`;
 
             await this.safeEditOrReply(
                 ctx,
-                '📦 Mahsulot kategoriyasini tanlang:',
+                '📦 <b>Mahsulot kategoriyasini tanlang:</b>',
                 Markup.inlineKeyboard(
                     [...typeButtons, Markup.button.callback('❌ Bekor qilish', 'CANCEL_ORDER')],
                     {
@@ -321,7 +321,7 @@ Yana mahsulot qo'shasizmi?`;
 
             await this.safeEditOrReply(
                 ctx,
-                '🔧 Custom mahsulot tanlandi.\n\n📝 Mahsulot nomini kiriting:',
+                '🔧 <b>Custom mahsulot tanlandi.</b>\n\n📝 Mahsulot nomini kiriting:',
                 Markup.inlineKeyboard([
                     Markup.button.callback('🔙 Orqaga', 'BACK_TO_TYPES'),
                     Markup.button.callback('❌ Bekor qilish', 'CANCEL_ORDER'),
@@ -348,7 +348,7 @@ Yana mahsulot qo'shasizmi?`;
 
             await this.safeEditOrReply(
                 ctx,
-                `"${category.name}" kategoriyasi tanlandi.\n\n📝 Mahsulot nomini kiriting:`,
+                `"<b>${category.name}</b>" kategoriyasi tanlandi.\n\n📝 Mahsulot nomini kiriting:`,
                 Markup.inlineKeyboard([
                     Markup.button.callback('🔙 Orqaga', 'BACK_TO_TYPES'),
                     Markup.button.callback('❌ Bekor qilish', 'CANCEL_ORDER'),
@@ -388,7 +388,7 @@ Yana mahsulot qo'shasizmi?`;
 
         await this.safeEditOrReply(
             ctx,
-            `✅ "${sceneState.currentProduct.name}" (${side.name}) qo'shildi.\n💰 Narx: ${formatCurrency(side.price)}`,
+            `✅ "<b>${sceneState.currentProduct.name}</b>" (${side.name}) qo'shildi.\n💰 Narx: <b>${formatCurrency(side.price)}</b>`,
         );
 
         sceneState.currentProduct = {};
@@ -459,25 +459,25 @@ Yana mahsulot qo'shasizmi?`;
         const productsList = sceneState.products
             .map((p, i) => {
                 const sideInfo = p.sideName ? ` (${p.sideName})` : '';
-                return `${i + 1}. ${p.quantity}x ${p.name}${sideInfo} - ${formatCurrency(p.price * p.quantity)}`;
+                return `${i + 1}. ${p.quantity}x <b>${p.name}</b>${sideInfo} - <b>${formatCurrency(p.price * p.quantity)}</b>`;
             })
             .join('\n');
 
         const paymentsText = this.formatPaymentsList(sceneState.payments || []);
 
-        const orderSummary = `📋 Buyurtmani tasdiqlang:
+        const orderSummary = `📋 <b>Buyurtmani tasdiqlang:</b>
 
-👤 Mijoz: ${sceneState.clientName}
-📞 Telefon: ${sceneState.clientPhone || "Ko'rsatilmagan"}
-${sceneState.clientBirthday ? `🎂 Tug'ilgan kun: ${sceneState.clientBirthday.toLocaleDateString('uz-UZ')}` : ''}
+👤 <b>Mijoz:</b> ${sceneState.clientName}
+📞 <b>Telefon:</b> ${sceneState.clientPhone || "Ko'rsatilmagan"}
+${sceneState.clientBirthday ? `🎂 <b>Tug'ilgan kun:</b> ${sceneState.clientBirthday.toLocaleDateString('uz-UZ')}` : ''}
 
-📦 Mahsulotlar:
+📦 <b>Mahsulotlar:</b>
 ${productsList}
 
-💳 To'lovlar:
+💳 <b>To'lovlar:</b>
 ${paymentsText}
 
-💰 Jami: ${formatCurrency(sceneState.totalAmount)}`;
+💰 <b>Jami:</b> ${formatCurrency(sceneState.totalAmount)}`;
 
         await this.safeEditOrReply(
             ctx,
@@ -614,7 +614,7 @@ ${paymentsText}
             // Foydalanuvchiga darhol javob berish
             await this.safeEditOrReply(
                 ctx,
-                `✅ Buyurtma muvaffaqiyatli yaratildi!\n\n🔢 Buyurtma raqami: ${orderNumber}\n\n💳 To'lovlar:\n${paymentsText}\n\n💰 Jami: ${formatCurrency(sceneState.totalAmount)} \n\nRahmat!`,
+                `✅ <b>Buyurtma muvaffaqiyatli yaratildi!</b>\n\n🔢 Buyurtma raqami: <code>${orderNumber}</code>\n\n💳 <b>To'lovlar:</b>\n${paymentsText}\n\n💰 <b>Jami: ${formatCurrency(sceneState.totalAmount)}</b> \n\nRahmat!`,
                 Markup.inlineKeyboard([
                     Markup.button.callback('🆕 Yangi buyurtma', 'START_NEW_ORDER'),
                 ]),
@@ -627,7 +627,7 @@ ${paymentsText}
                 // Sheets xatosi order yaratish jarayonini to'xtatmaydi
             });
         } catch (error) {
-            let errorMessage = '❌ Buyurtma yaratishda xatolik yuz berdi.';
+            let errorMessage = '❌ <b>Buyurtma yaratishda xatolik yuz berdi.</b>';
 
             if (error instanceof Error) {
                 if (error.message.includes('duplicate')) {
@@ -665,7 +665,7 @@ ${paymentsText}
         if (sceneState.payments && sceneState.payments.length > 0) {
             await this.safeEditOrReply(
                 ctx,
-                `⚠️ Siz ${sceneState.payments.length} ta to'lov qo'shgansiz.\n\nHaqiqatan ham buyurtmani bekor qilmoqchimisiz?`,
+                `⚠️ Siz <b>${sceneState.payments.length}</b> ta to'lov qo'shgansiz.\n\nHaqiqatan ham buyurtmani bekor qilmoqchimisiz?`,
                 Markup.inlineKeyboard([
                     Markup.button.callback('✅ Ha, bekor qilish', 'CONFIRM_CANCEL_ORDER'),
                     Markup.button.callback("❌ Yo'q, davom etish", 'BACK_TO_PAYMENT_SUMMARY'),
@@ -687,9 +687,9 @@ ${paymentsText}
 
     private async safeEditOrReply(ctx: Context, text: string, extra?: any) {
         try {
-            await ctx.editMessageText(text, extra);
+            await ctx.editMessageText(text, { parse_mode: 'HTML', ...extra });
         } catch (error) {
-            await ctx.reply(text, extra);
+            await ctx.reply(text, { parse_mode: 'HTML', ...extra });
         }
     }
 
@@ -724,7 +724,7 @@ ${paymentsText}
 
             await this.safeEditOrReply(
                 ctx,
-                `📦 "${sceneState.currentProduct.name}" tanlandi\n\n🔲 Tomonni tanlang (narx = tomon narxi):`,
+                `📦 "<b>${sceneState.currentProduct.name}</b>" tanlandi\n\n🔲 Tomonni tanlang (narx = tomon narxi):`,
                 Markup.inlineKeyboard(
                     [
                         ...sideButtons,
@@ -769,7 +769,7 @@ ${paymentsText}
         if (amount > remainingAmount) {
             return {
                 isValid: false,
-                error: `❌ Kiritilgan miqdor qolgan summadan ko'p.\nMaksimal: ${formatCurrency(remainingAmount)}`,
+                error: `❌ Kiritilgan miqdor qolgan summadan ko'p.\nMaksimal: <b>${formatCurrency(remainingAmount)}</b>`,
             };
         }
         if (amount !== Math.floor(amount)) {
@@ -813,7 +813,7 @@ ${paymentsText}
             .map((payment, index) => {
                 const emoji = this.getPaymentTypeEmoji(payment.type);
                 const typeName = this.getPaymentTypeName(payment.type);
-                return `${index + 1}. ${emoji} ${typeName}: ${formatCurrency(payment.amount)}`;
+                return `${index + 1}. ${emoji} ${typeName}: <b>${formatCurrency(payment.amount)}</b>`;
             })
             .join('\n');
     }
@@ -846,7 +846,7 @@ ${paymentsText}
 
         await this.safeEditOrReply(
             ctx,
-            `💳 To'lov turi tanlang\n\n💰 Qolgan summa: ${formatCurrency(remainingAmount)}`,
+            `💳 <b>To'lov turi tanlang</b>\n\n💰 Qolgan summa: <b>${formatCurrency(remainingAmount)}</b>`,
             Markup.inlineKeyboard(
                 [
                     Markup.button.callback('💵 Naqd', 'PAYMENT_TYPE_CASH'),
@@ -879,7 +879,7 @@ ${paymentsText}
 
         await this.safeEditOrReply(
             ctx,
-            `${emoji} ${typeName} to'lov tanlandi\n\n💰 Qolgan summa: ${formatCurrency(remainingAmount)} \n\n💵 To'lov miqdorini kiriting:`,
+            `${emoji} <b>${typeName}</b> to'lov tanlandi\n\n💰 Qolgan summa: <b>${formatCurrency(remainingAmount)}</b> \n\n💵 To'lov miqdorini kiriting:`,
             Markup.inlineKeyboard(
                 [
                     Markup.button.callback(
@@ -944,10 +944,10 @@ ${paymentsText}
         const paymentsText = this.formatPaymentsList(payments);
         const isComplete = remainingAmount === 0;
 
-        let messageText = `💳 To'lov xulosasi:\n\n${paymentsText}\n\n💰 Jami: ${formatCurrency(totalAmount)}`;
+        let messageText = `💳 <b>To'lov xulosasi:</b>\n\n${paymentsText}\n\n💰 <b>Jami:</b> ${formatCurrency(totalAmount)}`;
 
         if (remainingAmount > 0) {
-            messageText += `\n🔴 Qolgan: ${formatCurrency(remainingAmount)}`;
+            messageText += `\n🔴 <b>Qolgan:</b> ${formatCurrency(remainingAmount)}`;
         } else {
             messageText += `\n✅ To'lov to'liq amalga oshirildi`;
         }
@@ -1003,7 +1003,7 @@ ${paymentsText}
 
         await this.safeEditOrReply(
             ctx,
-            `🗑️ To'lov o'chirildi: ${emoji} ${typeName} - ${formatCurrency(removedPayment.amount)}`,
+            `🗑️ To'lov o'chirildi: ${emoji} <b>${typeName}</b> - <b>${formatCurrency(removedPayment.amount)}</b>`,
         );
 
         return this.showPaymentSummary(ctx);

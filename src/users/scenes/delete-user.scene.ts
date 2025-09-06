@@ -3,18 +3,18 @@ import { Markup } from 'telegraf';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Context } from '../../interfaces/context.interface';
 import { Role } from '@prisma/client';
-import { safeEditMessageText } from '../../utils/telegram.utils';
+import { safeEditMessageText, safeReplyOrEdit } from '../../utils/telegram.utils';
 
 @Scene('delete-user-scene')
 export class DeleteUserScene {
-    constructor(private readonly prisma: PrismaService) {}
+    constructor(private readonly prisma: PrismaService) { }
 
     @SceneEnter()
     async onSceneEnter(@Ctx() ctx: Context) {
         const { userId } = ctx.scene.state as { userId: string };
 
         if (!userId) {
-            await ctx.reply('❌ Foydalanuvchi ID topilmadi.');
+            await safeReplyOrEdit(ctx, '❌ Foydalanuvchi ID topilmadi.');
             await ctx.scene.leave();
             return;
         }
@@ -25,35 +25,34 @@ export class DeleteUserScene {
         });
 
         if (!user) {
-            await ctx.reply('❌ Foydalanuvchi topilmadi.');
+            await safeReplyOrEdit(ctx, '❌ Foydalanuvchi topilmadi.');
             await ctx.scene.leave();
             return;
         }
 
         const currentUser = ctx.user;
 
-        // Ruxsatni tekshirish
         if (currentUser.role === Role.ADMIN) {
             if (user.branch_id !== currentUser.branch_id || user.role !== Role.CASHIER) {
-                await ctx.reply("❌ Bu foydalanuvchini o'chirish huquqingiz yo'q.");
+                await safeReplyOrEdit(ctx, "❌ Bu foydalanuvchini o'chirish huquqingiz yo'q.");
                 await ctx.scene.leave();
                 return;
             }
         }
 
         const roleText =
-            {
-                [Role.SUPER_ADMIN]: 'Super Admin',
-                [Role.ADMIN]: 'Admin',
-                [Role.CASHIER]: 'Kassir',
-            }[user.role] || user.role;
+        {
+            [Role.SUPER_ADMIN]: 'Super Admin',
+            [Role.ADMIN]: 'Admin',
+            [Role.CASHIER]: 'Kassir',
+        }[user.role] || user.role;
 
         await safeEditMessageText(
             ctx,
-            `⚠️ Rostdan ham "${user.full_name}" foydalanuvchisini o'chirmoqchimisiz?\n\n` +
-                `👤 To'liq ism: ${user.full_name}\n` +
-                `�  Rol: ${roleText}\n` +
-                `🏪 Filial: ${user.branch?.name || 'N/A'}`,
+            `⚠️ Rostdan ham "<b>${user.full_name}</b>" foydalanuvchisini o'chirmoqchimisiz?\n\n` +
+            `👤 <b>To'liq ism:</b> ${user.full_name}\n` +
+            `🎭 <b>Rol:</b> ${roleText}\n` +
+            `🏪 <b>Filial:</b> ${user.branch?.name || 'N/A'}`,
             Markup.inlineKeyboard([
                 Markup.button.callback('✅ Ha', `CONFIRM_DELETE_${userId}`),
                 Markup.button.callback("❌ Yo'q", 'CANCEL_DELETE'),
@@ -84,7 +83,7 @@ export class DeleteUserScene {
 
             await safeEditMessageText(
                 ctx,
-                `✅ "${user.full_name}" foydalanuvchisi muvaffaqiyatli o'chirildi.`,
+                `✅ "<b>${user.full_name}</b>" foydalanuvchisi muvaffaqiyatli o'chirildi.`,
                 undefined,
                 "Muvaffaqiyatli o'chirildi",
             );

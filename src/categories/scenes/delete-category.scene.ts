@@ -10,7 +10,7 @@ interface DeleteCategorySceneState {
 
 @Scene('delete-category-scene')
 export class DeleteCategoryScene {
-    constructor(private readonly prisma: PrismaService) {}
+    constructor(private readonly prisma: PrismaService) { }
 
     @SceneEnter()
     async onSceneEnter(@Ctx() ctx: Context) {
@@ -44,12 +44,12 @@ export class DeleteCategoryScene {
 
         let warningMessage = '';
         if (ordersUsingThisCategory > 0) {
-            warningMessage = `\n⚠️ DIQQAT: Bu kategoriya ${ordersUsingThisCategory} ta buyurtmada ishlatilgan. O'chirilsa, eski buyurtmalarda "O'chirilgan kategoriya" ko'rinadi.`;
+            warningMessage = `\n⚠️ <b>DIQQAT:</b> Bu kategoriya <b>${ordersUsingThisCategory}</b> ta buyurtmada ishlatilgan. O'chirilsa, eski buyurtmalarda "O'chirilgan kategoriya" ko'rinadi.`;
         }
 
         await safeEditMessageText(
             ctx,
-            `🗑️ Kategoriya o'chirish\n\n📝 Nomi: ${category.name}${warningMessage}\n\nHaqiqatan ham bu kategoriyani o'chirmoqchimisiz?`,
+            `🗑️ <b>Kategoriya o'chirish</b>\n\n📝 <b>Nomi:</b> ${category.name}${warningMessage}\n\nHaqiqatan ham bu kategoriyani o'chirmoqchimisiz?`,
             Markup.inlineKeyboard(
                 [
                     Markup.button.callback("✅ Ha, o'chirish", 'CONFIRM_DELETE_CATEGORY'),
@@ -86,7 +86,7 @@ export class DeleteCategoryScene {
 
             await safeEditMessageText(
                 ctx,
-                `✅ Kategoriya muvaffaqiyatli o'chirildi!\n\n📝 Nomi: ${category.name}`,
+                `✅ <b>Kategoriya muvaffaqiyatli o'chirildi!</b>\n\n📝 <b>Nomi:</b> ${category.name}`,
                 undefined,
                 'Muvaffaqiyat',
             );

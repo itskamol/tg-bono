@@ -8,7 +8,7 @@ import { safeEditMessageText } from '../utils/telegram.utils';
 
 @Update()
 export class UsersUpdate {
-    constructor(private readonly prisma: PrismaService) {}
+    constructor(private readonly prisma: PrismaService) { }
 
     @Command('users')
     @Roles(Role.SUPER_ADMIN, Role.ADMIN)
@@ -23,7 +23,7 @@ export class UsersUpdate {
             });
         } else if (user.role === Role.ADMIN) {
             if (!user.branch_id) {
-                await ctx.reply('❌ Siz hech qanday filialga tayinlanmagansiz.');
+                await ctx.reply('❌ Siz hech qanday filialga tayinlanmagansiz.', { parse_mode: 'HTML' });
                 return;
             }
             users = await this.prisma.user.findMany({
@@ -36,30 +36,34 @@ export class UsersUpdate {
         if (!users || users.length === 0) {
             await ctx.reply(
                 '❌ Hech qanday foydalanuvchi mavjud emas.',
-                Markup.inlineKeyboard([
-                    Markup.button.callback("➕ Foydalanuvchi qo'shish", 'ADD_USER'),
-                ]),
+                {
+                    parse_mode: 'HTML', ...Markup.inlineKeyboard([
+                        Markup.button.callback("➕ Foydalanuvchi qo'shish", 'ADD_USER'),
+                    ])
+                },
             );
             return;
         }
 
         const userButtons = users.map((u) => {
             const roleEmoji =
-                {
-                    [Role.SUPER_ADMIN]: '👑',
-                    [Role.ADMIN]: '👨‍💼',
-                    [Role.CASHIER]: '💰',
-                }[u.role] || '👤';
+            {
+                [Role.SUPER_ADMIN]: '👑',
+                [Role.ADMIN]: '👨‍💼',
+                [Role.CASHIER]: '💰',
+            }[u.role] || '👤';
 
             return Markup.button.callback(`${roleEmoji} ${u.full_name}`, `VIEW_USER_${u.id}`);
         });
 
         await ctx.reply(
-            `👥 Foydalanuvchilar ro'yxati (${users.length} ta):`,
-            Markup.inlineKeyboard(
-                [...userButtons, Markup.button.callback('➕ Yangi', 'ADD_USER')],
-                { columns: 2 },
-            ),
+            `👥 <b>Foydalanuvchilar ro'yxati (${users.length} ta):</b>`,
+            {
+                parse_mode: 'HTML', ...Markup.inlineKeyboard(
+                    [...userButtons, Markup.button.callback('➕ Yangi', 'ADD_USER')],
+                    { columns: 2 },
+                )
+            },
         );
     }
 
@@ -77,7 +81,6 @@ export class UsersUpdate {
         }
         const userData = ctx.callbackQuery.data;
 
-        // Regex orqali userId'ni olish
         const match = userData.match(/^VIEW_USER_(.+)$/);
         if (!match) {
             await safeEditMessageText(ctx, "❌ Noto'g'ri ma'lumot.", undefined, 'Xatolik');
@@ -107,7 +110,6 @@ export class UsersUpdate {
             return;
         }
 
-        // Ruxsatni tekshirish
         if (currentUser.role === Role.ADMIN) {
             if (user.branch_id !== currentUser.branch_id || user.role !== Role.CASHIER) {
                 await safeEditMessageText(
@@ -121,28 +123,27 @@ export class UsersUpdate {
         }
 
         const roleText =
-            {
-                [Role.SUPER_ADMIN]: '👑 Super Admin',
-                [Role.ADMIN]: '👨‍💼 Admin',
-                [Role.CASHIER]: '💰 Kassir',
-            }[user.role] || user.role;
+        {
+            [Role.SUPER_ADMIN]: '👑 Super Admin',
+            [Role.ADMIN]: '👨‍💼 Admin',
+            [Role.CASHIER]: '💰 Kassir',
+        }[user.role] || user.role;
 
         const userDetails = `
-👤 Foydalanuvchi ma'lumotlari:
+👤 <b>Foydalanuvchi ma'lumotlari:</b>
 
-👤 To'liq ism: ${user.full_name}
-🎭 Rol: ${roleText}
-🏪 Filial: ${user.branch?.name || 'Tayinlanmagan'}
-📱 Telegram ID: ${user.telegram_id}
-📊 Buyurtmalar: ${user._count.orders} ta
-📅 Ro'yxatdan o'tgan: ${user.created_at.toLocaleDateString('uz-UZ')}
+👤 <b>To'liq ism:</b> ${user.full_name}
+🎭 <b>Rol:</b> ${roleText}
+🏪 <b>Filial:</b> ${user.branch?.name || 'Tayinlanmagan'}
+📱 <b>Telegram ID:</b> <code>${user.telegram_id}</code>
+📊 <b>Buyurtmalar:</b> ${user._count.orders} ta
+📅 <b>Ro'yxatdan o'tgan:</b> ${user.created_at.toLocaleDateString('uz-UZ')}
 
 Nima qilmoqchisiz?
         `;
 
         const buttons = [];
 
-        // Tahrirlash tugmasi (faqat ruxsat bor bo'lsa)
         if (
             currentUser.role === Role.SUPER_ADMIN ||
             (currentUser.role === Role.ADMIN &&
@@ -152,7 +153,6 @@ Nima qilmoqchisiz?
             buttons.push(Markup.button.callback('✏️ Tahrirlash', `EDIT_USER_${user.id}`));
         }
 
-        // O'chirish tugmasi (faqat ruxsat bor bo'lsa)
         if (
             currentUser.role === Role.SUPER_ADMIN ||
             (currentUser.role === Role.ADMIN &&
@@ -164,7 +164,7 @@ Nima qilmoqchisiz?
 
         buttons.push(Markup.button.callback('🔙 Orqaga', 'BACK_TO_USERS'));
 
-        await ctx.editMessageText(userDetails, Markup.inlineKeyboard(buttons, { columns: 2 }));
+        await safeEditMessageText(ctx, userDetails, Markup.inlineKeyboard(buttons, { columns: 2 }));
     }
 
     @Action(/^EDIT_USER_(.+)$/)
@@ -175,10 +175,9 @@ Nima qilmoqchisiz?
         }
         const userData = ctx.callbackQuery.data;
 
-        // Regex orqali userId'ni olish
         const match = userData.match(/^EDIT_USER_(.+)$/);
         if (!match) {
-            await ctx.editMessageText("❌ Noto'g'ri ma'lumot.");
+            await safeEditMessageText(ctx, "❌ Noto'g'ri ma'lumot.");
             return;
         }
 
@@ -190,11 +189,10 @@ Nima qilmoqchisiz?
         });
 
         if (!user) {
-            await ctx.editMessageText('❌ Foydalanuvchi topilmadi.');
+            await safeEditMessageText(ctx, '❌ Foydalanuvchi topilmadi.');
             return;
         }
 
-        // Scene state'ga user ma'lumotlarini saqlash
         ctx.scene.state = {
             userId,
             userName: user.full_name,
@@ -212,16 +210,14 @@ Nima qilmoqchisiz?
         }
         const userData = ctx.callbackQuery.data;
 
-        // Regex orqali userId'ni olish
         const match = userData.match(/^DELETE_USER_(.+)$/);
         if (!match) {
-            await ctx.editMessageText("❌ Noto'g'ri ma'lumot.");
+            await safeEditMessageText(ctx, "❌ Noto'g'ri ma'lumot.");
             return;
         }
 
         const userId = match[1];
 
-        // Scene state'ga user ID'ni saqlash
         ctx.scene.state = { userId };
         await ctx.scene.enter('delete-user-scene', ctx.scene.state);
     }
@@ -229,7 +225,6 @@ Nima qilmoqchisiz?
     @Action('BACK_TO_USERS')
     @Roles(Role.SUPER_ADMIN, Role.ADMIN)
     async onBackToUsers(@Ctx() ctx: Context) {
-        // Foydalanuvchilar ro'yxatini qayta ko'rsatish
         const currentUser = ctx.user;
         let users: User[] = [];
 
@@ -240,7 +235,7 @@ Nima qilmoqchisiz?
             });
         } else if (currentUser.role === Role.ADMIN) {
             if (!currentUser.branch_id) {
-                await ctx.editMessageText('❌ Siz hech qanday filialga tayinlanmagansiz.');
+                await safeEditMessageText(ctx, '❌ Siz hech qanday filialga tayinlanmagansiz.');
                 return;
             }
             users = await this.prisma.user.findMany({
@@ -251,7 +246,8 @@ Nima qilmoqchisiz?
         }
 
         if (!users || users.length === 0) {
-            await ctx.editMessageText(
+            await safeEditMessageText(
+                ctx,
                 '❌ Hech qanday foydalanuvchi mavjud emas.',
                 Markup.inlineKeyboard([
                     Markup.button.callback("➕ Foydalanuvchi qo'shish", 'ADD_USER'),
@@ -262,17 +258,18 @@ Nima qilmoqchisiz?
 
         const userButtons = users.map((u) => {
             const roleEmoji =
-                {
-                    [Role.SUPER_ADMIN]: '👑',
-                    [Role.ADMIN]: '👨‍💼',
-                    [Role.CASHIER]: '💰',
-                }[u.role] || '👤';
+            {
+                [Role.SUPER_ADMIN]: '👑',
+                [Role.ADMIN]: '👨‍💼',
+                [Role.CASHIER]: '💰',
+            }[u.role] || '👤';
 
             return Markup.button.callback(`${roleEmoji} ${u.full_name}`, `VIEW_USER_${u.id}`);
         });
 
-        await ctx.editMessageText(
-            `👥 Foydalanuvchilar ro'yxati (${users.length} ta):`,
+        await safeEditMessageText(
+            ctx,
+            `👥 <b>Foydalanuvchilar ro'yxati (${users.length} ta):</b>`,
             Markup.inlineKeyboard(
                 [...userButtons, Markup.button.callback('➕ Yangi', 'ADD_USER')],
                 { columns: 2 },

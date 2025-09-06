@@ -9,7 +9,7 @@ import { formatCurrency } from 'src/utils/format.utils';
 
 @Update()
 export class CategoriesUpdate {
-    constructor(private readonly prisma: PrismaService) {}
+    constructor(private readonly prisma: PrismaService) { }
 
     @Command('categories')
     @Roles(Role.SUPER_ADMIN)
@@ -33,7 +33,7 @@ export class CategoriesUpdate {
         );
 
         await ctx.reply(
-            `📦 Kategoriyalar ro'yxati (${categories.length} ta):`,
+            `📦 <b>Kategoriyalar ro'yxati (${categories.length} ta):</b>`,
             Markup.inlineKeyboard(
                 [...categoryButtons, Markup.button.callback('➕ Yangi', 'ADD_CATEGORY')],
                 { columns: 2 },
@@ -62,7 +62,7 @@ export class CategoriesUpdate {
         });
 
         if (!category) {
-            await ctx.editMessageText('❌ Kategoriya topilmadi.');
+            await safeEditMessageText(ctx, '❌ Kategoriya topilmadi.');
             return;
         }
 
@@ -75,18 +75,18 @@ export class CategoriesUpdate {
         const sidesInfo =
             category.sides.length > 0
                 ? category.sides
-                      .map((side) => `• ${side.name}: ${formatCurrency(side.price)}`)
-                      .join('\n')
+                    .map((side) => `• ${side.name}: <b>${formatCurrency(side.price)}</b>`)
+                    .join('\n')
                 : "Hech qanday tomon qo'shilmagan";
 
         const categoryDetails = `
-📦 Kategoriya ma'lumotlari:
+📦 <b>Kategoriya ma'lumotlari:</b>
 
-📝 Nomi: ${category.name}
-📊 Ishlatilgan: ${productsCount} ta buyurtmada
-📅 Yaratilgan: ${category.created_at.toLocaleDateString('uz-UZ')}
+📝 <b>Nomi:</b> ${category.name}
+📊 <b>Ishlatilgan:</b> ${productsCount} ta buyurtmada
+📅 <b>Yaratilgan:</b> ${category.created_at.toLocaleDateString('uz-UZ')}
 
-🔲 Tomonlar (${category.sides.length} ta):
+🔲 <b>Tomonlar (${category.sides.length} ta):</b>
 ${sidesInfo}
 
 Nima qilmoqchisiz?
@@ -122,7 +122,7 @@ Nima qilmoqchisiz?
         });
 
         if (!category) {
-            await ctx.editMessageText('❌ Kategoriya topilmadi.');
+            await safeEditMessageText(ctx, '❌ Kategoriya topilmadi.');
             return;
         }
 
@@ -162,7 +162,7 @@ Nima qilmoqchisiz?
 
         await safeEditMessageText(
             ctx,
-            `🔲 "${category.name}" kategoriyasi tomonlari (${category.sides.length} ta):`,
+            `🔲 "<b>${category.name}</b>" kategoriyasi tomonlari (${category.sides.length} ta):`,
             Markup.inlineKeyboard(
                 [
                     ...sidesButtons,
@@ -208,12 +208,12 @@ Nima qilmoqchisiz?
         }
 
         const sideDetails = `
-🔲 Tomon ma'lumotlari:
+🔲 <b>Tomon ma'lumotlari:</b>
 
-📝 Nomi: ${side.name}
-💰 Narxi: ${formatCurrency(side.price)}
-📦 Kategoriya: ${side.category.name}
-📅 Yaratilgan: ${side.created_at.toLocaleDateString('uz-UZ')}
+📝 <b>Nomi:</b> ${side.name}
+💰 <b>Narxi:</b> ${formatCurrency(side.price)}
+📦 <b>Kategoriya:</b> ${side.category.name}
+📅 <b>Yaratilgan:</b> ${side.created_at.toLocaleDateString('uz-UZ')}
 
 Nima qilmoqchisiz?
         `;
@@ -299,7 +299,7 @@ Nima qilmoqchisiz?
 
         await safeEditMessageText(
             ctx,
-            `📦 Kategoriyalar ro'yxati (${categories.length} ta):`,
+            `📦 <b>Kategoriyalar ro'yxati (${categories.length} ta):</b>`,
             Markup.inlineKeyboard(
                 [...categoryButtons, Markup.button.callback('➕ Yangi', 'ADD_CATEGORY')],
                 { columns: 2 },

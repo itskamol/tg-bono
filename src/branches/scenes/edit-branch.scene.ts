@@ -2,6 +2,7 @@ import { Scene, SceneEnter, On, Message, Action, Ctx } from 'nestjs-telegraf';
 import { Markup } from 'telegraf';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Context } from '../../interfaces/context.interface';
+import { safeEditMessageText } from 'src/utils/telegram.utils';
 
 interface EditBranchSceneState {
     branchId: string;
@@ -15,14 +16,14 @@ interface EditBranchSceneState {
 
 @Scene('edit-branch-scene')
 export class EditBranchScene {
-    constructor(private readonly prisma: PrismaService) {}
+    constructor(private readonly prisma: PrismaService) { }
 
     @SceneEnter()
     async onSceneEnter(@Ctx() ctx: Context) {
         const sceneState = ctx.scene.state as EditBranchSceneState;
 
         if (!sceneState.branchId) {
-            await ctx.reply("❌ Filial ma'lumotlari topilmadi.");
+            await ctx.reply("❌ Filial ma'lumotlari topilmadi.", { parse_mode: 'HTML' });
             await ctx.scene.leave();
             return;
         }
@@ -32,7 +33,7 @@ export class EditBranchScene {
         });
 
         if (!branch) {
-            await ctx.reply('❌ Filial topilmadi.');
+            await ctx.reply('❌ Filial topilmadi.', { parse_mode: 'HTML' });
             await ctx.scene.leave();
             return;
         }
@@ -41,7 +42,7 @@ export class EditBranchScene {
         sceneState.branchAddress = branch.address;
 
         await ctx.reply(
-            `✏️ Filial tahrirlash\n\n🏪 Joriy nomi: ${branch.name}\n📍 Joriy manzil: ${branch.address}\n\nNimani tahrirlashni xohlaysiz?`,
+            `✏️ <b>Filial tahrirlash</b>\n\n🏪 <b>Joriy nomi:</b> ${branch.name}\n📍 <b>Joriy manzil:</b> ${branch.address}\n\nNimani tahrirlashni xohlaysiz?`,
             Markup.inlineKeyboard(
                 [
                     Markup.button.callback("🏪 Nomini o'zgartirish", 'EDIT_BRANCH_NAME'),
@@ -58,8 +59,9 @@ export class EditBranchScene {
         const sceneState = ctx.scene.state as EditBranchSceneState;
         sceneState.editingName = true;
 
-        await ctx.editMessageText(
-            `🏪 Yangi nom kiriting:\n\n🔸 Joriy nom: ${sceneState.branchName}`,
+        await safeEditMessageText(
+            ctx,
+            `🏪 Yangi nom kiriting:\n\n🔸 <b>Joriy nom:</b> ${sceneState.branchName}`,
             Markup.inlineKeyboard([
                 Markup.button.callback('🔙 Orqaga', 'BACK_TO_EDIT_MENU'),
                 Markup.button.callback('❌ Bekor qilish', 'CANCEL_EDIT_BRANCH'),
@@ -72,8 +74,9 @@ export class EditBranchScene {
         const sceneState = ctx.scene.state as EditBranchSceneState;
         sceneState.editingAddress = true;
 
-        await ctx.editMessageText(
-            `📍 Yangi manzil kiriting:\n\n🔸 Joriy manzil: ${sceneState.branchAddress}`,
+        await safeEditMessageText(
+            ctx,
+            `📍 Yangi manzil kiriting:\n\n🔸 <b>Joriy manzil:</b> ${sceneState.branchAddress}`,
             Markup.inlineKeyboard([
                 Markup.button.callback('🔙 Orqaga', 'BACK_TO_EDIT_MENU'),
                 Markup.button.callback('❌ Bekor qilish', 'CANCEL_EDIT_BRANCH'),
@@ -90,18 +93,18 @@ export class EditBranchScene {
             const trimmedName = text.trim();
 
             if (trimmedName.length < 2) {
-                await ctx.reply("❌ Filial nomi kamida 2 ta belgidan iborat bo'lishi kerak.");
+                await ctx.reply("❌ Filial nomi kamida 2 ta belgidan iborat bo'lishi kerak.", { parse_mode: 'HTML' });
                 return;
             }
 
             if (trimmedName.length > 50) {
-                await ctx.reply("❌ Filial nomi 50 ta belgidan ko'p bo'lmasligi kerak.");
+                await ctx.reply("❌ Filial nomi 50 ta belgidan ko'p bo'lmasligi kerak.", { parse_mode: 'HTML' });
                 return;
             }
 
             // Agar nom o'zgarmagan bo'lsa
             if (trimmedName.toLowerCase() === sceneState.branchName.toLowerCase()) {
-                await ctx.reply('❌ Yangi nom joriy nom bilan bir xil. Boshqa nom kiriting:');
+                await ctx.reply('❌ Yangi nom joriy nom bilan bir xil. Boshqa nom kiriting:', { parse_mode: 'HTML' });
                 return;
             }
 
@@ -114,7 +117,7 @@ export class EditBranchScene {
             });
 
             if (existingBranch) {
-                await ctx.reply('❌ Bu nom bilan filial allaqachon mavjud. Boshqa nom kiriting:');
+                await ctx.reply('❌ Bu nom bilan filial allaqachon mavjud. Boshqa nom kiriting:', { parse_mode: 'HTML' });
                 return;
             }
 
@@ -123,7 +126,7 @@ export class EditBranchScene {
 
             // Tasdiqlash
             await ctx.reply(
-                `📋 Nom o'zgarishi:\n\n🔸 Eski nom: ${sceneState.branchName}\n🔹 Yangi nom: ${trimmedName}\n\nTasdiqlaysizmi?`,
+                `📋 <b>Nom o'zgarishi:</b>\n\n🔸 <b>Eski nom:</b> ${sceneState.branchName}\n🔹 <b>Yangi nom:</b> ${trimmedName}\n\nTasdiqlaysizmi?`,
                 Markup.inlineKeyboard(
                     [
                         Markup.button.callback("✅ Ha, o'zgartirish", 'CONFIRM_NAME_CHANGE'),
@@ -141,18 +144,19 @@ export class EditBranchScene {
             const trimmedAddress = text.trim();
 
             if (trimmedAddress.length < 5) {
-                await ctx.reply("❌ Manzil kamida 5 ta belgidan iborat bo'lishi kerak.");
+                await ctx.reply("❌ Manzil kamida 5 ta belgidan iborat bo'lishi kerak.", { parse_mode: 'HTML' });
                 return;
             }
 
             if (trimmedAddress.length > 200) {
-                await ctx.reply("❌ Manzil 200 ta belgidan ko'p bo'lmasligi kerak.");
+                await ctx.reply("❌ Manzil 200 ta belgidan ko'p bo'lmasligi kerak.", { parse_mode: 'HTML' });
                 return;
             }
 
             if (trimmedAddress.toLowerCase() === sceneState.branchAddress.toLowerCase()) {
                 await ctx.reply(
                     '❌ Yangi manzil joriy manzil bilan bir xil. Boshqa manzil kiriting:',
+                    { parse_mode: 'HTML' }
                 );
                 return;
             }
@@ -162,7 +166,7 @@ export class EditBranchScene {
 
             // Tasdiqlash
             await ctx.reply(
-                `📋 Manzil o'zgarishi:\n\n🔸 Eski manzil: ${sceneState.branchAddress}\n🔹 Yangi manzil: ${trimmedAddress}\n\nTasdiqlaysizmi?`,
+                `📋 <b>Manzil o'zgarishi:</b>\n\n🔸 <b>Eski manzil:</b> ${sceneState.branchAddress}\n🔹 <b>Yangi manzil:</b> ${trimmedAddress}\n\nTasdiqlaysizmi?`,
                 Markup.inlineKeyboard(
                     [
                         Markup.button.callback("✅ Ha, o'zgartirish", 'CONFIRM_ADDRESS_CHANGE'),
@@ -181,7 +185,7 @@ export class EditBranchScene {
         const sceneState = ctx.scene.state as EditBranchSceneState;
 
         if (!sceneState.newName) {
-            await ctx.editMessageText('❌ Yangi nom topilmadi.');
+            await safeEditMessageText(ctx, '❌ Yangi nom topilmadi.');
             await ctx.scene.leave();
             return;
         }
@@ -192,12 +196,13 @@ export class EditBranchScene {
                 data: { name: sceneState.newName },
             });
 
-            await ctx.editMessageText(
-                `✅ Filial nomi muvaffaqiyatli o'zgartirildi!\n\n🔸 Eski nom: ${sceneState.branchName}\n🔹 Yangi nom: ${sceneState.newName}`,
+            await safeEditMessageText(
+                ctx,
+                `✅ <b>Filial nomi muvaffaqiyatli o'zgartirildi!</b>\n\n🔸 <b>Eski nom:</b> ${sceneState.branchName}\n🔹 <b>Yangi nom:</b> ${sceneState.newName}`,
             );
             await ctx.scene.leave();
         } catch (error) {
-            await ctx.editMessageText("❌ Nom o'zgartirishda xatolik yuz berdi.");
+            await safeEditMessageText(ctx, "❌ Nom o'zgartirishda xatolik yuz berdi.");
             await ctx.scene.leave();
         }
     }
@@ -207,7 +212,7 @@ export class EditBranchScene {
         const sceneState = ctx.scene.state as EditBranchSceneState;
 
         if (!sceneState.newAddress) {
-            await ctx.editMessageText('❌ Yangi manzil topilmadi.');
+            await safeEditMessageText(ctx, '❌ Yangi manzil topilmadi.');
             await ctx.scene.leave();
             return;
         }
@@ -218,12 +223,13 @@ export class EditBranchScene {
                 data: { address: sceneState.newAddress },
             });
 
-            await ctx.editMessageText(
-                `✅ Filial manzili muvaffaqiyatli o'zgartirildi!\n\n🔸 Eski manzil: ${sceneState.branchAddress}\n🔹 Yangi manzil: ${sceneState.newAddress}`,
+            await safeEditMessageText(
+                ctx,
+                `✅ <b>Filial manzili muvaffaqiyatli o'zgartirildi!</b>\n\n🔸 <b>Eski manzil:</b> ${sceneState.branchAddress}\n🔹 <b>Yangi manzil:</b> ${sceneState.newAddress}`,
             );
             await ctx.scene.leave();
         } catch (error) {
-            await ctx.editMessageText("❌ Manzil o'zgartirishda xatolik yuz berdi.");
+            await safeEditMessageText(ctx, "❌ Manzil o'zgartirishda xatolik yuz berdi.");
             await ctx.scene.leave();
         }
     }
@@ -236,8 +242,9 @@ export class EditBranchScene {
         sceneState.newName = undefined;
         sceneState.newAddress = undefined;
 
-        await ctx.editMessageText(
-            `✏️ Filial tahrirlash\n\n🏪 Joriy nomi: ${sceneState.branchName}\n📍 Joriy manzil: ${sceneState.branchAddress}\n\nNimani tahrirlashni xohlaysiz?`,
+        await safeEditMessageText(
+            ctx,
+            `✏️ <b>Filial tahrirlash</b>\n\n🏪 <b>Joriy nomi:</b> ${sceneState.branchName}\n📍 <b>Joriy manzil:</b> ${sceneState.branchAddress}\n\nNimani tahrirlashni xohlaysiz?`,
             Markup.inlineKeyboard(
                 [
                     Markup.button.callback("🏪 Nomini o'zgartirish", 'EDIT_BRANCH_NAME'),
@@ -251,7 +258,7 @@ export class EditBranchScene {
 
     @Action('CANCEL_EDIT_BRANCH')
     async onCancelEditBranch(@Ctx() ctx: Context) {
-        await ctx.editMessageText('❌ Filial tahrirlash bekor qilindi.');
+        await safeEditMessageText(ctx, '❌ Filial tahrirlash bekor qilindi.');
         await ctx.scene.leave();
     }
 }
