@@ -1,7 +1,5 @@
-import { UseGuards } from '@nestjs/common';
 import { Update, Command, Ctx, Action } from 'nestjs-telegraf';
 import { Markup } from 'telegraf';
-import { AuthGuard } from '../auth/guards/auth.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { PrismaService } from '../prisma/prisma.service';
 import { Context } from '../interfaces/context.interface';
@@ -36,40 +34,33 @@ export class OrdersUpdate {
     async listOrders(@Ctx() ctx: Context) {
         const user = ctx.user;
         let orders: Order[] = [];
+        let whereClause: any = {};
 
-        if (user.role === Role.SUPER_ADMIN) {
-            orders = await this.prisma.order.findMany({
-                include: {
-                    branch: true,
-                    cashier: true,
-                    order_products: true,
-                    payments: true,
-                },
-                orderBy: { created_at: 'desc' },
-                take: 10,
-            });
-        } else if (user.role === Role.ADMIN || user.role === Role.CASHIER) {
+        // Filiallarga qarab filter qilish
+        if (user.role === Role.ADMIN || user.role === Role.CASHIER) {
             if (!user.branch_id) {
                 await ctx.reply('❌ Siz hech qanday filialga tayinlanmagansiz.');
                 return;
             }
-            orders = await this.prisma.order.findMany({
-                where: { 
-                    branch_id: user.branch_id
-                },
-                include: {
-                    branch: true,
-                    cashier: true,
-                    order_products: true,
-                    payments: true,
-                },
-                orderBy: { created_at: 'desc' },
-                take: 10,
-            });
+            whereClause.branch_id = user.branch_id;
         }
+        // SUPER_ADMIN uchun whereClause bo'sh qoladi (barcha filiallar)
+
+        orders = await this.prisma.order.findMany({
+            where: whereClause,
+            include: {
+                branch: true,
+                cashier: true,
+                order_products: true,
+                payments: true,
+            },
+            orderBy: { created_at: 'desc' },
+            take: 10,
+        });
 
         if (!orders || orders.length === 0) {
-            await ctx.reply('❌ Buyurtmalar topilmadi.');
+            const branchInfo = user.role === Role.SUPER_ADMIN ? 'tizimda' : `"${user.branch?.name || 'sizning filialingizda'}"`;
+            await ctx.reply(`❌ ${branchInfo} buyurtmalar topilmadi.`);
             return;
         }
 
@@ -83,11 +74,94 @@ export class OrdersUpdate {
         // Add search button at the end
         orderButtons.push(Markup.button.callback('🔍 Qidirish', 'SEARCH_ORDERS'));
 
+        const branchInfo = user.role === Role.SUPER_ADMIN ? 'Barcha filiallar' : `Filial: ${user.branch?.name || 'N/A'}`;
+        
         await safeEditMessageText(
             ctx,
-            `📋 Buyurtmalar ${orderButtons.length - 1 ? `(${orderButtons.length - 1})` : ''}:`,
+            `📋 Buyurtmalar (${orders.length} ta)\n🏪 ${branchInfo}:`,
             Markup.inlineKeyboard(orderButtons, { columns: 1 }),
         );
+    }
+
+    @Command('user_orders')
+    @Roles(Role.SUPER_ADMIN)
+    async userOrderHistory(@Ctx() ctx: Context) {
+        const message = ctx.message;
+        if (!('text' in message)) return;
+        
+        const args = message.text.split(' ');
+        if (args.length < 2) {
+            await ctx.reply('📋 Foydalanish: /user_orders [user_id yoki telegram_id]\n\nMisol: /user_orders 123456789');
+            return;
+        }
+
+        const userIdentifier = args[1];
+        let targetUser;
+
+        // Telegram ID yoki User ID orqali qidirish
+        if (userIdentifier.length > 10) {
+            // Telegram ID
+            targetUser = await this.prisma.user.findUnique({
+                where: { telegram_id: parseInt(userIdentifier) },
+                include: { branch: true }
+            });
+        } else {
+            // User ID
+            targetUser = await this.prisma.user.findUnique({
+                where: { id: userIdentifier },
+                include: { branch: true }
+            });
+        }
+
+        if (!targetUser) {
+            await ctx.reply('❌ Foydalanuvchi topilmadi.');
+            return;
+        }
+
+        // Barcha filiallardan orderlarni olish
+        const orders = await this.prisma.order.findMany({
+            where: { cashier_id: targetUser.id },
+            include: {
+                branch: true,
+                order_products: true,
+                payments: true,
+            },
+            orderBy: { created_at: 'desc' },
+            take: 20,
+        });
+
+        if (orders.length === 0) {
+            await ctx.reply(`❌ ${targetUser.full_name} uchun buyurtmalar topilmadi.`);
+            return;
+        }
+
+        // Filial bo'yicha guruhlash
+        const ordersByBranch = orders.reduce((acc, order) => {
+            const branchName = order.branch.name;
+            if (!acc[branchName]) {
+                acc[branchName] = [];
+            }
+            acc[branchName].push(order);
+            return acc;
+        }, {} as Record<string, typeof orders>);
+
+        let responseMessage = `👤 ${targetUser.full_name} ning buyurtmalari:\n🏪 Joriy filial: ${targetUser.branch?.name || 'Tayinlanmagan'}\n\n`;
+
+        Object.entries(ordersByBranch).forEach(([branchName, branchOrders]) => {
+            const totalAmount = branchOrders.reduce((sum, order) => sum + order.total_amount, 0);
+            responseMessage += `🏢 ${branchName} (${branchOrders.length} ta - ${formatCurrency(totalAmount)}):\n`;
+            
+            branchOrders.slice(0, 5).forEach(order => {
+                responseMessage += `  • ${order.order_number} - ${formatCurrency(order.total_amount)} (${order.created_at.toLocaleDateString('uz-UZ')})\n`;
+            });
+            
+            if (branchOrders.length > 5) {
+                responseMessage += `  ... va yana ${branchOrders.length - 5} ta\n`;
+            }
+            responseMessage += '\n';
+        });
+
+        await ctx.reply(responseMessage);
     }
 
     @Command('order_stats')
@@ -99,6 +173,7 @@ export class OrdersUpdate {
         if (user.role === Role.ADMIN && user.branch_id) {
             whereClause = { branch_id: user.branch_id };
         }
+        // SUPER_ADMIN uchun whereClause bo'sh qoladi (barcha filiallar)
 
         const today = new Date();
         today.setHours(0, 0, 0, 0);
@@ -137,7 +212,7 @@ export class OrdersUpdate {
 
 📅 Bugun:
 • Buyurtmalar: ${todayOrders} ta
-• Daromad: ${formatCurrency(totalRevenue._sum.total_amount) || 0}
+• Daromad: ${formatCurrency(todayRevenue._sum.total_amount) || 0}
 
 📈 Jami:
 • Buyurtmalar: ${totalOrders} ta  

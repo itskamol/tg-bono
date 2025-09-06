@@ -2,17 +2,22 @@ import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { EncryptionService } from '../settings/encryption.service';
 import { GoogleSheetsService } from '../sheets/google-sheets.service';
+import { QuickReportHelper } from './helpers/quick-report.helper';
+import { ReportFormatter } from './helpers/report-formatter.helper';
 import { Prisma, Role } from '@prisma/client';
 
 @Injectable()
 export class ReportsService {
     private readonly logger = new Logger(ReportsService.name);
+    private readonly quickReportHelper: QuickReportHelper;
 
     constructor(
         private readonly prisma: PrismaService,
         private readonly encryptionService: EncryptionService,
         private readonly googleSheetsService: GoogleSheetsService,
-    ) {}
+    ) {
+        this.quickReportHelper = new QuickReportHelper(this.prisma);
+    }
 
     public async getOrdersForReport(user: any, timeRange: string): Promise<any[]> {
         const gte = this._getDateFilter(timeRange);
@@ -24,6 +29,7 @@ export class ReportsService {
         } else if (user.role === Role.CASHIER) {
             where.cashier_id = user.id;
         }
+        // SUPER_ADMIN uchun where clause bo'sh qoladi (barcha filiallar)
 
         return this.prisma.order.findMany({
             where,
@@ -143,6 +149,7 @@ export class ReportsService {
         } else if (user.role === Role.CASHIER) {
             where.cashier_id = user.id;
         }
+        // SUPER_ADMIN uchun where clause bo'sh qoladi (barcha filiallar)
 
         return this.prisma.order.findMany({
             where,
@@ -154,5 +161,46 @@ export class ReportsService {
             },
             orderBy: { created_at: 'desc' },
         });
+    }
+
+    /**
+     * Get formatted payment report for any period
+     */
+    async getFormattedPaymentReport(userId: number, period: string, detailed: boolean = false): Promise<string> {
+        return this.quickReportHelper.generateQuickPaymentSummary(userId, period, !detailed);
+    }
+
+    /**
+     * Get daily dashboard summary
+     */
+    async getDailySummary(userId: number): Promise<string> {
+        return this.quickReportHelper.generateDailySummary(userId);
+    }
+
+    /**
+     * Get payment distribution for quick view
+     */
+    async getPaymentDistribution(userId: number, period: string = 'today'): Promise<string> {
+        return this.quickReportHelper.getPaymentDistribution(userId, period);
+    }
+
+    /**
+     * Generate comprehensive report with multiple periods
+     */
+    async getComprehensiveReport(userId: number): Promise<string> {
+        const [daily, weekly, monthly] = await Promise.all([
+            this.quickReportHelper.generateDailySummary(userId),
+            this.quickReportHelper.generateWeeklySummary(userId),
+            this.quickReportHelper.generateMonthlySummary(userId),
+        ]);
+
+        return `📊 KENG QAMROVLI HISOBOT
+═══════════════════════════════
+
+${daily}
+
+${weekly}
+
+${monthly}`;
     }
 }

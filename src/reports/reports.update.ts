@@ -26,9 +26,11 @@ export class ReportsUpdate {
             );
         }
 
+        const branchInfo = user.role === Role.ADMIN ? `\n🏪 Filial: ${user.branch?.name || 'N/A'}` : '\n🌐 Barcha filiallar';
+
         await safeEditMessageText(
             ctx,
-            "📊 Hisobotlar bo'limi\n\nQaysi turdagi hisobotni ko'rmoqchisiz?",
+            `📊 Hisobotlar bo'limi${branchInfo}\n\nQaysi turdagi hisobotni ko'rmoqchisiz?`,
             Markup.inlineKeyboard(reportButtons, {
                 columns: 2,
             }),
@@ -100,5 +102,60 @@ export class ReportsUpdate {
                 'Test xatolik',
             );
         }
+    }
+
+    @Command('test_format')
+    @Roles(Role.SUPER_ADMIN, Role.ADMIN)
+    async testNewFormat(@Ctx() ctx: Context) {
+        await safeEditMessageText(
+            ctx,
+            '🔄 Yangi format test qilinmoqda...',
+            undefined,
+            'Test',
+        );
+
+        try {
+            const user = ctx.user;
+            const report = await this.reportsService.getFormattedPaymentReport(user.telegram_id, 'today', true);
+
+            await safeEditMessageText(
+                ctx,
+                report,
+                Markup.inlineKeyboard([
+                    Markup.button.callback('📊 Haftalik', 'TEST_WEEKLY'),
+                    Markup.button.callback('📈 Oylik', 'TEST_MONTHLY'),
+                    Markup.button.callback('🔄 Keng qamrov', 'TEST_COMPREHENSIVE'),
+                ], { columns: 1 }),
+                'Yangi format test',
+            );
+        } catch (error) {
+            await safeEditMessageText(
+                ctx,
+                `❌ Format test xatolik: ${error.message}`,
+                undefined,
+                'Test xatolik',
+            );
+        }
+    }
+
+    @Action('TEST_WEEKLY')
+    async testWeeklyFormat(@Ctx() ctx: Context) {
+        const user = ctx.user;
+        const report = await this.reportsService.getFormattedPaymentReport(user.telegram_id, 'week', true);
+        await safeEditMessageText(ctx, report, undefined, 'Haftalik test');
+    }
+
+    @Action('TEST_MONTHLY')
+    async testMonthlyFormat(@Ctx() ctx: Context) {
+        const user = ctx.user;
+        const report = await this.reportsService.getFormattedPaymentReport(user.telegram_id, 'month', true);
+        await safeEditMessageText(ctx, report, undefined, 'Oylik test');
+    }
+
+    @Action('TEST_COMPREHENSIVE')
+    async testComprehensiveFormat(@Ctx() ctx: Context) {
+        const user = ctx.user;
+        const report = await this.reportsService.getComprehensiveReport(user.telegram_id);
+        await safeEditMessageText(ctx, report, undefined, 'Keng qamrov test');
     }
 }

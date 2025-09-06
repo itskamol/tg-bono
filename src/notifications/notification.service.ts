@@ -1,9 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { EncryptionService } from '../settings/encryption.service';
 import { Telegraf } from 'telegraf';
 import { InjectBot } from 'nestjs-telegraf';
 import { formatCurrency } from '../utils/format.utils';
+import { withRetry } from '../common/utils/retry.util';
 
 interface OrderData {
     orderNumber: string;
@@ -28,6 +29,8 @@ interface OrderData {
 
 @Injectable()
 export class NotificationService {
+    private readonly logger = new Logger(NotificationService.name);
+
     constructor(
         private readonly prisma: PrismaService,
         private readonly encryptionService: EncryptionService,
@@ -56,24 +59,35 @@ export class NotificationService {
             // Xabar matnini yaratish
             const message = this.formatOrderMessage(orderData);
 
-            // Xabarni yuborish
-            await this.bot.telegram.sendMessage(config.chatId, message, {
-                parse_mode: 'HTML',
-                link_preview_options: {
-                    is_disabled: true
+            // Xabarni yuborish (retry bilan)
+            await withRetry(
+                async () => {
+                    await this.bot.telegram.sendMessage(config.chatId, message, {
+                        parse_mode: 'HTML',
+                        link_preview_options: {
+                            is_disabled: true
+                        }
+                    });
+                },
+                {
+                    maxAttempts: 2,
+                    delay: 1000,
+                    onRetry: (attempt, error) => {
+                        this.logger.warn(`Telegram notification failed, attempt ${attempt}:`, error.message);
+                    }
                 }
-            });
+            );
 
         } catch (error) {
-            console.error('❌ Kanal/guruhga xabar yuborishda xatolik:', error);
+            this.logger.error('❌ Kanal/guruhga xabar yuborishda xatolik:', error);
             
             if (error instanceof Error) {
                 if (error.message.includes('chat not found')) {
-                    console.error('💡 Kanal/Guruh topilmadi. Chat ID ni tekshiring.');
+                    this.logger.error('💡 Kanal/Guruh topilmadi. Chat ID ni tekshiring.');
                 } else if (error.message.includes('bot was blocked')) {
-                    console.error('💡 Bot kanaldan/guruhdan chiqarilgan.');
+                    this.logger.error('💡 Bot kanaldan/guruhdan chiqarilgan.');
                 } else if (error.message.includes('not enough rights')) {
-                    console.error('💡 Botda xabar yuborish huquqi yo\'q. Admin qiling.');
+                    this.logger.error('💡 Botda xabar yuborish huquqi yo\'q. Admin qiling.');
                 }
             }
             // Xatolik bo'lsa ham order yaratish jarayonini to'xtatmaymiz
@@ -96,8 +110,9 @@ export class NotificationService {
         // Mahsulotlar ro'yxati
         const productsList = products
             .map((p, index) => {
+                const categoryInfo = p.category !== 'custom' ? ` [${p.category}]` : '';
                 const sideInfo = p.sideName !== 'custom' ? ` (${p.sideName})` : '';
-                return `${index + 1}. ${p.quantity}x <b>${p.productName}</b>${sideInfo}\n   💰 ${formatCurrency(p.price * p.quantity)}`;
+                return `${index + 1}. ${p.quantity}x <b>${p.productName}</b>${categoryInfo}${sideInfo}\n   💰 ${formatCurrency(p.price * p.quantity)}`;
             })
             .join('\n');
 

@@ -51,13 +51,12 @@ export class ReportHelpers {
     }
 
     static getPaymentEmoji(paymentType: string): string {
-        const paymentEmoji =
-            {
-                [PaymentType.CASH]: '💵',
-                [PaymentType.CARD]: '💳',
-                [PaymentType.TRANSFER]: '📱',
-            }[paymentType] || '💰';
-        return paymentEmoji[paymentType] || '💰';
+        const paymentEmojis = {
+            [PaymentType.CASH]: '💵',
+            [PaymentType.CARD]: '💳',
+            [PaymentType.TRANSFER]: '📱',
+        };
+        return paymentEmojis[paymentType] || '💰';
     }
 
     static getTypeEmoji(type: string): string {

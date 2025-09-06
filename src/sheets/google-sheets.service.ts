@@ -2,6 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { google } from 'googleapis';
 import { Order, Order_Product, Payment, PaymentType } from '@prisma/client';
 import { formatCurrency } from 'src/utils/format.utils';
+import { withRetry, isRetryableError } from '../common/utils/retry.util';
 
 @Injectable()
 export class GoogleSheetsService {
@@ -35,13 +36,14 @@ export class GoogleSheetsService {
             return false;
         }
 
-        try {
-            this.logger.log(
-                `Starting Google Sheets append operation. Sheet ID: ${sheetId}, Worksheet: ${worksheetName}, Data count: ${dataObjects.length}`,
-            );
+        return await withRetry(
+            async () => {
+                this.logger.log(
+                    `Starting Google Sheets append operation. Sheet ID: ${sheetId}, Worksheet: ${worksheetName}, Data count: ${dataObjects.length}`,
+                );
 
-            const sheets = await this.getSheetsClient(credentials);
-            this.logger.log('Google Sheets client created successfully');
+                const sheets = await this.getSheetsClient(credentials);
+                this.logger.log('Google Sheets client created successfully');
 
             // 1. Check if the worksheet exists
             this.logger.log('Checking if spreadsheet exists...');
@@ -106,15 +108,23 @@ export class GoogleSheetsService {
                 },
             });
 
-            this.logger.log(
-                `${result.data.updates.updatedCells} cells appended to "${worksheetName}".`,
-            );
-            return true;
-        } catch (error) {
-            this.logger.error('Failed to write to Google Sheets:', error);
+                this.logger.log(
+                    `${result.data.updates.updatedCells} cells appended to "${worksheetName}".`,
+                );
+                return true;
+            },
+            {
+                maxAttempts: 3,
+                delay: 2000,
+                backoff: true,
+                onRetry: (attempt, error) => {
+                    this.logger.warn(`Google Sheets operation failed, attempt ${attempt}:`, error.message);
+                }
+            }
+        ).catch(error => {
+            this.logger.error('Failed to write to Google Sheets after retries:', error);
             this.logger.error('Error details:', error.message);
-            this.logger.error('Error stack:', error.stack);
-
+            
             // Log specific error for debugging
             if (
                 error.code === 403 &&
@@ -130,7 +140,7 @@ export class GoogleSheetsService {
             }
 
             return false;
-        }
+        });
     }
 
     // Order ma'lumotlarini Google Sheets formatiga o'tkazish

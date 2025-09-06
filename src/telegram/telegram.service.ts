@@ -1,4 +1,4 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import { Start, Update, Ctx, Command, On, InjectBot } from 'nestjs-telegraf';
 import { Context } from '../interfaces/context.interface';
 import { PrismaService } from '../prisma/prisma.service';
@@ -11,12 +11,15 @@ import { SidesUpdate } from '../sides/sides.update';
 import { OrdersUpdate } from '../orders/orders.update';
 import { ReportsUpdate } from '../reports/reports.update';
 import { SettingsUpdate } from '../settings/settings.update';
+import { withRetry } from '../common/utils/retry.util';
 
 import { Public } from 'src/auth/decorators/public.decorator';
 
 @Update()
 @Injectable()
 export class TelegramService implements OnModuleInit {
+    private readonly logger = new Logger(TelegramService.name);
+
     constructor(
         @InjectBot() private readonly bot: Telegraf<Context>,
         private readonly prisma: PrismaService,

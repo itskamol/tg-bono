@@ -15,9 +15,10 @@ import { UsersModule } from './users/users.module';
 import { CategoriesModule } from './categories/categories.module';
 import { GoogleSheetsModule } from './sheets/google-sheets.module';
 import { PrismaService } from './prisma/prisma.service';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_FILTER } from '@nestjs/core';
 import { AuthGuard } from './auth/guards/auth.guard';
 import { userMiddleware } from './auth/middlewares/auth.middleware';
+import { GlobalExceptionFilter } from './common/filters/global-exception.filter';
 
 @Module({
     imports: [
@@ -51,6 +52,10 @@ import { userMiddleware } from './auth/middlewares/auth.middleware';
         {
             provide: APP_GUARD,
             useClass: AuthGuard,
+        },
+        {
+            provide: APP_FILTER,
+            useClass: GlobalExceptionFilter,
         },
     ],
 })

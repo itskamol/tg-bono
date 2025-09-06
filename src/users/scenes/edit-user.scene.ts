@@ -282,18 +282,35 @@ export class EditUserScene {
                 return;
             }
 
+            // Eski filial ma'lumotlarini olish
+            const currentBranch = sceneState.userBranchId
+                ? await this.prisma.branch.findUnique({ where: { id: sceneState.userBranchId } })
+                : null;
+
+            // Eski filialdagi orderlar sonini hisoblash
+            const oldBranchOrdersCount = sceneState.userBranchId 
+                ? await this.prisma.order.count({
+                    where: { 
+                        cashier_id: sceneState.userId,
+                        branch_id: sceneState.userBranchId 
+                    }
+                })
+                : 0;
+
+            // User filialini o'zgartirish
             await this.prisma.user.update({
                 where: { id: sceneState.userId },
                 data: { branch_id: sceneState.newBranchId },
             });
 
-            const currentBranch = sceneState.userBranchId
-                ? await this.prisma.branch.findUnique({ where: { id: sceneState.userBranchId } })
-                : null;
+            let warningMessage = '';
+            if (oldBranchOrdersCount > 0) {
+                warningMessage = `\n\n⚠️ DIQQAT: Bu foydalanuvchining eski filialdagi ${oldBranchOrdersCount} ta buyurtmasi mavjud. Ular yangi filialda ko'rinmaydi, lekin ma'lumotlar bazasida saqlanadi.`;
+            }
 
             await safeEditMessageText(
                 ctx,
-                `✅ Foydalanuvchi filiali muvaffaqiyatli o'zgartirildi!\n\n🔸 Eski filial: ${currentBranch?.name || 'Tayinlanmagan'}\n🔹 Yangi filial: ${newBranch.name}`,
+                `✅ Foydalanuvchi filiali muvaffaqiyatli o'zgartirildi!\n\n🔸 Eski filial: ${currentBranch?.name || 'Tayinlanmagan'}\n🔹 Yangi filial: ${newBranch.name}${warningMessage}`,
                 undefined,
                 "Filial o'zgartirildi",
             );

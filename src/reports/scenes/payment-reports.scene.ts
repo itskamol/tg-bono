@@ -3,6 +3,7 @@ import { Markup } from 'telegraf';
 import { PrismaService } from '../../prisma/prisma.service';
 import { Context } from '../../interfaces/context.interface';
 import { ReportHelpers } from '../helpers/report.helpers';
+import { ReportFormatter, ReportSummary, PaymentReportData } from '../helpers/report-formatter.helper';
 import { Role } from '@prisma/client';
 import { safeEditMessageText } from '../../utils/telegram.utils';
 import { formatCurrency } from 'src/utils/format.utils';
@@ -13,19 +14,26 @@ export class PaymentReportsScene {
 
     @SceneEnter()
     async onSceneEnter(@Ctx() ctx: Context) {
+        const menuText = `🏦 ═══════════════════════════════
+💳 TO'LOV TURLARI HISOBOTI
+📊 ═══════════════════════════════
+
+Qaysi davr uchun hisobot kerak?`;
+
         await safeEditMessageText(
             ctx,
-            "💳 To'lov turlari hisoboti\n\nDavrni tanlang:",
+            menuText,
             Markup.inlineKeyboard(
                 [
                     Markup.button.callback('📅 Bugun', 'PAYMENT_TODAY'),
                     Markup.button.callback('📈 Hafta', 'PAYMENT_WEEK'),
                     Markup.button.callback('📅 Oy', 'PAYMENT_MONTH'),
                     Markup.button.callback('📊 3 oy', 'PAYMENT_QUARTER'),
+                    Markup.button.callback('📋 Batafsil', 'PAYMENT_DETAILED'),
                     Markup.button.callback('🔙 Orqaga', 'BACK_TO_REPORTS'),
                 ],
                 {
-                    columns: 2, // Har bir qatordagi tugmalar soni. 2 yoki 3 qilib o'zgartirishingiz mumkin.
+                    columns: 2,
                 },
             ),
             "To'lov hisoboti",
@@ -50,6 +58,11 @@ export class PaymentReportsScene {
     @Action('PAYMENT_QUARTER')
     async generateQuarterReport(@Ctx() ctx: Context) {
         await this.generatePaymentReport(ctx, 'quarter');
+    }
+
+    @Action('PAYMENT_DETAILED')
+    async generateDetailedReport(@Ctx() ctx: Context) {
+        await this.generatePaymentReport(ctx, 'month', true);
     }
 
     @Action('BACK_TO_REPORTS')
@@ -80,7 +93,15 @@ export class PaymentReportsScene {
         );
     }
 
-    private async generatePaymentReport(ctx: Context, period: string) {
+    private async generatePaymentReport(ctx: Context, period: string, detailed: boolean = false) {
+        // Show loading message
+        await safeEditMessageText(
+            ctx,
+            '🔄 Hisobot tayyorlanmoqda...',
+            undefined,
+            'Yuklanmoqda',
+        );
+
         // Get user from database since ctx.user might not be available in scenes
         const telegramId = ctx.from?.id;
         if (!telegramId) {
@@ -110,54 +131,93 @@ export class PaymentReportsScene {
             whereClause = { branch_id: user.branch_id };
         }
 
-        // Get payment statistics from Payment model instead of Order
-        const [paymentStats, totalRevenue] = await Promise.all([
-            this.prisma.payment.groupBy({
-                by: ['payment_type'],
-                where: {
-                    order: whereClause,
-                    created_at: { gte: startDate, lt: endDate },
-                },
-                _count: true,
-                _sum: { amount: true },
-                _avg: { amount: true },
-            }),
-            this.prisma.payment.aggregate({
-                where: {
-                    order: whereClause,
-                    created_at: { gte: startDate, lt: endDate },
-                },
-                _sum: { amount: true },
-            }),
-        ]);
+        try {
+            // Get payment statistics from Payment model
+            const [paymentStats, totalRevenue, totalTransactions] = await Promise.all([
+                this.prisma.payment.groupBy({
+                    by: ['payment_type'],
+                    where: {
+                        order: whereClause,
+                        created_at: { gte: startDate, lt: endDate },
+                    },
+                    _count: true,
+                    _sum: { amount: true },
+                    _avg: { amount: true },
+                }),
+                this.prisma.payment.aggregate({
+                    where: {
+                        order: whereClause,
+                        created_at: { gte: startDate, lt: endDate },
+                    },
+                    _sum: { amount: true },
+                }),
+                this.prisma.payment.count({
+                    where: {
+                        order: whereClause,
+                        created_at: { gte: startDate, lt: endDate },
+                    },
+                }),
+            ]);
 
-        const paymentList = paymentStats
-            .map((ps) => {
-                const percentage = totalRevenue._sum.amount
-                    ? ((ps._sum.amount / totalRevenue._sum.amount) * 100).toFixed(1)
+            // Transform data for the formatter
+            const totalAmount = totalRevenue._sum.amount || 0;
+            const paymentData: PaymentReportData[] = paymentStats.map((ps) => {
+                const sumAmount = ps._sum.amount || 0;
+                const avgAmount = ps._avg.amount || 0;
+                const percentage = totalAmount > 0
+                    ? parseFloat(((sumAmount / totalAmount) * 100).toFixed(1))
                     : 0;
-                return `💳 ${ReportHelpers.getPaymentEmoji(ps.payment_type)} ${ReportHelpers.capitalizeFirst(ps.payment_type)}:
-  • To'lovlar: ${ps._count} ta
-  • Daromad: ${formatCurrency(ps._sum.amount)} (${percentage}%)
-  • O'rtacha: ${formatCurrency(Math.round(ps._avg.amount))}`;
-            })
-            .join('\n\n');
 
-        const report = `
-💳 ${periodName.toUpperCase()} TO'LOV TURLARI HISOBOTI
+                return {
+                    paymentType: ps.payment_type,
+                    count: ps._count,
+                    totalAmount: sumAmount,
+                    averageAmount: Math.round(avgAmount),
+                    percentage,
+                };
+            });
 
-📊 Jami daromad: ${formatCurrency(totalRevenue._sum.amount) || 0}
+            // Sort by total amount descending
+            paymentData.sort((a, b) => b.totalAmount - a.totalAmount);
 
-${paymentList || "Ma'lumot yo'q"}
+            const reportSummary: ReportSummary = {
+                totalRevenue: totalAmount,
+                totalTransactions,
+                paymentData,
+                periodName,
+                branchInfo: user.role === Role.ADMIN ? `🏪 Filial: ${user.branch?.name || 'N/A'}` : undefined,
+            };
 
-${user.role === Role.ADMIN ? `🏪 Filial: ${user.branch?.name || 'N/A'}` : '🌐 Barcha filiallar'}
-    `;
+            // Generate report using the appropriate formatter
+            const report = detailed 
+                ? ReportFormatter.formatDetailedPaymentReport(reportSummary)
+                : ReportFormatter.formatPaymentReport(reportSummary);
 
-        await safeEditMessageText(
-            ctx,
-            report,
-            Markup.inlineKeyboard([Markup.button.callback('🔙 Orqaga', 'BACK_TO_REPORTS')]),
-            'Hisobot',
-        );
+            // Create action buttons
+            const buttons = [
+                Markup.button.callback('🔄 Yangilash', `PAYMENT_${period.toUpperCase()}`),
+                Markup.button.callback('🔙 Orqaga', 'BACK_TO_REPORTS'),
+            ];
+
+            if (!detailed && paymentData.length > 0) {
+                buttons.unshift(Markup.button.callback('📋 Batafsil', 'PAYMENT_DETAILED'));
+            }
+
+            await safeEditMessageText(
+                ctx,
+                report,
+                Markup.inlineKeyboard(buttons, { columns: 2 }),
+                'Hisobot',
+            );
+
+        } catch (error) {
+            console.error('Payment report generation error:', error);
+            await safeEditMessageText(
+                ctx,
+                '❌ Hisobot yaratishda xatolik yuz berdi. Iltimos, qayta urinib ko\'ring.',
+                Markup.inlineKeyboard([Markup.button.callback('🔙 Orqaga', 'BACK_TO_REPORTS')]),
+                'Xatolik',
+            );
+        }
     }
 }

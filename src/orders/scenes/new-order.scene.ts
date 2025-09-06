@@ -397,7 +397,23 @@ Yana mahsulot qo'shasizmi?`;
 
     @Action('BACK_TO_TYPES')
     async onBackToTypes(@Ctx() ctx: Context) {
+        const sceneState = ctx.scene.state as NewOrderSceneState;
+        // Reset current product state
+        sceneState.currentProduct = {};
+        sceneState.awaitingProductName = false;
+        sceneState.awaitingProductPrice = false;
+        sceneState.isCustomProduct = false;
         return this.showProductTypes(ctx);
+    }
+
+    @Action('RETRY_CATEGORIES')
+    async onRetryCategories(@Ctx() ctx: Context) {
+        return this.showProductTypes(ctx);
+    }
+
+    @Action('RETRY_SIDES')
+    async onRetrySides(@Ctx() ctx: Context) {
+        return this.showSidesSelection(ctx);
     }
 
     @Action('ADD_PRODUCT')
@@ -991,16 +1007,6 @@ ${paymentsText}
         );
 
         return this.showPaymentSummary(ctx);
-    }
-
-    @Action('RETRY_CATEGORIES')
-    async onRetryCategories(@Ctx() ctx: Context) {
-        return this.showProductTypes(ctx);
-    }
-
-    @Action('RETRY_SIDES')
-    async onRetrySides(@Ctx() ctx: Context) {
-        return this.showSidesSelection(ctx);
     }
 
     private async writeOrderToSheets(order: any) {
