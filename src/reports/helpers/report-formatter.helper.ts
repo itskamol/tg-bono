@@ -26,13 +26,13 @@ export class ReportFormatter {
 
         // Header with decorative elements
         const header = this.createHeader(periodName);
-        
+
         // Summary section
         const summarySection = this.createSummarySection(totalRevenue, totalTransactions);
-        
+
         // Payment details section
         const paymentSection = this.createPaymentSection(paymentData);
-        
+
         // Footer with branch info
         const footer = this.createFooter(branchInfo);
 
@@ -45,10 +45,8 @@ export class ReportFormatter {
     private static createHeader(periodName: string): string {
         const title = `${periodName.toUpperCase()} TO'LOV TURLARI HISOBOTI`;
         const separator = '═'.repeat(Math.min(title.length, 35));
-        
-        return `🏦 ${separator}
-💳 ${title}
-📊 ${separator}`;
+
+        return `💳 ${title}`;
     }
 
     /**
@@ -56,10 +54,9 @@ export class ReportFormatter {
      */
     private static createSummarySection(totalRevenue: number, totalTransactions: number): string {
         return `📈 UMUMIY MA'LUMOTLAR:
-┌─────────────────────────────────┐
-│ 💰 Jami daromad: ${formatCurrency(totalRevenue).padEnd(15)} │
-│ 🔢 Jami to'lovlar: ${totalTransactions.toString().padEnd(13)} ta │
-└─────────────────────────────────┘`;
+ 💰 Jami daromad: ${formatCurrency(totalRevenue)} 
+ 🔢 Jami to'lovlar: ${totalTransactions.toString()} ta 
+`;
     }
 
     /**
@@ -68,18 +65,18 @@ export class ReportFormatter {
     private static createPaymentSection(paymentData: PaymentReportData[]): string {
         if (!paymentData || paymentData.length === 0) {
             return `📋 TO'LOV TURLARI:
-┌─────────────────────────────────┐
-│        Ma'lumot mavjud emas     │
-└─────────────────────────────────┘`;
+        Ma'lumot mavjud emas     
+`;
         }
 
-        const paymentLines = paymentData.map((payment, index) => {
-            const emoji = this.getPaymentEmoji(payment.paymentType);
-            const typeName = this.getPaymentTypeName(payment.paymentType);
-            const isLast = index === paymentData.length - 1;
-            
-            return this.formatPaymentItem(payment, emoji, typeName, isLast);
-        }).join('\n');
+        const paymentLines = paymentData
+            .map((payment, index) => {
+                const emoji = this.getPaymentEmoji(payment.paymentType);
+                const typeName = this.getPaymentTypeName(payment.paymentType);
+
+                return this.formatPaymentItem(payment, emoji, typeName);
+            })
+            .join('\n');
 
         return `📋 TO'LOV TURLARI:
 ${paymentLines}`;
@@ -89,18 +86,16 @@ ${paymentLines}`;
      * Format individual payment item
      */
     private static formatPaymentItem(
-        payment: PaymentReportData, 
-        emoji: string, 
-        typeName: string, 
-        isLast: boolean
+        payment: PaymentReportData,
+        emoji: string,
+        typeName: string,
     ): string {
-        const connector = isLast ? '└' : '├';
-        const line = isLast ? ' ' : '│';
-        
-        return `${connector}─ ${emoji} ${typeName.toUpperCase()}:
-${line}  ├─ To'lovlar: ${payment.count} ta
-${line}  ├─ Daromad: ${formatCurrency(payment.totalAmount)} (${payment.percentage}%)
-${line}  └─ O'rtacha: ${formatCurrency(payment.averageAmount)}`;
+
+        return `
+${emoji} ${typeName.toUpperCase()}:
+🔹 To'lovlar: ${payment.count} ta
+🔹 Daromad: ${formatCurrency(payment.totalAmount)} (${payment.percentage}%)
+🔹 O'rtacha: ${formatCurrency(payment.averageAmount)}`;
     }
 
     /**
@@ -113,14 +108,13 @@ ${line}  └─ O'rtacha: ${formatCurrency(payment.averageAmount)}`;
             month: '2-digit',
             year: 'numeric',
             hour: '2-digit',
-            minute: '2-digit'
+            minute: '2-digit',
         });
 
         return `
-┌─────────────────────────────────┐
-│ 📍 ${location.padEnd(25)}       │
-│ 🕐 ${timestamp.padEnd(25)}      │
-└─────────────────────────────────┘`;
+ 📍 ${location}       
+ 🕐 ${timestamp}      
+`;
     }
 
     /**
@@ -142,7 +136,7 @@ ${line}  └─ O'rtacha: ${formatCurrency(payment.averageAmount)}`;
         const paymentNames = {
             [PaymentType.CASH]: 'Naqd',
             [PaymentType.CARD]: 'Karta',
-            [PaymentType.TRANSFER]: 'O\'tkazma',
+            [PaymentType.TRANSFER]: "O'tkazma",
         };
         return paymentNames[paymentType] || paymentType;
     }
@@ -153,11 +147,13 @@ ${line}  └─ O'rtacha: ${formatCurrency(payment.averageAmount)}`;
     static formatCompactPaymentReport(summary: ReportSummary): string {
         const { totalRevenue, paymentData, periodName, branchInfo } = summary;
 
-        const paymentLines = paymentData.map(payment => {
-            const emoji = this.getPaymentEmoji(payment.paymentType);
-            const typeName = this.getPaymentTypeName(payment.paymentType);
-            return `${emoji} ${typeName}: ${payment.count}ta • ${formatCurrency(payment.totalAmount)} (${payment.percentage}%)`;
-        }).join('\n');
+        const paymentLines = paymentData
+            .map((payment) => {
+                const emoji = this.getPaymentEmoji(payment.paymentType);
+                const typeName = this.getPaymentTypeName(payment.paymentType);
+                return `${emoji} ${typeName}: ${payment.count}ta • ${formatCurrency(payment.totalAmount)} (${payment.percentage}%)`;
+            })
+            .join('\n');
 
         return `💳 ${periodName.toUpperCase()} HISOBOT
 📊 Jami: ${formatCurrency(totalRevenue)}
@@ -172,14 +168,14 @@ ${branchInfo || '🌐 Barcha filiallar'}`;
      */
     static formatDetailedPaymentReport(summary: ReportSummary): string {
         const basicReport = this.formatPaymentReport(summary);
-        
+
         if (!summary.paymentData || summary.paymentData.length === 0) {
             return basicReport;
         }
 
         // Add additional analytics
         const analytics = this.createAnalyticsSection(summary);
-        
+
         return `${basicReport}\n\n${analytics}`;
     }
 
@@ -188,25 +184,24 @@ ${branchInfo || '🌐 Barcha filiallar'}`;
      */
     private static createAnalyticsSection(summary: ReportSummary): string {
         const { paymentData, totalRevenue } = summary;
-        
+
         // Find most popular payment method
-        const mostPopular = paymentData.reduce((prev, current) => 
-            prev.count > current.count ? prev : current
+        const mostPopular = paymentData.reduce((prev, current) =>
+            prev.count > current.count ? prev : current,
         );
 
         // Find highest revenue payment method
-        const highestRevenue = paymentData.reduce((prev, current) => 
-            prev.totalAmount > current.totalAmount ? prev : current
+        const highestRevenue = paymentData.reduce((prev, current) =>
+            prev.totalAmount > current.totalAmount ? prev : current,
         );
 
         const mostPopularEmoji = this.getPaymentEmoji(mostPopular.paymentType);
         const highestRevenueEmoji = this.getPaymentEmoji(highestRevenue.paymentType);
 
         return `📊 TAHLIL:
-┌─────────────────────────────────┐
-│ 🏆 Eng ko'p: ${mostPopularEmoji} ${this.getPaymentTypeName(mostPopular.paymentType).padEnd(15)} │
-│ 💎 Eng daromadli: ${highestRevenueEmoji} ${this.getPaymentTypeName(highestRevenue.paymentType).padEnd(11)} │
-│ 📈 O'rtacha to'lov: ${formatCurrency(Math.round(totalRevenue / paymentData.reduce((sum, p) => sum + p.count, 0))).padEnd(12)} │
-└─────────────────────────────────┘`;
+ 🏆 Eng ko'p: ${mostPopularEmoji} ${this.getPaymentTypeName(mostPopular.paymentType)} 
+ 💎 Eng daromadli: ${highestRevenueEmoji} ${this.getPaymentTypeName(highestRevenue.paymentType)} 
+ 📈 O'rtacha to'lov: ${formatCurrency(Math.round(totalRevenue / paymentData.reduce((sum, p) => sum + p.count, 0)))} 
+`;
     }
 }

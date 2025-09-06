@@ -474,7 +474,7 @@ ${sceneState.clientBirthday ? `🎂 <b>Tug'ilgan kun:</b> ${sceneState.clientBir
 📦 <b>Mahsulotlar:</b>
 ${productsList}
 
-💳 <b>To'lovlar:</b>
+$<b>To'lovlar:</b>
 ${paymentsText}
 
 💰 <b>Jami:</b> ${formatCurrency(sceneState.totalAmount)}`;
@@ -614,7 +614,7 @@ ${paymentsText}
             // Foydalanuvchiga darhol javob berish
             await this.safeEditOrReply(
                 ctx,
-                `✅ <b>Buyurtma muvaffaqiyatli yaratildi!</b>\n\n🔢 Buyurtma raqami: <code>${orderNumber}</code>\n\n💳 <b>To'lovlar:</b>\n${paymentsText}\n\n💰 <b>Jami: ${formatCurrency(sceneState.totalAmount)}</b> \n\nRahmat!`,
+                `✅ <b>Buyurtma muvaffaqiyatli yaratildi!</b>\n\n🔢 Buyurtma raqami: <code>${orderNumber}</code>\n\n$<b>To'lovlar:</b>\n${paymentsText}\n\n💰 <b>Jami: ${formatCurrency(sceneState.totalAmount)}</b> \n\nRahmat!`,
                 Markup.inlineKeyboard([
                     Markup.button.callback('🆕 Yangi buyurtma', 'START_NEW_ORDER'),
                 ]),

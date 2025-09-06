@@ -60,7 +60,7 @@ export class BranchReportsScene {
         const user = ctx.user;
         const reportButtons = [
             Markup.button.callback('📊 Umumiy', 'GENERAL_REPORTS'),
-            Markup.button.callback("💳 To'lovlar", 'PAYMENT_REPORTS'),
+            Markup.button.callback("$ To'lovlar", 'PAYMENT_REPORTS'),
         ];
 
         if (user.role === Role.SUPER_ADMIN) {

@@ -289,7 +289,7 @@ ${user.role === Role.ADMIN ? `🏪 Filial: <b>${user.branch?.name || 'N/A'}</b>`
         const products = order.order_products
             .map(
                 (op) =>
-                    `• ${op.quantity}x <b>${op.product_name}</b> (${op.side_name}) - ${formatCurrency(op.price * op.quantity)}`,
+                    `• <b>${op.product_name}</b> (${op.side_name}/${op.category})  - ${formatCurrency(op.price * op.quantity)}`,
             )
             .join('\n');
 
@@ -328,7 +328,7 @@ ${order.client_birthday ? `🎂 <b>Tug'ilgan kun:</b> ${order.client_birthday.to
 🏪 <b>Filial:</b> ${order.branch.name}
 💰 <b>Kassir:</b> ${order.cashier?.full_name || 'Noma\'lum'}
 
-💳 <b>To'lovlar:</b>
+$<b>To'lovlar:</b>
 ${paymentsText}
 
 📦 <b>Mahsulotlar:</b>

@@ -14,7 +14,7 @@ export class SettingsUpdate {
         private readonly prisma: PrismaService,
         private readonly encryptionService: EncryptionService,
         private readonly notificationService: NotificationService,
-    ) { }
+    ) {}
 
     @Command('settings')
     @Roles(Role.SUPER_ADMIN)
@@ -44,7 +44,7 @@ export class SettingsUpdate {
         if (gSheetsConfig) {
             await safeEditMessageText(
                 ctx,
-                '📊 <b>Google Sheets sozlamalari:</b>\n\n✅ Google Sheets sozlamalari mavjud\n\n💡 Yangi orderlar avtomatik ravishda Sheets\'ga yoziladi',
+                "📊 <b>Google Sheets sozlamalari:</b>\n\n✅ Google Sheets sozlamalari mavjud\n\n💡 Yangi orderlar avtomatik ravishda Sheets'ga yoziladi",
                 Markup.inlineKeyboard(
                     [
                         Markup.button.callback("👁️ Ko'rish", 'view_sheets_config'),
@@ -53,8 +53,8 @@ export class SettingsUpdate {
                         Markup.button.callback('⬅️ Orqaga', 'back_to_settings'),
                     ],
                     {
-                        columns: 2
-                    }
+                        columns: 2,
+                    },
                 ),
                 'Sheets CRUD menyu',
             );
@@ -65,27 +65,67 @@ export class SettingsUpdate {
 
     @Action('configure_channel')
     async onConfigureChannel(@Ctx() ctx: Context) {
-        const channelConfig = await this.prisma.setting.findUnique({
-            where: { key: 'channel_config' },
-        });
+        try {
+            const channelConfig = await this.prisma.setting.findUnique({
+                where: { key: 'channel_config' },
+            });
 
-        if (channelConfig) {
+            if (!channelConfig) {
+                await ctx.scene.enter('channel-settings-scene');
+                return;
+            }
+
+            try {
+                const decryptedConfig = this.encryptionService.decrypt(channelConfig.value);
+                const config = JSON.parse(decryptedConfig);
+
+                const statusEmoji = config.enabled ? '✅' : '❌';
+                const statusText = config.enabled ? 'Yoqilgan' : "O'chirilgan";
+
+                const configText =
+                    `📢 <b>Kanal/Guruh sozlamalari:</b>\n\n` +
+                    `📝 <b>Nomi:</b> ${config.chatTitle || "Noma'lum"}\n` +
+                    `🆔 <b>Chat ID:</b> <code>${config.chatId || "Noma'lum"}</code>\n` +
+                    `📊 <b>Turi:</b> ${config.chatType || "Noma'lum"}\n` +
+                    `📢 <b>Xabarlar:</b> ${statusEmoji} ${statusText}\n` +
+                    `📅 <b>Yaratilgan:</b> ${config.createdAt ? new Date(config.createdAt).toLocaleDateString('uz-UZ') : "Noma'lum"}\n` +
+                    `🔄 <b>Yangilangan:</b> ${config.lastUpdated ? new Date(config.lastUpdated).toLocaleDateString('uz-UZ') : 'Hech qachon'}\n` +
+                    `✏️ <b>O'zgartirilgan:</b> ${config.lastModified ? new Date(config.lastModified).toLocaleDateString('uz-UZ') : 'Hech qachon'}`;
+
+                await safeEditMessageText(
+                    ctx,
+                    configText,
+                    {
+                        parse_mode: 'HTML',
+                        ...Markup.inlineKeyboard([
+                            [Markup.button.callback('✏️ Tahrirlash', 'edit_channel_config')],
+                            [Markup.button.callback("🗑️ O'chirish", 'delete_channel_config')],
+                            [Markup.button.callback('⬅️ Orqaga', 'back_to_settings')],
+                        ]),
+                    },
+                    "Kanal ma'lumotlari",
+                );
+            } catch (decryptError) {
+                await safeEditMessageText(
+                    ctx,
+                    "📢 <b>Kanal/Guruh sozlamalari:</b>\n\n✅ Sozlamalar mavjud va faol\n❌ Ma'lumotlarni o'qishda xatolik",
+                    Markup.inlineKeyboard([
+                        [Markup.button.callback('✏️ Tahrirlash', 'edit_channel_config')],
+                        [Markup.button.callback("🗑️ O'chirish", 'delete_channel_config')],
+                        [Markup.button.callback('⬅️ Orqaga', 'back_to_settings')],
+                    ]),
+                    "Kanal ma'lumotlari",
+                );
+            }
+        } catch (error) {
             await safeEditMessageText(
                 ctx,
-                '📢 <b>Kanal/Guruh sozlamalari:</b>\n\n✅ Kanal/Guruh sozlamalari mavjud',
-                Markup.inlineKeyboard([
-                    Markup.button.callback("👁️ Ko'rish", 'view_channel_config'),
-                    Markup.button.callback('✏️ Tahrirlash', 'edit_channel_config'),
-                    Markup.button.callback("🗑️ O'chirish", 'delete_channel_config'),
-                    Markup.button.callback('⬅️ Orqaga', 'back_to_settings'),
-                ], { columns: 2 }),
-                'Kanal CRUD menyu',
+                "❌ Kanal/Guruh sozlamalarini ko'rishda xatolik yuz berdi",
+                Markup.inlineKeyboard([[Markup.button.callback('⬅️ Orqaga', 'back_to_settings')]]),
+                'Xatolik',
             );
-        } else {
-            await ctx.scene.enter('channel-settings-scene');
         }
     }
-
 
     @Action('view_sheets_config')
     async onViewSheetsConfig(@Ctx() ctx: Context) {
@@ -113,7 +153,7 @@ export class SettingsUpdate {
 
                 const autoWriteStatus = config.autoWrite !== false;
                 const autoWriteEmoji = autoWriteStatus ? '✅' : '❌';
-                const autoWriteText = autoWriteStatus ? 'Yoqilgan' : 'O\'chirilgan';
+                const autoWriteText = autoWriteStatus ? 'Yoqilgan' : "O'chirilgan";
 
                 const configText =
                     `📊 <b>Google Sheets sozlamalari:</b>\n\n` +
@@ -123,27 +163,33 @@ export class SettingsUpdate {
                     `🔐 <b>Key Type:</b> ${credentials.type || "Noma'lum"}\n` +
                     `🔄 <b>Avtomatik yozish:</b> ${autoWriteEmoji} ${autoWriteText}\n` +
                     `📅 <b>Yaratilgan:</b> ${config.createdAt ? new Date(config.createdAt).toLocaleDateString('uz-UZ') : "Noma'lum"}\n` +
-                    `✏️ <b>O'zgartirilgan:</b> ${config.lastModified ? new Date(config.lastModified).toLocaleDateString('uz-UZ') : "Hech qachon"}`;
+                    `✏️ <b>O'zgartirilgan:</b> ${config.lastModified ? new Date(config.lastModified).toLocaleDateString('uz-UZ') : 'Hech qachon'}`;
 
                 await safeEditMessageText(
                     ctx,
                     configText,
-                    Markup.inlineKeyboard([
-                        Markup.button.callback('✏️ Tahrirlash', 'edit_sheets_config'),
-                        Markup.button.callback("🗑️ O'chirish", 'delete_sheets_config'),
-                        Markup.button.callback('⬅️ Orqaga', 'configure_g_sheets_export'),
-                    ], { columns: 2 }),
+                    Markup.inlineKeyboard(
+                        [
+                            Markup.button.callback('✏️ Tahrirlash', 'edit_sheets_config'),
+                            Markup.button.callback("🗑️ O'chirish", 'delete_sheets_config'),
+                            Markup.button.callback('⬅️ Orqaga', 'configure_g_sheets_export'),
+                        ],
+                        { columns: 2 },
+                    ),
                     "Sheets ma'lumotlari",
                 );
             } catch (decryptError) {
                 await safeEditMessageText(
                     ctx,
                     "📊 <b>Google Sheets sozlamalari:</b>\n\n✅ Sozlamalar mavjud va faol\n❌ Ma'lumotlarni o'qishda xatolik",
-                    Markup.inlineKeyboard([
-                        Markup.button.callback('✏️ Tahrirlash', 'edit_sheets_config'),
-                        Markup.button.callback("🗑️ O'chirish", 'delete_sheets_config'),
-                        Markup.button.callback('⬅️ Orqaga', 'configure_g_sheets_export'),
-                    ], { columns: 2 }),
+                    Markup.inlineKeyboard(
+                        [
+                            Markup.button.callback('✏️ Tahrirlash', 'edit_sheets_config'),
+                            Markup.button.callback("🗑️ O'chirish", 'delete_sheets_config'),
+                            Markup.button.callback('⬅️ Orqaga', 'configure_g_sheets_export'),
+                        ],
+                        { columns: 2 },
+                    ),
                     "Sheets ma'lumotlari",
                 );
             }
@@ -201,31 +247,38 @@ export class SettingsUpdate {
                 lastModified: new Date().toISOString(),
             };
 
-            const encryptedUpdatedConfig = this.encryptionService.encrypt(JSON.stringify(updatedConfig));
+            const encryptedUpdatedConfig = this.encryptionService.encrypt(
+                JSON.stringify(updatedConfig),
+            );
 
             await this.prisma.setting.update({
                 where: { key: 'g_sheets_config' },
                 data: { value: encryptedUpdatedConfig },
             });
 
-            const statusText = enabled ? 'yoqildi' : 'o\'chirildi';
+            const statusText = enabled ? 'yoqildi' : "o'chirildi";
             const statusEmoji = enabled ? '✅' : '❌';
 
             await safeEditMessageText(
                 ctx,
-                `${statusEmoji} <b>Avtomatik yozish muvaffaqiyatli ${statusText}!</b>\n\n📊 <b>Sheet ID:</b> ${config.sheetId}\n📢 <b>Holat:</b> ${statusEmoji} ${statusText.charAt(0).toUpperCase() + statusText.slice(1)}\n⏰ <b>O'zgartirilgan:</b> ${new Date().toLocaleString('uz-UZ')}\n\n${enabled ? '🎉 Endi yangi orderlar avtomatik ravishda Google Sheets\'ga yoziladi!' : '⚠️ Avtomatik yozish to\'xtatildi.'}`,
+                `${statusEmoji} <b>Avtomatik yozish muvaffaqiyatli ${statusText}!</b>\n\n📊 <b>Sheet ID:</b> ${config.sheetId}\n📢 <b>Holat:</b> ${statusEmoji} ${statusText.charAt(0).toUpperCase() + statusText.slice(1)}\n⏰ <b>O'zgartirilgan:</b> ${new Date().toLocaleString('uz-UZ')}\n\n${enabled ? "🎉 Endi yangi orderlar avtomatik ravishda Google Sheets'ga yoziladi!" : "⚠️ Avtomatik yozish to'xtatildi."}`,
                 Markup.inlineKeyboard([
                     [Markup.button.callback("👁️ Ko'rish", 'view_sheets_config')],
                     [Markup.button.callback('⬅️ Orqaga', 'configure_g_sheets_export')],
                 ]),
-                'Avtomatik yozish o\'zgartirildi',
+                "Avtomatik yozish o'zgartirildi",
             );
         } catch (error) {
             await safeEditMessageText(
                 ctx,
                 `❌ Avtomatik yozish holatini o'zgartirishda xatolik yuz berdi`,
                 Markup.inlineKeyboard([
-                    [Markup.button.callback('🔄 Qayta urinish', enabled ? 'confirm_enable_auto_write' : 'confirm_disable_auto_write')],
+                    [
+                        Markup.button.callback(
+                            '🔄 Qayta urinish',
+                            enabled ? 'confirm_enable_auto_write' : 'confirm_disable_auto_write',
+                        ),
+                    ],
                     [Markup.button.callback('⬅️ Orqaga', 'configure_g_sheets_export')],
                 ]),
                 'Xatolik',
@@ -287,7 +340,7 @@ export class SettingsUpdate {
                     ctx,
                     '❌ Kanal/Guruh sozlamalari topilmadi',
                     Markup.inlineKeyboard([
-                        [Markup.button.callback('⬅️ Orqaga', 'configure_channel')],
+                        [Markup.button.callback('⬅️ Orqaga', 'back_to_settings')],
                     ]),
                     'Kanal topilmadi',
                 );
@@ -308,8 +361,8 @@ export class SettingsUpdate {
                     `📊 <b>Turi:</b> ${config.chatType || "Noma'lum"}\n` +
                     `📢 <b>Xabarlar:</b> ${statusEmoji} ${statusText}\n` +
                     `📅 <b>Yaratilgan:</b> ${config.createdAt ? new Date(config.createdAt).toLocaleDateString('uz-UZ') : "Noma'lum"}\n` +
-                    `🔄 <b>Yangilangan:</b> ${config.lastUpdated ? new Date(config.lastUpdated).toLocaleDateString('uz-UZ') : "Hech qachon"}\n` +
-                    `✏️ <b>O'zgartirilgan:</b> ${config.lastModified ? new Date(config.lastModified).toLocaleDateString('uz-UZ') : "Hech qachon"}`;
+                    `🔄 <b>Yangilangan:</b> ${config.lastUpdated ? new Date(config.lastUpdated).toLocaleDateString('uz-UZ') : 'Hech qachon'}\n` +
+                    `✏️ <b>O'zgartirilgan:</b> ${config.lastModified ? new Date(config.lastModified).toLocaleDateString('uz-UZ') : 'Hech qachon'}`;
 
                 await safeEditMessageText(
                     ctx,
@@ -319,7 +372,7 @@ export class SettingsUpdate {
                         ...Markup.inlineKeyboard([
                             [Markup.button.callback('✏️ Tahrirlash', 'edit_channel_config')],
                             [Markup.button.callback("🗑️ O'chirish", 'delete_channel_config')],
-                            [Markup.button.callback('⬅️ Orqaga', 'configure_channel')],
+                            [Markup.button.callback('⬅️ Orqaga', 'back_to_settings')],
                         ]),
                     },
                     "Kanal ma'lumotlari",
@@ -331,7 +384,7 @@ export class SettingsUpdate {
                     Markup.inlineKeyboard([
                         [Markup.button.callback('✏️ Tahrirlash', 'edit_channel_config')],
                         [Markup.button.callback("🗑️ O'chirish", 'delete_channel_config')],
-                        [Markup.button.callback('⬅️ Orqaga', 'configure_channel')],
+                        [Markup.button.callback('⬅️ Orqaga', 'back_to_settings')],
                     ]),
                     "Kanal ma'lumotlari",
                 );
@@ -340,9 +393,7 @@ export class SettingsUpdate {
             await safeEditMessageText(
                 ctx,
                 "❌ Kanal/Guruh sozlamalarini ko'rishda xatolik yuz berdi",
-                Markup.inlineKeyboard([
-                    [Markup.button.callback('⬅️ Orqaga', 'configure_channel')],
-                ]),
+                Markup.inlineKeyboard([[Markup.button.callback('⬅️ Orqaga', 'back_to_settings')]]),
                 'Xatolik',
             );
         }
@@ -360,7 +411,7 @@ export class SettingsUpdate {
             "🗑️ <b>Kanal/Guruh sozlamalarini o'chirish</b>\n\n⚠️ Diqqat! Bu amal qaytarib bo'lmaydi.\n\nKanal/Guruh sozlamalarini o'chirishni tasdiqlaysizmi?",
             Markup.inlineKeyboard([
                 [Markup.button.callback("✅ Ha, o'chirish", 'confirm_delete_channel')],
-                [Markup.button.callback("❌ Yo'q, bekor qilish", 'configure_channel')],
+                [Markup.button.callback("❌ Yo'q, bekor qilish", 'back_to_settings')],
             ]),
             "Kanal o'chirish tasdiqi",
         );
@@ -388,7 +439,7 @@ export class SettingsUpdate {
                 "❌ Kanal/Guruh sozlamalarini o'chirishda xatolik yuz berdi",
                 Markup.inlineKeyboard([
                     [Markup.button.callback('🔄 Qayta urinish', 'confirm_delete_channel')],
-                    [Markup.button.callback('⬅️ Orqaga', 'configure_channel')],
+                    [Markup.button.callback('⬅️ Orqaga', 'back_to_settings')],
                 ]),
                 "O'chirish xatosi",
             );
@@ -416,7 +467,7 @@ export class SettingsUpdate {
                     ctx,
                     '❌ Kanal/Guruh sozlamalari topilmadi',
                     Markup.inlineKeyboard([
-                        [Markup.button.callback('⬅️ Orqaga', 'configure_channel')],
+                        [Markup.button.callback('⬅️ Orqaga', 'back_to_settings')],
                     ]),
                     'Kanal topilmadi',
                 );
@@ -432,32 +483,40 @@ export class SettingsUpdate {
                 lastModified: new Date().toISOString(),
             };
 
-            const encryptedUpdatedConfig = this.encryptionService.encrypt(JSON.stringify(updatedConfig));
+            const encryptedUpdatedConfig = this.encryptionService.encrypt(
+                JSON.stringify(updatedConfig),
+            );
 
             await this.prisma.setting.update({
                 where: { key: 'channel_config' },
                 data: { value: encryptedUpdatedConfig },
             });
 
-            const statusText = enabled ? 'yoqildi' : 'o\'chirildi';
+            const statusText = enabled ? 'yoqildi' : "o'chirildi";
             const statusEmoji = enabled ? '✅' : '❌';
 
             await safeEditMessageText(
                 ctx,
-                `${statusEmoji} <b>Xabarlar muvaffaqiyatli ${statusText}!</b>\n\n📝 <b>Chat:</b> ${config.chatTitle}\n🆔 <b>ID:</b> <code>${config.chatId}</code>\n📢 <b>Holat:</b> ${statusEmoji} ${statusText.charAt(0).toUpperCase() + statusText.slice(1)}\n⏰ <b>O'zgartirilgan:</b> ${new Date().toLocaleString('uz-UZ')}\n\n${enabled ? '🎉 Endi yangi orderlar avtomatik ravishda kanalga/guruhga yuboriladi!' : '⚠️ Order xabarlari to\'xtatildi.'}`,
+                `${statusEmoji} <b>Xabarlar muvaffaqiyatli ${statusText}!</b>\n\n📝 <b>Chat:</b> ${config.chatTitle}\n🆔 <b>ID:</b> <code>${config.chatId}</code>\n📢 <b>Holat:</b> ${statusEmoji} ${statusText.charAt(0).toUpperCase() + statusText.slice(1)}\n⏰ <b>O'zgartirilgan:</b> ${new Date().toLocaleString('uz-UZ')}\n\n${enabled ? '🎉 Endi yangi orderlar avtomatik ravishda kanalga/guruhga yuboriladi!' : "⚠️ Order xabarlari to'xtatildi."}`,
                 Markup.inlineKeyboard([
-                    [Markup.button.callback("👁️ Ko'rish", 'view_channel_config')],
-                    [Markup.button.callback('⬅️ Orqaga', 'configure_channel')],
+                    [Markup.button.callback('⬅️ Orqaga', 'back_to_settings')],
                 ]),
-                'Xabarlar holati o\'zgartirildi',
+                "Xabarlar holati o'zgartirildi",
             );
         } catch (error) {
             await safeEditMessageText(
                 ctx,
                 `❌ Xabarlar holatini o'zgartirishda xatolik yuz berdi`,
                 Markup.inlineKeyboard([
-                    [Markup.button.callback('🔄 Qayta urinish', enabled ? 'confirm_enable_notifications' : 'confirm_disable_notifications')],
-                    [Markup.button.callback('⬅️ Orqaga', 'configure_channel')],
+                    [
+                        Markup.button.callback(
+                            '🔄 Qayta urinish',
+                            enabled
+                                ? 'confirm_enable_notifications'
+                                : 'confirm_disable_notifications',
+                        ),
+                    ],
+                    [Markup.button.callback('⬅️ Orqaga', 'back_to_settings')],
                 ]),
                 'Xatolik',
             );

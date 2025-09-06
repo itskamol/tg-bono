@@ -137,7 +137,7 @@ ${clientPhone ? `📞 <b>Telefon:</b> ${clientPhone}` : ''}
 📦 <b>Mahsulotlar:</b>
 ${productsList}
 
-💳 <b>To'lovlar:</b>
+$<b>To'lovlar:</b>
 ${paymentsList}
 
 💰 <b>Jami summa:</b> <b>${formatCurrency(totalAmount)}</b>

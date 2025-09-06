@@ -173,7 +173,7 @@ export class GoogleSheetsService {
             const productsInfo = order.order_products
                 .map(
                     (product, index) =>
-                        `${index + 1}. ${product.product_name} (${product.category}) - ${product.side_name} - ${product.quantity}x${product.price} = ${formatCurrency(product.quantity * product.price)}`,
+                        `${index + 1}. ${product.product_name} (${product.category}) - ${product.side_name} - ${product.price} = ${formatCurrency(product.quantity * product.price)}`,
                 )
                 .join(' | ');
 
